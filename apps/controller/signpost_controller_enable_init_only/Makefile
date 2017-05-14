@@ -1,12 +1,15 @@
 # makefile for user application
 
+TOCK_BOARD = controller
+
 # the current directory
 APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# files needed for this code
-C_SRCS   := $(wildcard *.c)
+STACK_SIZE=4096
+APP_HEAP_SIZE=16384
 
-TOCK_BOARD = controller
+# files needed for this code
+C_SRCS   := main.c
 
 # include makefile settings that are shared between applications
 include ../../AppMakefile.mk

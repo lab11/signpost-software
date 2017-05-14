@@ -52,7 +52,11 @@ int signpost_api_addr_to_mod_num(uint8_t addr);
 /* INITIALIZATION API                                                     */
 /**************************************************************************/
 
+#if __cplusplus > 199711L
+#define SIGNPOST_INITIALIZATION_NO_APIS nullptr
+#else
 #define SIGNPOST_INITIALIZATION_NO_APIS NULL
+#endif
 
 typedef enum initialization_state {
     Start = 0,
