@@ -1,0 +1,9 @@
+[submodule "kernel/tock"]
+    path = kernel/tock
+    url = https://github.com/helena-project/tock
+[submodule "apps/support/erpc/erpc"]
+    path = apps/support/erpc/erpc
+    url = https://github.com/lab11/erpc
+[submodule "apps/support/mbedtls/mbedtls"]
+    path = apps/support/mbedtls/mbedtls
+    url = https://github.com/lab11/mbedtls
