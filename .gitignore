@@ -2,3 +2,4 @@ target/
 build/
 .gdbinit
 *.swp
+*.DS_Store
