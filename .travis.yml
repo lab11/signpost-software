@@ -32,4 +32,4 @@ before_scipt:
 
 script:
   - export PATH=$HOME/.cargo/bin:$PATH
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]] || [[ "$TRAVIS_BRANCH$TRAVIS_EVENT_TYPE" == "masterpush" ]]; then pushd software && ./run_tests.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]] || [[ "$TRAVIS_BRANCH$TRAVIS_EVENT_TYPE" == "masterpush" ]]; then ./run_tests.sh; fi
