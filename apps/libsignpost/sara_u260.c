@@ -76,16 +76,20 @@ static int sara_u260_setup_packet_switch(void) {
 }
 
 static int sara_u260_del_file(const char* fname) {
+    int ret;
 
-    char* c = (char*)malloc(strlen(fname)*sizeof(char)+17);
-    int clen = sprintf(c, "AT+UDELFILE=\"%s\"\r", fname);
-    at_send_buf(SARA_CONSOLE, c, clen);
-    int ret = at_wait_for_response(SARA_CONSOLE,3);
-    
-    if(c) {
-        free(c);
-    }
+    const char* begin = "AT+UDELFILE=\"";
+    ret = at_send_buf(SARA_CONSOLE, (const uint8_t*)begin, strlen(begin));
+    if (ret < 0) return ret;
 
+    ret = at_send_buf(SARA_CONSOLE, fname, strlen(fname));
+    if (ret < 0) return ret;
+
+    const char* end = "\"\r";
+    ret = at_send_buf(SARA_CONSOLE, (const uint8_t*)end, strlen(begin));
+    if (ret < 0) return ret;
+
+    ret = at_wait_for_response(SARA_CONSOLE,3);
     if(ret >= 0) {
         return SARA_U260_SUCCESS;
     } else {
