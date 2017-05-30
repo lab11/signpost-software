@@ -59,10 +59,18 @@ class EdisonApiClient():
                 payload=handle,
                 )
 
-    def send_read_rpc(self):
-        raise NotImplementedError
+    def read_RPC(self):
 
-    def read_from_slave(self, dest, count):
-        # testing. I don't care about args right this moment
-        self._signbus._net.read(dest, count)
+        #send the command that lets the storage master know we are about
+        #to read the RPC so it can prep its buffer
+        self._signbus.send(
+                dest=ModuleAddress.Storage,
+                frame_type=FrameType.Notification, #no reply
+                api_type=ApiType.Edison,
+                message_type=EdisonApimessageType.ReadRPC,
+                payload=None)
+
+        #perform the read, return the results
+        return self._signbus._net.read(ModuleAddress.Storage, 255)
+
 

@@ -3,7 +3,7 @@ import os
 import signbus
 
 from periphery import GPIO
-from signpost import EdisonApiClient
+import signpost
 import subprocess
 
 def main():
@@ -11,6 +11,7 @@ def main():
     #declare the gpio interrupt that signals there
     #is an RPC to service
     pending_rpc_gpio = GPIO(12, "in")
+    EdisonSignbus = signpost.EdisonApiClient()
 
     while True:
 
@@ -22,7 +23,7 @@ def main():
             is_rpc = pending_rpc_gpio.read()
             if(is_rpc):
                 #if we do have a new RPC launch the process and add it to the list
-                rpc_buf = EdisonApiClient.readRPC()
+                rpc_buf = EdisonSignbus.read_RPC()
 
                 #we should eventually make this secure and make user(s)
                 #for module(s) with very limited permissions
