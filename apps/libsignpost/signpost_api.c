@@ -638,11 +638,10 @@ int signpost_processing_twoway_receive(uint8_t* buf, uint16_t* len) {
     return ProcessingSuccess;
 }
 
-int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t* response,
-                                    uint16_t response_len) {
+int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t success) {
 
    return signpost_api_send(src_addr, ResponseFrame, ProcessingApiType,
-                        message_type, response_len, response);
+                        message_type, 1, &success);
 
 }
 /**************************************************************************/

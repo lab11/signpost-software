@@ -20,6 +20,32 @@
 
 #define DEBUG_RED_LED 0
 
+//This is the RPC queue
+//For right now we are limiting RPC to 255 characters - if they are over that, too bad
+#define MAX_RPC_SIZE 255
+#define RPC_QUEUE_SIZE 4
+uint8_t rpc_queue[RPC_QUEUE_SIZE][MAX_RPC_SIZE] = {0};
+uint8_t rpc_queue_head = 0;
+uint8_t rpc_queue_tail = 0;
+//invariant: tail +1 (wrapped) !> head
+static uint8_t increment_head(void) {
+    uint8_t t_head = rpc_queue_head;
+    t_head++;
+    if(t_head == RPC_QUEUE_SIZE) {
+        t_head = 0;
+    }
+    return t_head;
+}
+
+static uint8_t increment_tail(void) {
+    uint8_t t_head = rpc_queue_tail;
+    t_head++;
+    if(t_head == RPC_QUEUE_SIZE) {
+        t_head = 0;
+    }
+    return t_head;
+}
+
 static void storage_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
     uint8_t message_type, size_t message_length, uint8_t* message) {
@@ -80,6 +106,57 @@ static void storage_api_callback(uint8_t source_address,
   }
 }
 
+static void processing_api_callback(uint8_t source_address,
+    signbus_frame_type_t frame_type, __attribute__ ((unused)) signbus_api_type_t api_type,
+    uint8_t message_type, size_t message_length, uint8_t* message) {
+
+    if(frame_type == NotificationFrame) {
+        if(message_type == ProcessingEdisonReadMessage) {
+            //prep the read buffer with the RPC at the top of the queue
+            //remove the rpc from the queue?
+        } else if (message_type == ProcessingEdisonResponseMessage) {
+            //send a reply back to the module that the process has started
+            if(message_length >= 2) {
+                signpost_processing_reply(message[0], ProcessingOneWayMessage, message[1]);
+            } else {
+                //There is nothing we can do with this
+            }
+        } else {
+            //unexpected - drop
+        }
+    } else if(frame_type == CommandFrame) {
+        if(message_type == ProcessingInitMessage) {
+            //not currently supported
+        } else if (message_type == ProcessingOneWayMessage){
+            if(message_length > MAX_RPC_SIZE-1) {
+                //this message is too long - send back an error response
+                signpost_processing_reply(source_address, message_type, 0);
+            } else {
+                uint8_t test_increment = increment_head();
+                if(test_increment == rpc_queue_tail) {
+                    //the queue is full send back an error message
+                    signpost_processing_reply(source_address, message_type, 0);
+                } else {
+                    //alright this should be good
+                    rpc_queue[rpc_queue_head][0] = source_address;
+                    memcpy(rpc_queue[rpc_queue_head]+1, message,message_length);
+
+                    //set the Edison rpc process pin to high
+                    //wakeup the edison
+                }
+
+            }
+        } else if(message_type == ProcessingTwoWayMessage) {
+            //not currently supported
+        } else {
+            //unexpected - drop
+        }
+    } else {
+        //unexpected drop
+    }
+
+}
+
 int main (void) {
   printf("\n[Storage Master]\n** Main App **\n");
 
@@ -95,7 +172,8 @@ int main (void) {
 
   // Install hooks for the signpost APIs we implement
   static api_handler_t storage_handler = {StorageApiType, storage_api_callback};
-  static api_handler_t* handlers[] = {&storage_handler, NULL};
+  static api_handler_t processing_handler = {ProcessingApiType, processing_api_callback};
+  static api_handler_t* handlers[] = {&storage_handler, &processing_handler};
   do {
     rc = signpost_initialization_storage_master_init(handlers);
     if (rc < 0) {

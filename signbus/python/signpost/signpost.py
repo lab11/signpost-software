@@ -31,17 +31,16 @@ class EdisonApiMessageType(enum.IntEnum):
     ReadHandle = 0
     ReadRPC = 1
 
+class ProcessingMessageType(enum.IntEnum):
+    ProcessingEdisonReadMessage = 3,
+    ProcessingEdisonResponseMessage = 4,
+
 class EdisonApiClient():
     DEFAULT_EDISON_MODULE_ADDRESS = 0x40
 
     def __init__(self, *,
             signbus_instance=None):
-        '''For use on an edison to talk to a stoarge master
 
-        **Note:** The signbus object needs to own the I2C bus. It is important
-        that there is only one live signbus on a system at a time. If you need
-        to support multiple clients, you must pass in an existing signbus.
-        '''
         if signbus_instance is None:
             # Create an instance
             signbus_instance = signbus.Signbus(source_address=EdisonApiClient.DEFAULT_EDISON_MODULE_ADDRESS)
@@ -66,8 +65,8 @@ class EdisonApiClient():
         self._signbus.send(
                 dest=ModuleAddress.Storage,
                 frame_type=FrameType.Notification, #no reply
-                api_type=ApiType.Edison,
-                message_type=EdisonApimessageType.ReadRPC,
+                api_type=ApiType.Processing,
+                message_type=ProcessingApiMessageType.ProcessingEdisonReadMessage,
                 payload=None)
 
         #perform the read, return the results
