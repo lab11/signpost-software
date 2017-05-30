@@ -1,10 +1,11 @@
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "at_command.h"
 #include "sara_u260.h"
 #include "tock.h"
-#include <stdlib.h>
-#include "at_command.h"
 
 #define SARA_CONSOLE 110
 
