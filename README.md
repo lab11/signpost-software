@@ -1,6 +1,8 @@
 Signpost Software
 =================
 
+[![Build Status](https://travis-ci.org/lab11/signpost-software.svg?branch=master)](https://travis-ci.org/lab11/signpost-software)
+
 This repository holds all of the software for the [Signpost City-Scale
 sensing project](https://github.com/lab11/signpost). Please see that 
 repository for more information. 
