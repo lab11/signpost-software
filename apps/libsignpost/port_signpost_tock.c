@@ -48,6 +48,7 @@ int port_signpost_init(uint8_t i2c_address) {
     i2c_master_slave_set_slave_address(i2c_address);
     if (rc < 0) return rc;
     port_i2c_address = i2c_address;
+    return 0;
 }
 
 //This function is a blocking i2c send call
@@ -72,6 +73,7 @@ int port_signpost_i2c_slave_listen(port_signpost_i2c_slave_write_callback cb, ui
     if (rc < 0) return rc;
     rc = i2c_master_slave_listen();
     if (rc < 0) return rc;
+    return 0;
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
@@ -81,17 +83,17 @@ int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
 
 //These functions are used to control the mod_out pin
 int port_signpost_mod_out_set(void) {
-
+     return 0;
 }
 
 int port_signpost_mod_out_clear(void) {
-
+    return 0;
 }
 
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
 int port_signpost_mod_in_falling_edge_listen(port_signpost_mod_in_falling_edge_callback cb) {
-
+    return 0;
 }
 
 void port_signpost_wait_for(void* wait_on_true){

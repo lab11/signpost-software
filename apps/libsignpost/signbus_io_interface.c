@@ -123,6 +123,7 @@ static bool async = false;
     }
 }*/
 
+void signbus_io_slave_write_callback(int len_or_rc);
 void signbus_io_slave_write_callback(int len_or_rc) {
     if(len_or_rc >= 0) {
         memcpy(packet_buf, slave_write_buf, len_or_rc);
@@ -212,7 +213,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
 
         //send the packet
         if(morePackets) {
-            rc = port_signpost_i2c_master_write(dest,&p,I2C_MAX_LEN);
+            rc = port_signpost_i2c_master_write(dest,(uint8_t *) &p,I2C_MAX_LEN);
 
             if (rc < 0) return rc;
 
@@ -220,7 +221,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
         } else {
             SIGNBUS_DEBUG_DUMP_BUF(&p, sizeof(signbus_network_header_t)+toSend);
 
-            rc = port_signpost_i2c_master_write(dest,&p,sizeof(signbus_network_header_t)+toSend);
+            rc = port_signpost_i2c_master_write(dest, (uint8_t *) &p,sizeof(signbus_network_header_t)+toSend);
 
             if (rc < 0) return rc;
 
@@ -408,7 +409,7 @@ static void signbus_iterate_slave_read(void) {
         slave_read_data_bytes_remaining -= data_len;
 
         // setup slave read
-        port_signpost_i2c_slave_read_setup(&readPacket, I2C_MAX_LEN);
+        port_signpost_i2c_slave_read_setup((uint8_t *) &readPacket, I2C_MAX_LEN);
 
         //// copy the packet into the i2c slave read buffer
         //memcpy(slave_read_buf, &readPacket, I2C_MAX_LEN);
