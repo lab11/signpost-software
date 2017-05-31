@@ -45,7 +45,8 @@ for makefile in $(find . | grep '/Makefile$'); do
 	popd > /dev/null
 done
 
-if [ ${#failures[@]} -gt 0 ]; then
+# https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
+if [ ${failures[@]+"${failures[@]}"} ]; then
 	echo ""
 	echo "${bold}${red}Build Failures:${normal}"
 	for fail in ${failures[@]}; do
