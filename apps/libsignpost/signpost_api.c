@@ -7,9 +7,10 @@
 #include "signpost_api.h"
 #include "signpost_entropy.h"
 #include "signpost_mod_io.h"
-#include "gpio.h"
-#include "led.h"
-#include "timer.h"
+//#include "gpio.h"
+//#include "led.h"
+//#include "timer.h"
+#include "port_signpost.h"
 #include "crc.h"
 #include "erpc_client_setup.h"
 
@@ -77,7 +78,7 @@ void signpost_api_error_reply_repeating(uint8_t destination_address,
          printf(" - Error sending API Error reply to 0x%02x (code: %d).\n",
                destination_address, rc);
          printf(" - Sleeping 1s. Tries remaining %d\n", tries);
-         delay_ms(1000);
+         port_signpost_delay_ms(1000);
       }
    } while ( (tries > 0) && (rc < 0) );
 }
@@ -199,7 +200,7 @@ static void signpost_initialization_declare_callback(int len_or_rc) {
             InitializationDeclare) return;
     //XXX reassign dynamic i2c address
     // start key exchange
-    while(signpost_initialization_key_exchange_send(incoming_source_address) < SUCCESS) {delay_ms(50);}
+    while(signpost_initialization_key_exchange_send(incoming_source_address) < SUCCESS) {port_signpost_delay_ms(50);}
 }
 static void signpost_initialization_key_exchange_callback(int len_or_rc) {
     if (len_or_rc < SUCCESS) return;
@@ -233,23 +234,18 @@ static void signpost_initialization_key_exchange_callback(int len_or_rc) {
     done = 1;
 }
 
-static void signpost_initialization_isolation_callback(
-        int outpin __attribute__ ((unused)),
-        int pinvalue __attribute__ ((unused)),
-        int unused __attribute__ ((unused)),
-        void * callback_args __attribute__ ((unused))
-        ) {
+static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
     // debounce interrupt
-    delay_ms(50);
+    port_signpost_delay_ms(50);
     // are we supposed to be isolated?
-    if(gpio_read(MOD_IN) != 0) {
+    if(port_signpost_gpio_read(MOD_IN) != 0) {
         printf("WARN: spurious interrupt when not waiting for isolation\n");
         return;
     }
     // Now isolated with controller
     // Now declare self to controller
     // Spin until we are able to send
-    while(signpost_initialization_declare_controller() < SUCCESS) {delay_ms(50);}
+    while(signpost_initialization_declare_controller() < SUCCESS) {port_signpost_delay_ms(50);}
 }
 
 static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** api_handlers) {
@@ -315,8 +311,8 @@ int signpost_initialization_storage_master_init(api_handler_t** api_handlers) {
     //while(!done) {
     //    printf("Waiting for initialization with controller\n");
     //    // exchange keys with controller
-    //    while(signpost_initialization_key_exchange_send(ModuleAddressController) < SUCCESS) {delay_ms(50);}
-    //    delay_ms(5000);
+    //    while(signpost_initialization_key_exchange_send(ModuleAddressController) < SUCCESS) {port_signpost_delay_ms(50);}
+    //    port_signpost_delay_ms(5000);
     //}
 
 
@@ -339,9 +335,9 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
         yield_for(&done);
     }
 
-    gpio_disable_interrupt(MOD_IN);
-    gpio_toggle(MOD_OUT);
-    led_toggle(RED_LED);
+    port_signpost_gpio_disable_interrupt(MOD_IN);
+    port_signpost_gpio_set(MOD_OUT);
+    //led_toggle(RED_LED);
     SIGNBUS_DEBUG("complete\n");
     return 0;
 }
@@ -349,16 +345,15 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 int signpost_initialization_request_isolation(void) {
     // Initialize Mod Out/In GPIO
     // both are active low
-    gpio_enable_output(MOD_OUT);
-    gpio_set(MOD_OUT);
-    led_off(RED_LED);
-    gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
-    gpio_interrupt_callback(signpost_initialization_isolation_callback, NULL);
+    port_signpost_gpio_enable_output(MOD_OUT);
+    port_signpost_gpio_set(MOD_OUT);
+    //led_off(RED_LED);
+    port_signpost_gpio_enable_interrupt(MOD_IN, GpioPullUp, GpioFallingEdge, signpost_initialization_isolation_callback);
 
     // Pull Mod_Out Low to signal controller
     // Wait on controller interrupt on MOD_IN
-    gpio_clear(MOD_OUT);
-    led_on(RED_LED);
+    port_signpost_gpio_clear(MOD_OUT);
+    //led_on(RED_LED);
 
     printf("INIT: Requested I2C isolation with controller\n");
     return SUCCESS;

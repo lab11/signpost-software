@@ -29,7 +29,7 @@ for each platform*/
 
 //This is the typedef of the callback you should call when you get an i2c slave write
 //You can either return the (positive) length or an error code
-typedef void (*port_signpost_i2c_slave_write_callback)(int len_or_rc);
+typedef void (*port_signpost_callback)(int len_or_rc);
 
 //This is the typedef of the callback you should call when you see a falling edge on
 //the mod in pin
@@ -49,21 +49,25 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len);
 //When this function is called start listening on the i2c bus for
 //The address specified in init
 //Place data in the buffer no longer than the max len
-int port_signpost_i2c_slave_listen(port_signpost_i2c_slave_write_callback cb, uint8_t* buf, size_t max_len);
+int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len);
 
 //This function prepares a slave read
 //len bytes from buf will be read by a master read
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len);
 
-//These functions are used to control the mod_out pin
-int port_signpost_mod_out_set(void);
-int port_signpost_mod_out_clear(void);
+//These functions are used to control output gpio
+int port_signpost_gpio_enable_output(int pin);
+int port_signpost_gpio_set(int pin);
+int port_signpost_gpio_clear(int pin);
+int port_signpost_gpio_read(int pin);
 
-//This function is used to get the input interrupt for the falling edge of
-//mod-in
-int port_signpost_mod_in_falling_edge_listen(port_signpost_mod_in_falling_edge_callback cb);
+//This function is used to setup a gpio interrupt
+typedef enum inmode { GpioPullUp=0, GpioPullDown, GpioPullNone} InputMode;
+typedef enum dir { GpioChange=0, GpioRisingEdge, GpioFallingEdge } InterruptMode;
+int port_signpost_gpio_enable_interrupt(int pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_mod_in_falling_edge_callback cb);
+int port_signpost_gpio_disable_interrupt(int pin);
 
 //This is a way to wait on a variable in a platform specific way
 void port_signpost_wait_for(void* wait_on_true);
 
-
+void port_signpost_delay_ms(int ms);
