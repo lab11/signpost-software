@@ -4,8 +4,6 @@
 |---------------|------------------|--------------------------------------------|
 | 100           | gpio async       |                                            |
 | 101           | i2c selector     |                                            |
-| 102           | ltc2941          | module monitor fuel gauge                  |
-| 103           | fm25cl           | fram                                       |
 | 104           | smbus interrupt  | global smbus interrupt                     |
 | 108           | app watchdog     |                                            |
 | 109           | gps console      | console interface with gps                 |
