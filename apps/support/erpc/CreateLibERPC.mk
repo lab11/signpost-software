@@ -24,27 +24,27 @@ CXX_SRCS :=
 OBJS :=
 
 VPATH += erpc/erpc_c/infra/
-CXXFLAGS += -Ierpc/erpc_c/infra
+override CXXFLAGS += -Ierpc/erpc_c/infra
 CXX_SRCS += basic_codec.cpp
 CXX_SRCS += client_manager.cpp
 CXX_SRCS += framed_transport.cpp
 CXX_SRCS += message_buffer.cpp
 
 VPATH += erpc/erpc_c/setup/
-CXXFLAGS += -Ierpc/erpc_c/setup/
+override CXXFLAGS += -Ierpc/erpc_c/setup/
 CXX_SRCS += erpc_client_setup.cpp
 CXX_SRCS += erpc_setup_i2c_master_slave.cpp
 
 VPATH += erpc/erpc_c/transports/
-CXXFLAGS += -Ierpc/erpc_c/transports/
+override CXXFLAGS += -Ierpc/erpc_c/transports/
 CXX_SRCS += i2c_master_slave_transport.cpp
 
 VPATH += erpc/erpc_c/port/
-CXXFLAGS += -Ierpc/erpc_c/port/
+override CXXFLAGS += -Ierpc/erpc_c/port/
 CXX_SRCS += minimal_port_lab11.cpp
 
 #VPATH += erpc/erpc_c/config/
-CXXFLAGS += -Ierpc/erpc_c/config/
+override CXXFLAGS += -Ierpc/erpc_c/config/
 
 OBJS += $(patsubst %.cpp,$(BUILDDIR)/%.o,$(filter %.cpp, $(CXX_SRCS)))
 

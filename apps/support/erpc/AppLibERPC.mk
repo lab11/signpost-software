@@ -5,9 +5,9 @@ ifndef SIGNPOST_USERLAND_BASE_DIR
   $(error SIGNPOST_USERLAND_BASE_DIR not defined)
 endif
 
-CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/infra
-CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/setup/
-CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/transports/
-CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/port/
-CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/config/
+override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/infra
+override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/setup/
+override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/transports/
+override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/port/
+override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/erpc/erpc_c/config/
 

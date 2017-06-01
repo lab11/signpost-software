@@ -78,12 +78,11 @@ include $(TOCK_USERLAND_BASE_DIR)/AppMakefile.mk
 
 # XXX(Pat)
 # Turn off some of the less critical warnings while we're developing heavily
-CPPFLAGS += -Wno-suggest-attribute=pure -Wno-suggest-attribute=const
-CPPFLAGS += -Wno-unused-macros
+override CPPFLAGS += -Wno-unused-macros
 
-CFLAGS += -Wno-pointer-sign
+override CFLAGS += -Wno-pointer-sign
 
-CXXFLAGS += -Wno-suggest-override
-CXXFLAGS += -Wno-suggest-final-methods
-CXXFLAGS += -Wno-suggest-final-types
+override CXXFLAGS += -Wno-suggest-override
+override CXXFLAGS += -Wno-suggest-final-methods
+override CXXFLAGS += -Wno-suggest-final-types
 

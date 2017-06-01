@@ -36,7 +36,7 @@ else
 	$(Q)bash -c "diff <(echo $(C_ADDRESS)) .address &>/dev/null || echo $(C_ADDRESS) > .address"
 endif
 
-CFLAGS += -DCOMPILE_TIME_ADDRESS="$(C_ADDRESS)"
+override CFLAGS += -DCOMPILE_TIME_ADDRESS="$(C_ADDRESS)"
 
 LIBRARY_PATHS += .
 

@@ -15,7 +15,7 @@ $(LIBNAME)_BUILDDIR := $(SIGNPOST_USERLAND_BASE_DIR)/support/mbedtls/build
 # happen to have an escape hatch to protect the frame pointer register r7
 # (which we don't use) that also avoids the use of r9 (which we _do_ use), so
 # we can just turn this on and everything's happy. Great!
-CPPFLAGS += -DMULADDC_CANNOT_USE_R7
+override CPPFLAGS += -DMULADDC_CANNOT_USE_R7
 
 include $(TOCK_USERLAND_BASE_DIR)/TockLibrary.mk
 
