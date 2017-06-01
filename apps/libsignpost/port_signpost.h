@@ -31,10 +31,6 @@ for each platform*/
 //You can either return the (positive) length or an error code
 typedef void (*port_signpost_callback)(int len_or_rc);
 
-//This is the typedef of the callback you should call when you see a falling edge on
-//the mod in pin
-typedef void (*port_signpost_mod_in_falling_edge_callback)(int len_or_rc);
-
 //This function is called upon signpost initialization
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address);
@@ -64,7 +60,7 @@ int port_signpost_gpio_read(int pin);
 //This function is used to setup a gpio interrupt
 typedef enum inmode { GpioPullUp=0, GpioPullDown, GpioPullNone} InputMode;
 typedef enum dir { GpioChange=0, GpioRisingEdge, GpioFallingEdge } InterruptMode;
-int port_signpost_gpio_enable_interrupt(int pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_mod_in_falling_edge_callback cb);
+int port_signpost_gpio_enable_interrupt(int pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb);
 int port_signpost_gpio_disable_interrupt(int pin);
 
 //This is a way to wait on a variable in a platform specific way
