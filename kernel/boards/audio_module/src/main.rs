@@ -20,7 +20,6 @@ use kernel::hil;
 use kernel::hil::Controller;
 use kernel::{Chip, Platform};
 use kernel::mpu::MPU;
-use sam4l::adc;
 use sam4l::usart;
 
 // For panic!()
@@ -77,7 +76,7 @@ struct AudioModule {
     led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
     timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
-    adc: &'static capsules::adc::ADC<'static, sam4l::adc::Adc>,
+    adc: &'static capsules::adc::Adc<'static, sam4l::adc::Adc>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
     ipc: kernel::ipc::IPC,
@@ -220,11 +219,25 @@ pub unsafe fn reset_handler() {
     //
     //ADC
     //
-    let adc_driver = static_init!(
-            capsules::adc::ADC<'static, sam4l::adc::Adc>,
-            capsules::adc::ADC::new(&adc::ADC, kernel::Container::create()),
-            96/8);
-    adc::ADC.set_client(adc_driver);
+    let adc_channels = static_init!(
+        [&'static sam4l::adc::AdcChannel; 6],
+        [&sam4l::adc::CHANNEL_AD0, // A0
+         &sam4l::adc::CHANNEL_AD1, // A1
+         &sam4l::adc::CHANNEL_AD3, // A2
+         &sam4l::adc::CHANNEL_AD4, // A3
+         &sam4l::adc::CHANNEL_AD5, // A4
+         &sam4l::adc::CHANNEL_AD6, // A5
+        ],
+        192/8
+    );
+    let adc = static_init!(
+        capsules::adc::Adc<'static, sam4l::adc::Adc>,
+        capsules::adc::Adc::new(&mut sam4l::adc::ADC0, adc_channels,
+                                &mut capsules::adc::ADC_BUFFER1,
+                                &mut capsules::adc::ADC_BUFFER2,
+                                &mut capsules::adc::ADC_BUFFER3),
+        864/8);
+    sam4l::adc::ADC0.set_client(adc);
 
     // Setup RNG
     let rng = static_init!(
@@ -333,7 +346,7 @@ pub unsafe fn reset_handler() {
         led: led,
         timer: timer,
         i2c_master_slave: i2c_modules,
-        adc: adc_driver,
+        adc: adc,
         app_watchdog: app_watchdog,
         rng: rng,
         ipc: kernel::ipc::IPC::new(),
