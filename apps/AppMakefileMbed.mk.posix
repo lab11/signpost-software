@@ -30,7 +30,7 @@ flash: all flash.jlink
 flash.jlink:
 	$(MAKE_BUILD_FOLDER)
 	printf "r\n" > $(OUTPUT_PATH)flash.jlink
-	printf "loadbin $(OUTPUT_PATH)/$(OUTPUT_BIN), FLASH_START_ADDRESS \nr\ng\nexit\n" >> $(OUTPUT_PATH)flash.jlink
+	printf "loadbin $(OUTPUT_PATH)/$(OUTPUT_BIN), $(FLASH_START_ADDRESS) \nr\ng\nexit\n" >> $(OUTPUT_PATH)flash.jlink
 
 recover: recover.jlink erase-all.jlink pin-reset.jlink
 	$(MAKE_BUILD_FOLDER)
