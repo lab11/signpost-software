@@ -10,3 +10,6 @@
 [submodule "kernel/boards/bootloader/tock-bootloader"]
 	path = kernel/boards/bootloader/tock-bootloader
 	url = https://github.com/lab11/tock-bootloader
+[submodule "apps/support/mbed/mbed-os"]
+    path = apps/support/mbed/mbed-os
+    url = https://github.com/armmbed/mbed-os
