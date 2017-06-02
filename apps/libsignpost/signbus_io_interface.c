@@ -178,7 +178,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
 
             toSend -= MAX_DATA_LEN;
         } else {
-            SIGNBUS_DEBUG_DUMP_BUF(&packet, sizeof(signbus_network_header_t)+toSend);
+            //SIGNBUS_DEBUG_DUMP_BUF(&packet, sizeof(signbus_network_header_t)+toSend);
 
             rc = port_signpost_i2c_master_write(dest, (uint8_t *) &packet,sizeof(signbus_network_header_t)+toSend);
 

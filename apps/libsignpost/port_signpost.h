@@ -10,8 +10,8 @@ From a high level you will need to provide:
                                         back written bytes asynchronously)
     - Set and clear of the MOD_OUT pin
     - Asynchronous callback for falling edge of the Mod-in pin
-    - Currently the signpost libraries assume printf functionality
-        - This is assumed to be provided through <stdio.h>
+    - Currently the signpost libraries assume sprintf and malloc functionality
+        - This is assumed to be provided through <stdio.h> and <stdlib.h>
     - A way to wait on a variable reference
         -This could be as simple as looping until it changes or
         -Could be more complex like going to sleep
@@ -57,10 +57,6 @@ int port_signpost_gpio_set(unsigned pin);
 int port_signpost_gpio_clear(unsigned pin);
 int port_signpost_gpio_read(unsigned pin);
 
-//An optional debug led
-int port_signpost_debug_led_on(unsigned pin);
-int port_signpost_debug_led_off(unsigned pin);
-
 //This function is used to setup a gpio interrupt
 typedef enum inmode { GpioPullUp=0, GpioPullDown, GpioPullNone} InputMode;
 typedef enum dir { GpioChange=0, GpioRisingEdge, GpioFallingEdge } InterruptMode;
@@ -71,3 +67,12 @@ int port_signpost_gpio_disable_interrupt(unsigned pin);
 void port_signpost_wait_for(void* wait_on_true);
 
 void port_signpost_delay_ms(unsigned ms);
+
+//An optional debug led
+int port_signpost_debug_led_on(unsigned pin);
+int port_signpost_debug_led_off(unsigned pin);
+
+//An optional debug print statement
+extern char port_print_buf[80];
+void port_signpost_debug_print(char * msg);
+

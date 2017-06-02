@@ -2,12 +2,14 @@
 #include <string.h>
 
 #include "gpio.h"
+#include "console.h"
 #include "i2c_master_slave.h"
 #include "led.h"
 #include "port_signpost.h"
 #include "timer.h"
 #include "tock.h"
 
+char port_print_buf[80];
 static bool master_write_yield_flag = false;
 static int  master_write_len_or_rc = 0;
 
@@ -86,20 +88,19 @@ int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
 }
 
 //These functions are used to control gpio outputs
-int port_signpost_gpio_enable_output(unsigned pin) {
-    return gpio_enable_output(pin);
-}
-
 int port_signpost_gpio_set(unsigned pin) {
+    gpio_enable_output(pin);
     return gpio_set(pin);
 }
 
 int port_signpost_gpio_clear(unsigned pin) {
-     return gpio_clear(pin);
+    gpio_enable_output(pin);
+    return gpio_clear(pin);
 }
 
 int port_signpost_gpio_read(unsigned pin) {
-     return gpio_read(pin);
+    gpio_enable_input(pin, PullNone);
+    return gpio_read(pin);
 }
 
 int port_signpost_debug_led_on(unsigned pin) {
@@ -129,4 +130,8 @@ void port_signpost_wait_for(void* wait_on_true){
 
 void port_signpost_delay_ms(unsigned ms) {
     delay_ms(ms);
+}
+
+void port_signpost_debug_print(char * msg) {
+    putstr(msg);
 }
