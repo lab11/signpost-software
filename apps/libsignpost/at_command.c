@@ -35,15 +35,16 @@ static int check_custom_buffer(uint8_t* buf, int len, const char* rstring) {
 }
 
 int at_send(int console_num, const char* cmd) {
-    console_write(console_num, (uint8_t*) cmd, strlen(cmd));
-    return AT_SUCCESS;
+    int ret = console_write(console_num, (uint8_t*) cmd, strlen(cmd));
+    if(ret < 0) return AT_ERROR;
+    else return ret;
 }
 
 int at_send_buf(int console_num, uint8_t* buf, size_t len) {
-    console_write(console_num, buf, len);
-    return AT_SUCCESS;
+    int ret = console_write(console_num, buf, len);
+    if(ret < 0) return AT_ERROR;
+    else return ret;
 }
-
 
 int at_wait_for_response(int console_num, uint8_t max_tries) {
     static uint8_t buf[200];
@@ -61,6 +62,8 @@ int at_get_response(int console_num, uint8_t max_tries, uint8_t* buf, size_t max
     for(uint8_t i = 0; i < max_tries; i++) {
 
         int len = console_read(console_num, buf+tlen, max_len-tlen);
+        if(len < 0) return AT_ERROR;
+
         tlen += len;
         int check = check_buffer(buf, tlen);
 
@@ -80,7 +83,8 @@ int at_get_custom_response(int console_num, uint8_t max_tries, uint8_t* buf, siz
     for(uint8_t i = 0; i < max_tries; i++) {
 
         int len = console_read(console_num, buf+tlen, max_len-tlen);
-        printf("Got len: %d\n", len);
+        if(len < 0) return AT_ERROR;
+
         tlen += len;
         int check = check_custom_buffer(buf, tlen, rstring);
 

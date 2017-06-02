@@ -113,6 +113,17 @@ static int sara_u260_del_file(const char* fname) {
 }
 
 static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
+    
+    const char* begin = "AT+UDWFILE=\""
+    int ret = at_send_buf(SARA_CONSOLE, (const uint8_t*)begin, strlen(begin));
+    if (ret < 0) return SARA_U260_ERROR;
+
+
+    ret = at_send_buf(SARA_CONSOLE, fname, strlen(fname));
+    if (ret < 0) return SARA_U260_ERROR;
+
+    const char* sep = "\"
+    ret = at_send_buf(SARA_CONSOLE, fname, strlen(fname));
 
     int ret = at_send(SARA_CONSOLE, "AT+DWNFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
