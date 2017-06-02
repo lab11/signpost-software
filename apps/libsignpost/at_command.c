@@ -8,13 +8,13 @@
 static int check_buffer(uint8_t* buf, int len) {
     //did it end in OK or ERROR?
     if(len >= 4) {
-        if(!strncmp(buf+len-4,"OK\r\n",4)) {
+        if(!strncmp((char*)buf+len-4,"OK\r\n",4)) {
             return AT_SUCCESS;
         }
     }
 
     if(len >= 7) {
-        if(!strncmp(buf+len-7,"ERROR\r\n",7)) {
+        if(!strncmp((char*)buf+len-7,"ERROR\r\n",7)) {
             return AT_ERROR;
         }
     }
@@ -26,7 +26,7 @@ static int check_custom_buffer(uint8_t* buf, int len, const char* rstring) {
 
     int rlen = strlen(rstring);
     if(len >= rlen) {
-        if(!strncmp(buf+len-rlen,rstring,rlen)) {
+        if(!strncmp((char*)buf+len-rlen,rstring,rlen)) {
             return AT_SUCCESS;
         }
     }

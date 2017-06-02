@@ -125,7 +125,11 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
 
     char c[15];
     int clen = snprintf(c,15,"%d",len);
-    ret = at_send_buf(SARA_CONSOLE, c, clen);
+    if(clen <= 0) {
+        return SARA_U260_ERROR; 
+    }
+
+    ret = at_send(SARA_CONSOLE, c);
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE, "\r");
@@ -226,7 +230,7 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     
     char c[60];
     snprintf(c,60,"%d,%d\r",offset,max_len);
-    ret = at_send_buf(SARA_CONSOLE,c,strlen(c));
+    ret = at_send(SARA_CONSOLE,c);
     if (ret < 0) return SARA_U260_ERROR;
 
     //should return data plus some framing characters, so take the

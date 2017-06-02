@@ -59,7 +59,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
         len += 2;
     }
 
-    ret = at_send_buf(LORA_CONSOLE,c,len);
+    ret = at_send_buf(LORA_CONSOLE,(uint8_t*)c,len);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"\n");
@@ -80,7 +80,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
         len += 2;
     }
 
-    ret = at_send_buf(LORA_CONSOLE,c,len);
+    ret = at_send_buf(LORA_CONSOLE,(uint8_t*)c,len);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"\n");
@@ -150,7 +150,7 @@ int xdot_set_txdr(uint8_t dr) {
 
     char cmd[15];
     snprintf(cmd,15, "AT+TXDR=%d\n", dr);
-    int ret = at_send_buf(LORA_CONSOLE, cmd, strlen(cmd));
+    int ret = at_send(LORA_CONSOLE, cmd);
     if(ret < 0) return XDOT_ERROR;
 
     return at_wait_for_response(LORA_CONSOLE,3);
@@ -168,7 +168,7 @@ int xdot_set_adr(uint8_t adr) {
     char cmd[4];
     snprintf(cmd,4, "%d\n", adr);
 
-    ret = at_send_buf(LORA_CONSOLE,cmd,strlen(cmd));
+    ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
     
     return at_wait_for_response(LORA_CONSOLE,3);
@@ -185,7 +185,7 @@ int xdot_set_txpwr(uint8_t tx) {
 
     char cmd[4];
     snprintf(cmd,4, "%d\n", tx);
-    ret = at_send_buf(LORA_CONSOLE,cmd,strlen(cmd));
+    ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 
     return at_wait_for_response(LORA_CONSOLE,3);
@@ -202,7 +202,7 @@ int xdot_set_ack(uint8_t ack) {
 
     char cmd[4];
     snprintf(cmd,4, "%d\n",ack);
-    ret = at_send_buf(LORA_CONSOLE,cmd,strlen(cmd));
+    ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 
     return at_wait_for_response(LORA_CONSOLE,3);
