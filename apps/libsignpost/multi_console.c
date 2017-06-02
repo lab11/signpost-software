@@ -42,6 +42,7 @@ int console_read_async(int console_num, uint8_t* buf, size_t max_len, subscribe_
     if(ret < 0) return ret;
     ret = subscribe(console_num, 2, cb, NULL);
     if(ret < 0) return ret;
+    else return 0;
 }
 
 int console_write(int console_num, uint8_t* buf, size_t count) {
@@ -68,4 +69,5 @@ int console_write_async(int console_num, uint8_t* buf, size_t count, subscribe_c
     if(ret < 0) return ret;
     ret = subscribe(console_num, 1, cb, NULL);
     if(ret < 0) return ret;
+    else return count;
 }
