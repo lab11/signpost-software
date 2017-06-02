@@ -23,6 +23,9 @@ From a high level you will need to provide:
 To provide this functionality please implement the following interface
 for each platform*/
 
+static bool master_write_yield_flag = false;
+static int  master_write_len_or_rc = 0;
+
 port_signpost_callback slave_write_cb;
 static void i2c_master_slave_callback(
         int callback_type,
@@ -31,6 +34,10 @@ static void i2c_master_slave_callback(
         __attribute__ ((unused)) void* callback_args) {
     if(callback_type == TOCK_I2C_CB_SLAVE_WRITE) {
         slave_write_cb(length);
+    }
+    else if(callback_type == TOCK_I2C_CB_MASTER_WRITE) {
+        master_write_yield_flag = true;
+        master_write_len_or_rc = length;
     }
 }
 
@@ -52,11 +59,13 @@ static uint8_t slave_read_buf[I2C_MAX_LEN];
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
     int rc = 0;
-    i2c_master_slave_set_master_write_buffer(master_write_buf, I2C_MAX_LEN);
+    rc = i2c_master_slave_set_master_write_buffer(master_write_buf, I2C_MAX_LEN);
     if (rc < 0) return rc;
-    i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
+    rc = i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
     if (rc < 0) return rc;
-    return i2c_master_slave_set_slave_address(i2c_address);
+    rc = i2c_master_slave_set_slave_address(i2c_address);
+    if (rc < 0) return rc;
+    return i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
 }
 
 //This function is a blocking i2c send call
@@ -64,8 +73,14 @@ int port_signpost_init(uint8_t i2c_address) {
 //If the bus returns an error, use the appropriate error code
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
-  memcpy(master_write_buf, buf, len);
-  return i2c_master_slave_write(dest, len);
+    int rc = 0;
+    memcpy(master_write_buf, buf, len);
+    master_write_yield_flag = false;
+    rc = i2c_master_slave_write(dest, len);
+    if (rc < 0) return rc;
+
+    yield_for(&master_write_yield_flag);
+    return master_write_len_or_rc;
 }
 
 //This function sets up the asynchronous i2c receive interface
@@ -77,8 +92,6 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
     rc = i2c_master_slave_set_slave_write_buffer(buf, max_len);
     if (rc < 0) return rc;
     slave_write_cb = cb;
-    rc = i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
-    if (rc < 0) return rc;
     return i2c_master_slave_listen();
 }
 
