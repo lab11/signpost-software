@@ -44,7 +44,7 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len);
 //This function is sets up the asynchronous i2c receive interface
 //When this function is called start listening on the i2c bus for
 //The address specified in init
-//Place data in the buffer no longer than the max len
+//Place data in the buffer no longer than the max_len
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len);
 
 //This function prepares a slave read
@@ -52,18 +52,22 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len);
 
 //These functions are used to control output gpio
-int port_signpost_gpio_enable_output(int pin);
-int port_signpost_gpio_set(int pin);
-int port_signpost_gpio_clear(int pin);
-int port_signpost_gpio_read(int pin);
+int port_signpost_gpio_enable_output(unsigned pin);
+int port_signpost_gpio_set(unsigned pin);
+int port_signpost_gpio_clear(unsigned pin);
+int port_signpost_gpio_read(unsigned pin);
+
+//An optional debug led
+int port_signpost_debug_led_on(unsigned pin);
+int port_signpost_debug_led_off(unsigned pin);
 
 //This function is used to setup a gpio interrupt
 typedef enum inmode { GpioPullUp=0, GpioPullDown, GpioPullNone} InputMode;
 typedef enum dir { GpioChange=0, GpioRisingEdge, GpioFallingEdge } InterruptMode;
-int port_signpost_gpio_enable_interrupt(int pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb);
-int port_signpost_gpio_disable_interrupt(int pin);
+int port_signpost_gpio_enable_interrupt(unsigned pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb);
+int port_signpost_gpio_disable_interrupt(unsigned pin);
 
 //This is a way to wait on a variable in a platform specific way
 void port_signpost_wait_for(void* wait_on_true);
 
-void port_signpost_delay_ms(int ms);
+void port_signpost_delay_ms(unsigned ms);

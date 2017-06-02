@@ -1,39 +1,24 @@
 #include <stdint.h>
 #include <string.h>
-#include "tock.h"
-#include "port_signpost.h"
-#include "i2c_master_slave.h"
+
 #include "gpio.h"
+#include "i2c_master_slave.h"
 #include "led.h"
+#include "port_signpost.h"
 #include "timer.h"
-
-/* This is a port interface for the signpost API and networking stack!
-The goal is to export the minimal interface such that platforms
-can integrate with the signpost.
-
-From a high level you will need to provide:
-    - Blocking I2C write function (currently at least 255 bytes at a time)
-    - Asynchronous I2C slave function (listen on an address and send
-                                        back written bytes asynchronously)
-    - Set and clear of the MOD_OUT pin
-    - Asynchronous callback for falling edge of the Mod-in pin
-    - Currently the signpost libraries assume printf functionality
-        - This is assumed to be provided through <stdio.h>
-
-To provide this functionality please implement the following interface
-for each platform*/
+#include "tock.h"
 
 static bool master_write_yield_flag = false;
 static int  master_write_len_or_rc = 0;
 
-port_signpost_callback slave_write_cb;
+static port_signpost_callback global_slave_write_cb;
 static void i2c_master_slave_callback(
         int callback_type,
         int length,
         __attribute__ ((unused)) int unused,
         __attribute__ ((unused)) void* callback_args) {
     if(callback_type == TOCK_I2C_CB_SLAVE_WRITE) {
-        slave_write_cb(length);
+        global_slave_write_cb(length);
     }
     else if(callback_type == TOCK_I2C_CB_MASTER_WRITE) {
         master_write_yield_flag = true;
@@ -43,13 +28,13 @@ static void i2c_master_slave_callback(
 
 // Should be a linked list of callbacks and pins, but for now just keep track
 // of a single interrupt callback
-port_signpost_callback gpio_interrupt_cb;
+static port_signpost_callback global_gpio_interrupt_cb;
 static void port_signpost_gpio_interrupt_callback(
         __attribute__ ((unused)) int pin,
         __attribute__ ((unused)) int state,
         __attribute__ ((unused)) int unused,
         __attribute__ ((unused)) void* callback_args) {
-    gpio_interrupt_cb(0);
+    global_gpio_interrupt_cb(SUCCESS);
 }
 
 static uint8_t master_write_buf[I2C_MAX_LEN];
@@ -91,7 +76,7 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
     int rc = 0;
     rc = i2c_master_slave_set_slave_write_buffer(buf, max_len);
     if (rc < 0) return rc;
-    slave_write_cb = cb;
+    global_slave_write_cb = cb;
     return i2c_master_slave_listen();
 }
 
@@ -101,33 +86,40 @@ int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
 }
 
 //These functions are used to control gpio outputs
-int port_signpost_gpio_enable_output(int pin) {
+int port_signpost_gpio_enable_output(unsigned pin) {
     return gpio_enable_output(pin);
 }
 
-int port_signpost_gpio_set(int pin) {
+int port_signpost_gpio_set(unsigned pin) {
     return gpio_set(pin);
 }
 
-int port_signpost_gpio_clear(int pin) {
+int port_signpost_gpio_clear(unsigned pin) {
      return gpio_clear(pin);
 }
 
-int port_signpost_gpio_read(int pin) {
+int port_signpost_gpio_read(unsigned pin) {
      return gpio_read(pin);
+}
+
+int port_signpost_debug_led_on(unsigned pin) {
+    return led_on(pin);
+}
+int port_signpost_debug_led_off(unsigned pin){
+    return led_off(pin);
 }
 
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
-int port_signpost_gpio_enable_interrupt(int pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb) {
+int port_signpost_gpio_enable_interrupt(unsigned pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb) {
     int rc = 0;
-    gpio_interrupt_cb = cb;
+    global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
     if (rc < 0) return rc;
     return gpio_enable_interrupt(pin, (GPIO_InputMode_t) input_mode, (GPIO_InterruptMode_t) interrupt_mode);
 }
 
-int port_signpost_gpio_disable_interrupt(int pin) {
+int port_signpost_gpio_disable_interrupt(unsigned pin) {
     return gpio_disable_interrupt(pin);
 }
 
@@ -135,6 +127,6 @@ void port_signpost_wait_for(void* wait_on_true){
     yield_for(wait_on_true);
 }
 
-void port_signpost_delay_ms(int ms) {
+void port_signpost_delay_ms(unsigned ms) {
     delay_ms(ms);
 }
