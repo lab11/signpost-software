@@ -32,9 +32,6 @@ static void i2c_master_slave_callback(
     if(callback_type == TOCK_I2C_CB_SLAVE_WRITE) {
         slave_write_cb(length);
     }
-    else {
-        slave_write_cb(-1);
-    }
 }
 
 // Should be a linked list of callbacks and pins, but for now just keep track
@@ -50,7 +47,6 @@ static void port_signpost_gpio_interrupt_callback(
 
 static uint8_t master_write_buf[I2C_MAX_LEN];
 static uint8_t slave_read_buf[I2C_MAX_LEN];
-static uint8_t port_i2c_address;
 
 //This function is called upon signpost initialization
 //You should use it to set up the i2c interface
@@ -60,10 +56,7 @@ int port_signpost_init(uint8_t i2c_address) {
     if (rc < 0) return rc;
     i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
     if (rc < 0) return rc;
-    i2c_master_slave_set_slave_address(i2c_address);
-    if (rc < 0) return rc;
-    port_i2c_address = i2c_address;
-    return 0;
+    return i2c_master_slave_set_slave_address(i2c_address);
 }
 
 //This function is a blocking i2c send call
@@ -72,7 +65,7 @@ int port_signpost_init(uint8_t i2c_address) {
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
   memcpy(master_write_buf, buf, len);
-  return i2c_master_slave_write_sync(dest, len);
+  return i2c_master_slave_write(dest, len);
 }
 
 //This function sets up the asynchronous i2c receive interface

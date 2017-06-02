@@ -1,9 +1,9 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "signbus_io_interface.h"
-#include "tock.h"
 #include "port_signpost.h"
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
@@ -147,7 +147,8 @@ void signbus_io_init(uint8_t address) {
     i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
     i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
     i2c_master_slave_set_slave_address(address);
-    this_device_address = address;*/
+    */
+    this_device_address = address;
     port_signpost_init(address);
 }
 
@@ -219,7 +220,9 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
 
             toSend -= MAX_DATA_LEN;
         } else {
-            SIGNBUS_DEBUG_DUMP_BUF(&p, sizeof(signbus_network_header_t)+toSend);
+            uint8_t tmp[I2C_MAX_LEN];
+            memcpy(tmp, &p, I2C_MAX_LEN);
+            SIGNBUS_DEBUG_DUMP_BUF(tmp, sizeof(signbus_network_header_t)+toSend);
 
             rc = port_signpost_i2c_master_write(dest, (uint8_t *) &p,sizeof(signbus_network_header_t)+toSend);
 
@@ -426,7 +429,7 @@ static void signbus_iterate_slave_read(void) {
 
         } else {
             // perform the callback!
-            slave_read_callback(SUCCESS);
+            slave_read_callback(0);
         }
     }
 }
@@ -445,7 +448,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
 
     // listen for i2c messages asynchronously
     int err = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
-    if (err < SUCCESS) {
+    if (err < 0) {
         return err;
     }
 
@@ -477,7 +480,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
 
     // actually set up the fragmented read packet
     signbus_iterate_slave_read();
-    return SUCCESS;
+    return 0;
 }
 
 // provide callback to be performed when the slave read has completed all data
