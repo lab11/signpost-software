@@ -21,6 +21,7 @@ To provide this functionality please implement the following interface
 for each platform*/
 
 #define I2C_MAX_LEN 255
+#define PORT_PRINT_MAX_LEN 80
 
 #define PORT_SIGNPOST_ERROR -1
 #define PORT_SIGNPOST_I2C_WRITE_ERROR -2
@@ -71,6 +72,6 @@ int port_signpost_debug_led_on(void);
 int port_signpost_debug_led_off(void);
 
 //An optional debug print statement
-extern char port_print_buf[80];
+extern char port_print_buf[PORT_PRINT_MAX_LEN];
 void port_signpost_debug_print(char * msg);
 
