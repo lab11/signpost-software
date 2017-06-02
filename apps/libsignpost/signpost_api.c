@@ -2,14 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "crc.h"
+#include "erpc_client_setup.h"
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "signpost_entropy.h"
-#include "signpost_mod_io.h"
 #include "port_signpost.h"
-#include "crc.h"
-#include "erpc_client_setup.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -250,7 +249,7 @@ static void signpost_initialization_isolation_callback(int unused __attribute__ 
     // debounce interrupt
     port_signpost_delay_ms(50);
     // are we supposed to be isolated?
-    if(port_signpost_gpio_read(MOD_IN) != 0) {
+    if(port_signpost_mod_in_read() != 0) {
         sprintf(port_print_buf,"WARN: spurious interrupt when not waiting for isolation\n");
         port_signpost_debug_print(port_print_buf);
         return;
@@ -348,9 +347,9 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
         yield_for(&done);
     }
 
-    port_signpost_gpio_disable_interrupt(MOD_IN);
-    port_signpost_gpio_set(MOD_OUT);
-    port_signpost_debug_led_off(RED_LED);
+    port_signpost_gpio_disable_interrupt();
+    port_signpost_mod_out_set();
+    port_signpost_debug_led_off();
     SIGNBUS_DEBUG("complete\n");
     return 0;
 }
@@ -358,14 +357,14 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 int signpost_initialization_request_isolation(void) {
     // Initialize Mod Out/In GPIO
     // both are active low
-    port_signpost_gpio_set(MOD_OUT);
-    port_signpost_debug_led_off(RED_LED);
-    port_signpost_gpio_enable_interrupt(MOD_IN, GpioPullUp, GpioFallingEdge, signpost_initialization_isolation_callback);
+    port_signpost_mod_out_set();
+    port_signpost_debug_led_off();
+    port_signpost_gpio_enable_interrupt(signpost_initialization_isolation_callback);
 
     // Pull Mod_Out Low to signal controller
     // Wait on controller interrupt on MOD_IN
-    port_signpost_gpio_clear(MOD_OUT);
-    port_signpost_debug_led_on(RED_LED);
+    port_signpost_mod_out_clear();
+    port_signpost_debug_led_on();
 
     sprintf(port_print_buf,"INIT: Requested I2C isolation with controller\n");
     port_signpost_debug_print(port_print_buf);

@@ -370,12 +370,6 @@ static void signbus_iterate_slave_read(void) {
         // setup slave read
         port_signpost_i2c_slave_read_setup((uint8_t *) &readPacket, I2C_MAX_LEN);
 
-        //// copy the packet into the i2c slave read buffer
-        //memcpy(slave_read_buf, &readPacket, I2C_MAX_LEN);
-
-        //// enable the i2c slave read
-        //i2c_master_slave_enable_slave_read(I2C_MAX_LEN);
-
     } else {
         // all provided data has been sent! Do something about it
         if (slave_read_callback == NULL && slave_read_data_len > 0) {

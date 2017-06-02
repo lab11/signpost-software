@@ -9,7 +9,15 @@
 #include "timer.h"
 #include "tock.h"
 
+#define MOD_OUT 0
+#define MOD_IN  1
+#define PPS     2
+
+#define DEBUG_LED 0 // DEBUG_GPIO1
+
+//All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
+
 static bool master_write_yield_flag = false;
 static int  master_write_len_or_rc = 0;
 
@@ -88,40 +96,33 @@ int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
 }
 
 //These functions are used to control gpio outputs
-int port_signpost_gpio_set(unsigned pin) {
-    gpio_enable_output(pin);
-    return gpio_set(pin);
+int port_signpost_mod_out_set(void) {
+    gpio_enable_output(MOD_OUT);
+    return gpio_set(MOD_OUT);
 }
 
-int port_signpost_gpio_clear(unsigned pin) {
-    gpio_enable_output(pin);
-    return gpio_clear(pin);
+int port_signpost_mod_out_clear(void) {
+    gpio_enable_output(MOD_OUT);
+    return gpio_clear(MOD_OUT);
 }
 
-int port_signpost_gpio_read(unsigned pin) {
-    gpio_enable_input(pin, PullNone);
-    return gpio_read(pin);
-}
-
-int port_signpost_debug_led_on(unsigned pin) {
-    return led_on(pin);
-}
-int port_signpost_debug_led_off(unsigned pin){
-    return led_off(pin);
+int port_signpost_mod_in_read(void) {
+    gpio_enable_input(MOD_IN, PullNone);
+    return gpio_read(MOD_IN);
 }
 
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
-int port_signpost_gpio_enable_interrupt(unsigned pin, InputMode input_mode, InterruptMode interrupt_mode, port_signpost_callback cb) {
+int port_signpost_gpio_enable_interrupt(port_signpost_callback cb) {
     int rc = 0;
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
     if (rc < 0) return rc;
-    return gpio_enable_interrupt(pin, (GPIO_InputMode_t) input_mode, (GPIO_InterruptMode_t) interrupt_mode);
+    return gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
 }
 
-int port_signpost_gpio_disable_interrupt(unsigned pin) {
-    return gpio_disable_interrupt(pin);
+int port_signpost_gpio_disable_interrupt(void) {
+    return gpio_disable_interrupt(MOD_IN);
 }
 
 void port_signpost_wait_for(void* wait_on_true){
@@ -130,6 +131,13 @@ void port_signpost_wait_for(void* wait_on_true){
 
 void port_signpost_delay_ms(unsigned ms) {
     delay_ms(ms);
+}
+
+int port_signpost_debug_led_on(void) {
+    return led_on(DEBUG_LED);
+}
+int port_signpost_debug_led_off(void){
+    return led_off(DEBUG_LED);
 }
 
 void port_signpost_debug_print(char * msg) {
