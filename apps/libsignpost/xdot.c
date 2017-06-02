@@ -30,7 +30,6 @@ int xdot_init(void) {
     ret = at_wait_for_response(LORA_CONSOLE,3);
     if(ret < 0) return XDOT_ERROR;
     else return XDOT_SUCCESS;
-    
 }
 
 int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
@@ -149,7 +148,7 @@ int xdot_set_txdr(uint8_t dr) {
     }
 
     char cmd[15];
-    snprintf(cmd,15, "AT+TXDR=%d\n", dr);
+    snprintf(cmd,15, "AT+TXDR=%u\n", dr);
     int ret = at_send(LORA_CONSOLE, cmd);
     if(ret < 0) return XDOT_ERROR;
 
@@ -166,7 +165,7 @@ int xdot_set_adr(uint8_t adr) {
     if(ret < 0) return XDOT_ERROR;
 
     char cmd[4];
-    snprintf(cmd,4, "%d\n", adr);
+    snprintf(cmd,4, "%u\n", adr);
 
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
@@ -184,7 +183,7 @@ int xdot_set_txpwr(uint8_t tx) {
     if(ret < 0) return XDOT_ERROR;
 
     char cmd[4];
-    snprintf(cmd,4, "%d\n", tx);
+    snprintf(cmd,4, "%u\n", tx);
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 
@@ -201,7 +200,7 @@ int xdot_set_ack(uint8_t ack) {
     if(ret < 0) return XDOT_ERROR;
 
     char cmd[4];
-    snprintf(cmd,4, "%d\n",ack);
+    snprintf(cmd,4, "%u\n",ack);
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 

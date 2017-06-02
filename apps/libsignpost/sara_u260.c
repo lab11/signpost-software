@@ -124,7 +124,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     if (ret < 0) return SARA_U260_ERROR;
 
     char c[15];
-    int clen = snprintf(c,15,"%d",len);
+    int clen = snprintf(c,15,"%zu",len);
     if(clen <= 0) {
         return SARA_U260_ERROR; 
     }
@@ -229,7 +229,7 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
 
     
     char c[60];
-    snprintf(c,60,"%d,%d\r",offset,max_len);
+    snprintf(c,60,"%zu,%zu\r",offset,max_len);
     ret = at_send(SARA_CONSOLE,c);
     if (ret < 0) return SARA_U260_ERROR;
 
@@ -246,9 +246,7 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     len = ret;
 
     if(ret < 0) {
-        if(tbuf) {
-            free(tbuf);
-        }
+        free(tbuf);
 
         return SARA_U260_ERROR;
     }
@@ -271,9 +269,7 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     }
 
     if(c1 == 0 || c2 ==0) {
-        if(tbuf) {
-            free(tbuf);
-        }
+        free(tbuf);
         return SARA_U260_ERROR;
     }
 
@@ -282,18 +278,14 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     int dlen = atoi(dl);
 
     if(dlen >=0 && (size_t)dlen >= max_len) {
-        if(tbuf) {
-            free(tbuf);
-        }
+        free(tbuf);
         return SARA_U260_ERROR;
     }
 
     //now manually memcpy out the data into tbuf (because there could be nulls)
     memcpy(buf,tbuf+(len - 7 - dlen),dlen);
 
-    if(tbuf) {
-        free(tbuf);
-    }
+    free(tbuf);
 
     return dlen;
 }
