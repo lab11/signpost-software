@@ -1,8 +1,9 @@
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
-#include <tock.h>
 #include "signbus_app_layer.h"
+#include "port_signpost.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,22 +17,25 @@ extern "C" {
 #define SIGNBUS_DEBUG(...)
 /*
 #define SIGNBUS_DEBUG(...) do {\
-    printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
-    printf(__VA_ARGS__);\
+    snprintf(port_print_buf,80, "SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
+    port_signpost_debug_print(port_print_buf);\
+    snprintf(port_print_buf,80, __VA_ARGS__);\
+    port_signpost_debug_print(port_print_buf);\
     } while (0)
 */
-
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen)
 /*
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen) do {\
-    printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
+    snprintf(port_print_buf,80, "SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
+    port_signpost_debug_print(port_print_buf);\
     for (size_t _i = 0; _i < _buflen; _i++) {\
-        printf("%02x", _buf[_i]);\
+        snprintf(port_print_buf,80, "%02x", (unsigned)*(_buf+_i));\
+        port_signpost_debug_print(port_print_buf);\
     }\
-    printf("\n");\
+    snprintf(port_print_buf,80, "\n");\
+    port_signpost_debug_print(port_print_buf);\
 } while (0)
 */
-
 
 
 //this is the first i2c messaging library!

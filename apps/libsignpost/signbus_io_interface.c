@@ -1,19 +1,14 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "i2c_master_slave.h"
 #include "signbus_io_interface.h"
-#include "tock.h"
+#include "port_signpost.h"
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
-#define I2C_MAX_LEN 255
-
-static uint8_t master_write_buf[I2C_MAX_LEN];
 static uint8_t slave_write_buf[I2C_MAX_LEN];
-//static uint8_t master_read_buf[I2C_MAX_LEN];
-static uint8_t slave_read_buf[I2C_MAX_LEN];
 static uint8_t packet_buf[I2C_MAX_LEN];
 
 typedef struct __attribute__((packed)) signbus_network_flags {
@@ -51,12 +46,7 @@ typedef struct {
 
 static uint8_t this_device_address;
 static uint16_t sequence_number = 0;
-static new_packet np = { .new = false };
-
-
-static bool master_write_yield_flag = false;
-static int  master_write_len_or_rc = 0;
-
+static new_packet newpkt = { .new = false };
 
 __attribute__((const))
 static uint16_t htons(uint16_t in) {
@@ -100,34 +90,16 @@ signbus_app_callback_t* async_callback = NULL;
 // flag to indicate if callback is for async operation
 static bool async = false;
 
-// Kernel callback for I2C events
-// n.b. currently only sync send is implemented, so only recv callbacks here
-static void i2c_master_slave_callback(
-        int callback_type,
-        int length,
-        int unused __attribute__ ((unused)),
-        __attribute__ ((unused)) void* callback_args) {
-    SIGNBUS_DEBUG("type %d-%s length %d cb args %p\n",
-            callback_type,
-            (callback_type == TOCK_I2C_CB_MASTER_WRITE) ? "MASTER_WRITE" :
-            (callback_type == TOCK_I2C_CB_SLAVE_WRITE) ? "SLAVE_WRITE" :
-            (callback_type == TOCK_I2C_CB_SLAVE_READ_COMPLETE) ? "SLAVE_READ_COMPLETE" :
-            "UNKNOWN",
-            length, callback_args);
-
-    if (callback_type == TOCK_I2C_CB_MASTER_WRITE) {
-        master_write_yield_flag = true;
-        master_write_len_or_rc = length;
-    } else if (callback_type == TOCK_I2C_CB_SLAVE_WRITE) {
-        memcpy(packet_buf, slave_write_buf, length);
-        new_packet* packet = (new_packet*) &np;
+void signbus_io_slave_write_callback(int len_or_rc);
+void signbus_io_slave_write_callback(int len_or_rc) {
+    if(len_or_rc >= 0) {
+        memcpy(packet_buf, slave_write_buf, len_or_rc);
+        new_packet* packet = (new_packet*) &newpkt;
         packet->new = true;
-        packet->len = length;
+        packet->len = len_or_rc;
         if (async_active) {
             get_message(async_recv_buf, async_recv_buflen, async_encrypted, async_src_address);
         }
-    } else if (callback_type == TOCK_I2C_CB_SLAVE_READ_COMPLETE) {
-        signbus_iterate_slave_read();
     }
 }
 
@@ -137,21 +109,17 @@ static void i2c_master_slave_callback(
 ///
 /// MUST be called before any other methods.
 void signbus_io_init(uint8_t address) {
-    i2c_master_slave_set_slave_write_buffer(slave_write_buf, I2C_MAX_LEN);
-    i2c_master_slave_set_master_write_buffer(master_write_buf, I2C_MAX_LEN);
-    i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
-    i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
-    i2c_master_slave_set_slave_address(address);
     this_device_address = address;
+    port_signpost_init(address);
 }
 
 
 // synchronous send call
 int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
-    SIGNBUS_DEBUG("dest %02x data %p len %d\n", dest, data, len);
+    SIGNBUS_DEBUG("dest %02x data %packet len %d\n", dest, data, len);
 
     sequence_number++;
-    Packet p = {0};
+    Packet packet = {0};
     size_t toSend = len;
 
     //calculate the number of packets we will have to send
@@ -163,15 +131,15 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
     }
 
     //set encrypted
-    p.header.flags.is_encrypted = encrypted;
+    packet.header.flags.is_encrypted = encrypted;
     //set version
-    p.header.flags.version = 0x01;
+    packet.header.flags.version = 0x01;
     //set the source
-    p.header.src = this_device_address;
-    p.header.sequence_number = htons(sequence_number);
+    packet.header.src = this_device_address;
+    packet.header.sequence_number = htons(sequence_number);
 
     //set the total length
-    p.header.length = htons((numPackets*sizeof(signbus_network_header_t))+len);
+    packet.header.length = htons((numPackets*sizeof(signbus_network_header_t))+len);
 
     while(toSend > 0) {
         uint8_t morePackets = 0;
@@ -184,51 +152,43 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
         offset = (len-toSend);
 
         //set more fragments bit
-        p.header.flags.is_fragment = morePackets;
+        packet.header.flags.is_fragment = morePackets;
 
         //set the fragment offset
-        p.header.fragment_offset = htons(offset);
+        packet.header.fragment_offset = htons(offset);
 
         //set the data field
         //if there are more packets write the whole packet
         if(morePackets) {
-            memcpy(p.data,
+            memcpy(packet.data,
                     data+offset,
                     MAX_DATA_LEN);
         } else {
             //if not just send the remainder of the data
-            memcpy(p.data,
+            memcpy(packet.data,
                     data+offset,
                     toSend);
         }
 
-        //copy the packet into the send buffer
-        memcpy(master_write_buf,&p,I2C_MAX_LEN);
-
         //send the packet
-        master_write_yield_flag = false;
         if(morePackets) {
-            rc = i2c_master_slave_write(dest,I2C_MAX_LEN);
-            if (rc < 0) return rc;
+            rc = port_signpost_i2c_master_write(dest,(uint8_t *) &packet,I2C_MAX_LEN);
 
-            yield_for(&master_write_yield_flag);
-            if (master_write_len_or_rc < 0) return master_write_len_or_rc;
+            if (rc < 0) return rc;
 
             toSend -= MAX_DATA_LEN;
         } else {
-            SIGNBUS_DEBUG_DUMP_BUF(master_write_buf, sizeof(signbus_network_header_t)+toSend);
+            //SIGNBUS_DEBUG_DUMP_BUF(&packet, sizeof(signbus_network_header_t)+toSend);
 
-            rc = i2c_master_slave_write(dest,sizeof(signbus_network_header_t)+toSend);
+            rc = port_signpost_i2c_master_write(dest, (uint8_t *) &packet,sizeof(signbus_network_header_t)+toSend);
+
             if (rc < 0) return rc;
-
-            yield_for(&master_write_yield_flag);
-            if (master_write_len_or_rc < 0) return master_write_len_or_rc;
 
             toSend = 0;
         }
     }
 
-    SIGNBUS_DEBUG("dest %02x data %p len %d -- COMPLETE\n", dest, data, len);
+    SIGNBUS_DEBUG("dest %02x data %packet len %d -- COMPLETE\n", dest, data, len);
     return len;
 }
 
@@ -251,27 +211,27 @@ static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src)
     //loop receiving packets until we get the whole datagram
     while(!done) {
         //wait and receive a packet
-        if (!np.new) {
-            yield_for(&np.new);
+        if (!newpkt.new) {
+            port_signpost_wait_for(&newpkt.new);
         }
-        np.new = 0;
+        newpkt.new = 0;
 
         //a new packet is in the packet buf
 
         //copy the packet into a header struct
-        Packet p;
-        memcpy(&p,packet_buf,I2C_MAX_LEN);
+        Packet packet;
+        memcpy(&packet,packet_buf,I2C_MAX_LEN);
         if(lengthReceived == 0) {
             //this is the first packet
             //save the message_sequence_number
-            message_sequence_number = p.header.sequence_number;
-            message_source_address = p.header.src;
-            *encrypted = p.header.flags.is_encrypted;
+            message_sequence_number = packet.header.sequence_number;
+            message_source_address = packet.header.src;
+            *encrypted = packet.header.flags.is_encrypted;
         } else {
             //this is not the first packet
             //is this the same message_sequence_number?
-            if(message_sequence_number == p.header.sequence_number
-                    && message_source_address == p.header.src) {
+            if(message_sequence_number == packet.header.sequence_number
+                    && message_source_address == packet.header.src) {
                 //yes it is - proceed
             } else {
                 //we should drop this packet
@@ -279,36 +239,36 @@ static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src)
             }
         }
 
-        *src = p.header.src;
+        *src = packet.header.src;
 
         //are there more fragments?
-        uint8_t moreFragments = p.header.flags.is_fragment;
-        uint16_t fragmentOffset = htons(p.header.fragment_offset);
+        uint8_t moreFragments = packet.header.flags.is_fragment;
+        uint16_t fragmentOffset = htons(packet.header.fragment_offset);
         if(moreFragments) {
             //is there room to copy into the buffer?
             if(fragmentOffset + MAX_DATA_LEN > len) {
                 //this is too long
                 //just copy what we can and end
                 uint16_t remainder = len - fragmentOffset;
-                memcpy(data+fragmentOffset,p.data,remainder);
+                memcpy(data+fragmentOffset,packet.data,remainder);
                 lengthReceived += remainder;
                 done = 1;
             } else {
-                memcpy(data+fragmentOffset,p.data,MAX_DATA_LEN);
+                memcpy(data+fragmentOffset,packet.data,MAX_DATA_LEN);
                 lengthReceived += MAX_DATA_LEN;
             }
         } else {
             //is there room to copy into the buffer?
-            if(fragmentOffset + (np.len - sizeof(signbus_network_header_t)) > len) {
+            if(fragmentOffset + (newpkt.len - sizeof(signbus_network_header_t)) > len) {
                 //this is too long
                 //just copy what we can and end
                 uint16_t remainder = len - fragmentOffset;
-                memcpy(data+fragmentOffset,p.data,remainder);
+                memcpy(data+fragmentOffset,packet.data,remainder);
                 lengthReceived += remainder;
             } else {
                 //copy the rest of the packet
-                memcpy(data+fragmentOffset,p.data,(np.len - sizeof(signbus_network_header_t)));
-                lengthReceived += np.len - sizeof(signbus_network_header_t);
+                memcpy(data+fragmentOffset,packet.data,(newpkt.len - sizeof(signbus_network_header_t)));
+                lengthReceived += newpkt.len - sizeof(signbus_network_header_t);
             }
 
             //no more fragments end
@@ -339,7 +299,7 @@ int signbus_io_recv(
     async = false;
 
     int rc;
-    rc = i2c_master_slave_listen();
+    rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
     if (rc < 0) return rc;
 
     return get_message(recv_buf, recv_buflen, encrypted, src_address);
@@ -361,7 +321,7 @@ int signbus_io_recv_async(
     async_encrypted = encrypted;
     async_active = true;
 
-    return i2c_master_slave_listen();
+    return port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
 }
 
 
@@ -407,11 +367,8 @@ static void signbus_iterate_slave_read(void) {
         // update bytes remaining
         slave_read_data_bytes_remaining -= data_len;
 
-        // copy the packet into the i2c slave read buffer
-        memcpy(slave_read_buf, &readPacket, I2C_MAX_LEN);
-
-        // enable the i2c slave read
-        i2c_master_slave_enable_slave_read(I2C_MAX_LEN);
+        // setup slave read
+        port_signpost_i2c_slave_read_setup((uint8_t *) &readPacket, I2C_MAX_LEN);
 
     } else {
         // all provided data has been sent! Do something about it
@@ -422,7 +379,7 @@ static void signbus_iterate_slave_read(void) {
 
         } else {
             // perform the callback!
-            slave_read_callback(SUCCESS);
+            slave_read_callback(0);
         }
     }
 }
@@ -440,8 +397,8 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
     // from the callback to provide new data
 
     // listen for i2c messages asynchronously
-    int err = i2c_master_slave_listen();
-    if (err < SUCCESS) {
+    int err = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
+    if (err < 0) {
         return err;
     }
 
@@ -473,7 +430,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
 
     // actually set up the fragmented read packet
     signbus_iterate_slave_read();
-    return SUCCESS;
+    return 0;
 }
 
 // provide callback to be performed when the slave read has completed all data
