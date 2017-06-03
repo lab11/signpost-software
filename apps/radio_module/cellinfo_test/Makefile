@@ -8,8 +8,6 @@ C_SRCS := $(wildcard *.c)
 
 LIBRARY_PATHS += .
 
-STACK_SIZE=12000
-
 TOCK_USERLAND_BASE_DIR := ../../../kernel/tock/userland
 
 # include makefile settings that are shared between applications

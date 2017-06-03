@@ -7,9 +7,6 @@
 #include <math.h>
 
 #include "tock.h"
-#include "timer.h"
-#include "console.h"
-#include "led.h"
 #include "sara_u260.h"
 
 
