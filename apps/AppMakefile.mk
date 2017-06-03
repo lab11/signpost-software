@@ -80,8 +80,6 @@ include $(TOCK_USERLAND_BASE_DIR)/AppMakefile.mk
 # Turn off some of the less critical warnings while we're developing heavily
 override CPPFLAGS += -Wno-unused-macros
 
-override CFLAGS += -Wno-pointer-sign
-
 override CXXFLAGS += -Wno-suggest-override
 override CXXFLAGS += -Wno-suggest-final-methods
 override CXXFLAGS += -Wno-suggest-final-types
