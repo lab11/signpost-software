@@ -22,7 +22,7 @@ int main (void) {
 
     delay_ms(5000);
 
-    sara_u260_cell_info_t inf[10];
+    sara_u260_ops_info_t inf[10];
 
     while(1) {
         int num_returned = sara_u260_get_ops_information(inf,10);

@@ -291,25 +291,28 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     return dlen;
 }
 
-int sara_u260_get_ops_information(sara_u260_cell_info_t* inf, size_t num_info) {
-    at_send(SARA_CONSOLE,"AT+COPS=6\r"); 
+int sara_u260_get_ops_information(sara_u260_ops_info_t* inf, size_t num_info) {
+    int ret = at_send(SARA_CONSOLE,"AT+COPS=6\r"); 
+    if (ret < 0) return SARA_U260_ERROR;
 
     //this size should allow us to receive ~10 neighbor lists
-    char* retbuf = malloc(num_info*50*sizeof(char));
+    uint8_t* retbuf = malloc(num_info*50*sizeof(uint8_t));
     if(!retbuf) {
         return SARA_U260_ERROR;
     }
 
-    size_t len = at_get_response(SARA_CONSOLE, num_info, retbuf, 1024);
+    int len = at_get_response(SARA_CONSOLE, num_info, retbuf, 1024);
+    if(len < 0)  return SARA_U260_ERROR;
   
     uint8_t num_fields = 0;
     int line_start_location = 0;
     size_t inf_index = 0;
-    for(uint32_t i = 0; i < len; i++) {
+    for(int i = 0; i < len; i++) {
         if(retbuf[i] == ',') {
             num_fields++;
         } else if(retbuf[i] == '\n') {
             if(num_fields > 5) {
+                //the line should never be over 70 characters
                 char line[70];
                 if(i-line_start_location < 70) {
                     memcpy(line, retbuf+line_start_location, i-line_start_location);
@@ -344,4 +347,3 @@ int sara_u260_get_ops_information(sara_u260_cell_info_t* inf, size_t num_info) {
     free(retbuf);
     return inf_index;
 }
-
