@@ -53,7 +53,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     uint8_t len = 0;
     char* cpt = c;
     for(uint8_t i = 0; i < 8; i++) {
-        snprintf(cpt,2,"%02X",AppEUI[i]);
+        snprintf(cpt,3,"%02X",AppEUI[i]);
         cpt += 2;
         len += 2;
     }
@@ -74,7 +74,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     len = 0;
     cpt = c;
     for(uint8_t i = 0; i < 16; i++) {
-        snprintf(cpt,2,"%02X",AppKey[i]);
+        snprintf(cpt,3,"%02X",AppKey[i]);
         cpt += 2;
         len += 2;
     }
