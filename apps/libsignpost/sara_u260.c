@@ -295,13 +295,13 @@ int sara_u260_get_ops_information(sara_u260_ops_info_t* inf, size_t num_info) {
     int ret = at_send(SARA_CONSOLE,"AT+COPS=6\r"); 
     if (ret < 0) return SARA_U260_ERROR;
 
-    //this size should allow us to receive ~10 neighbor lists
+    //this size should allow us to receive numinfo neighbors
     uint8_t* retbuf = malloc(num_info*50*sizeof(uint8_t));
     if(!retbuf) {
         return SARA_U260_ERROR;
     }
 
-    int len = at_get_response(SARA_CONSOLE, num_info, retbuf, 1024);
+    int len = at_get_response(SARA_CONSOLE, num_info, retbuf, num_info*50);
     if(len < 0)  return SARA_U260_ERROR;
   
     uint8_t num_fields = 0;
