@@ -95,7 +95,7 @@ static int sara_u260_setup_packet_switch(void) {
 static int sara_u260_del_file(const char* fname) {
     int ret;
 
-    ret = at_send(SARA_CONSOLE, "AT+DELFILE=\"");
+    ret = at_send(SARA_CONSOLE, "AT+UDELFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE, fname);
@@ -114,7 +114,7 @@ static int sara_u260_del_file(const char* fname) {
 
 static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
     
-    int ret = at_send(SARA_CONSOLE, "AT+DWNFILE=\"");
+    int ret = at_send(SARA_CONSOLE, "AT+UDWNFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE, fname);
@@ -124,7 +124,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     if (ret < 0) return SARA_U260_ERROR;
 
     char c[15];
-    int clen = snprintf(c,15,"%zu",len);
+    int clen = snprintf(c,15,"%lu",(uint32_t)len);
     if(clen <= 0) {
         return SARA_U260_ERROR; 
     }
@@ -167,9 +167,10 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
 
     //delete the file
     ret = sara_u260_del_file("postdata.bin");
-    if(ret < 0) {
+    //Don't catch this error - the file might not exist
+    /*if(ret < 0) {
         return ret;
-    }
+    }*/
 
     //write the data to a file
     ret = sara_u260_write_to_file("postdata.bin", buf, len);
@@ -229,7 +230,7 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
 
     
     char c[60];
-    snprintf(c,60,"%zu,%zu\r",offset,max_len);
+    snprintf(c,60,"%lu,%lu\r",(uint32_t)offset,(uint32_t)max_len);
     ret = at_send(SARA_CONSOLE,c);
     if (ret < 0) return SARA_U260_ERROR;
 
