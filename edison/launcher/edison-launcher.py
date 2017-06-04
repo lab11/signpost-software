@@ -9,7 +9,7 @@ def main():
 
     #declare the gpio interrupt that signals there
     #is an RPC to service
-    pending_rpc_gpio = GPIO(12, "in")
+    pending_rpc_gpio = GPIO(111, "in")
     EdisonSignbus = signpost.EdisonApiClient()
 
     while True:
