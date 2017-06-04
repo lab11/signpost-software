@@ -47,7 +47,7 @@ setup(
     long_description = long_description,
     install_requires = [
         'cryptography',
-        'periphery',
+        'python-periphery',
         ],
     )
 
