@@ -31,7 +31,7 @@ class EdisonApiMessageType(enum.IntEnum):
     ReadHandle = 0
     ReadRPC = 1
 
-class ProcessingMessageType(enum.IntEnum):
+class ProcessingApiMessageType(enum.IntEnum):
     ProcessingEdisonReadMessage = 3,
     ProcessingEdisonResponseMessage = 4,
 
