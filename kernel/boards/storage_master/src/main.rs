@@ -168,7 +168,12 @@ unsafe fn set_pin_primary_functions() {
     PA[18].configure(Some(A)); // EDISON_SCLK
     PA[19].configure(Some(A)); // EDISON_MOSI
     PA[20].configure(Some(A)); // EDISON_MISO
+
+    #for now repurpose this pin as the RPC pending pin
     PA[22].configure(None); // !EDISON_SPI_CS
+    PA[22].enable();
+    PA[22].clear();
+    PA[22].enable_output();
 
     // GPIO: Edison
     PA[05].configure(None); // !EDISON_PWRBTN
@@ -303,13 +308,14 @@ pub unsafe fn reset_handler() {
     // signpost_api_init does some GPIO toggling and assumes what these pins
     // are, previously much to the dismay of the edison...
     let gpio_pins = static_init!(
-        [&'static sam4l::gpio::GPIOPin; 5],
+        [&'static sam4l::gpio::GPIOPin; 6],
         [&sam4l::gpio::PB[14], // Fake MOD_IN for init
          &sam4l::gpio::PB[15], // Fake MOD_OUT for init
          &sam4l::gpio::PA[05], // EDISON_PWRBTN
          &sam4l::gpio::PA[06],  // LINUX_ENABLE_POWER
          &sam4l::gpio::PA[21]], // SD_ENABLE
-        5 * 4
+         &sam4l::gpio::PA[22]], // Edison_CS/RPC Pending
+        6 * 4
     );
     let gpio = static_init!(
         capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
