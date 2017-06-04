@@ -169,7 +169,7 @@ unsafe fn set_pin_primary_functions() {
     PA[19].configure(Some(A)); // EDISON_MOSI
     PA[20].configure(Some(A)); // EDISON_MISO
 
-    #for now repurpose this pin as the RPC pending pin
+    //for now repurpose this pin as the RPC pending pin
     PA[22].configure(None); // !EDISON_SPI_CS
     PA[22].enable();
     PA[22].clear();
@@ -313,7 +313,7 @@ pub unsafe fn reset_handler() {
          &sam4l::gpio::PB[15], // Fake MOD_OUT for init
          &sam4l::gpio::PA[05], // EDISON_PWRBTN
          &sam4l::gpio::PA[06],  // LINUX_ENABLE_POWER
-         &sam4l::gpio::PA[21]], // SD_ENABLE
+         &sam4l::gpio::PA[21], // SD_ENABLE
          &sam4l::gpio::PA[22]], // Edison_CS/RPC Pending
         6 * 4
     );
