@@ -1,6 +1,5 @@
 import sys
 import os
-import signbus
 
 from periphery import GPIO
 import signpost
