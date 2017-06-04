@@ -10,11 +10,11 @@
 # http://www.emutexlabs.com/project/215-intel-edison-gpio-pin-multiplexing-guide
 
 echo 14 > /sys/class/gpio/export
-echo 111 > /sys/class/gpio/export
+echo 110 > /sys/class/gpio/export
 echo 165 > /sys/class/gpio/export
 echo in > /sys/class/gpio/gpio14/direction
 echo in > /sys/class/gpio/gpio165/direction
-echo in > /sys/class/gpio/gpio111/direction
+echo in > /sys/class/gpio/gpio110/direction
 echo mode1 > /sys/kernel/debug/gpio_debug/gpio28/current_pinmux
 echo mode1 > /sys/kernel/debug/gpio_debug/gpio27/current_pinmux
 
