@@ -37,12 +37,10 @@ int main (void) {
       printf("Error querying energy: %d\n\n", rc);
     } else {
       printf("Energy Query Result:\n");
-      printf("      24h limit: %-4lu mJ\n", info.energy_limit_24h_mJ);
-      printf("       24h used: %-4lu mJ\n", info.energy_used_24h_mJ);
-      printf("      60s limit: %-4u mA\n",  info.current_limit_60s_mA);
-      printf("    60s average: %-4u mA\n",  info.current_average_60s_mA);
-      printf("  mJ limit warn: %-4u %%\n",  info.energy_limit_warning_threshold);
-      printf("  mJ limit crit: %-4u %%\n",  info.energy_limit_critical_threshold);
+      printf("      energy limit: %-4lu mWh\n", info.energy_limit_mWh);
+      printf("       average power: %-4hu mW\n", info.average_power_mW);
+      printf("  limit warn: %-4u %%\n",  info.energy_limit_warning_threshold);
+      printf("  limit crit: %-4u %%\n",  info.energy_limit_critical_threshold);
       printf("\n");
     }
 
