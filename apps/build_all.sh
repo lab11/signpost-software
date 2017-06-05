@@ -46,7 +46,7 @@ for makefile in $(find . | grep '/Makefile$'); do
 done
 
 # https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
-if [ ${failures[@]+"${failures[@]}"} ]; then
+if [[ ${failures[@]+"${failures[@]}"} ]]; then
 	echo ""
 	echo "${bold}${red}Build Failures:${normal}"
 	for fail in ${failures[@]}; do
