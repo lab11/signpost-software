@@ -15,22 +15,16 @@ int main (void) {
   int err = SUCCESS;
   printf("[Audio Module] Simple ADC test\n");
 
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("ADC initialization errored: %d\n", err);
-  }
-
   printf("Sampling data\n");
   uint8_t sample_index = 0;
   while (true) {
 
     // read data from ADC
-    err = adc_read_single_sample(3);
+    uint16_t sample;
+    err = adc_sample_sync(3,&sample);
     if (err < SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
-    uint16_t sample = err & 0xFFFF;
     printf("%d\n", sample);
 
     delay_ms(1);

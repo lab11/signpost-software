@@ -170,7 +170,6 @@ int main (void) {
 
     // initialize adc
     adc_set_callback(adc_callback, NULL);
-    adc_initialize();
 
     // start getting samples
     adc_single_sample(ADC_CHANNEL);

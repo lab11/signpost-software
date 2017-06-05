@@ -78,7 +78,6 @@ int main (void) {
 
     //init adc
     //adc_set_callback(adc_callback, (void*)&result);
-    adc_initialize();
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);
     gpio_enable_output(POWER);
@@ -113,7 +112,11 @@ int main (void) {
         gpio_clear(STROBE);
 
         for(uint8_t i = 0; i < 6; i++) {
-            uint16_t data = (uint16_t)adc_read_single_sample(0);
+            uint16_t data;
+            int ret = adc_sample_sync(0,&data);
+            if(ret < 0) {
+                printf("ADC Sample Error\n");
+            }
             master_write_buf[2+i*2] = (uint8_t)((data >> 8) & 0xff);
             master_write_buf[2+i*2+1] = (uint8_t)(data & 0xff);
             delay_ms(1);
@@ -121,7 +124,11 @@ int main (void) {
             delay_ms(1);
             gpio_clear(STROBE);
         }
-        uint16_t data = (uint16_t)adc_read_single_sample(0);
+        uint16_t data;
+        int ret = adc_sample_sync(0,&data);
+        if(ret < 0) {
+            printf("ADC Sample Error\n");
+        }
         master_write_buf[14] = (uint8_t)((data >> 8) & 0xff);
         master_write_buf[15] = (uint8_t)(data & 0xff);
 
