@@ -10,7 +10,7 @@
 
 #include "controller.h"
 #include "i2c_selector.h"
-#include "signpost_energy.h"
+#include "signpost_energy_monitors.h"
 
 static void print_data (int module, int energy) {
   int int_energy = signpost_ltc_to_uAh(energy, POWER_MODULE_RSENSE);

@@ -16,7 +16,6 @@
 #include "signbus_io_interface.h"
 #include "signpost_storage.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
 #include "storage_master.h"
 
 // buffer for holding i2c slave read data

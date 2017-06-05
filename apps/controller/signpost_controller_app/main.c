@@ -17,7 +17,7 @@
 #include "gps.h"
 #include "minmea.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
+#include "signpost_energy_monitors.h"
 
 #include "bonus_timer.h"
 

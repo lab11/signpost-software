@@ -1,6 +1,6 @@
 #include "i2c_selector.h"
 #include "ltc294x.h"
-#include "signpost_energy.h"
+#include "signpost_energy_monitors.h"
 #include "max17205.h"
 
 static uint8_t module_num_to_selector_mask[8] = {0x4, 0x8, 0x10, 0, 0, 0x20, 0x40, 0x80};

@@ -13,7 +13,6 @@
 
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
 #include "signpost_storage.h"
 #include "storage_master.h"
 
@@ -91,27 +90,6 @@ static void storage_api_callback(uint8_t source_address,
 
     //XXX send complete response with orig_record_pointer to app
 
-    /*
-       if (message_type == EnergyQueryMessage) {
-       signpost_energy_information_t info;
-       info.energy_limit_24h_mJ = 1;
-       info.energy_used_24h_mJ = 2;
-       info.current_limit_60s_mA = 3;
-       info.current_average_60s_mA = 4;
-       info.energy_limit_warning_threshold = 5;
-       info.energy_limit_critical_threshold = 6;
-
-       signpost_energy_query_reply(source_address, &info);
-       } else if (message_type == EnergyLevelWarning24hMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else if (message_type == EnergyLevelCritical24hMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else if (message_type == EnergyCurrentWarning60sMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       }
-       */
   } else if (frame_type == ResponseFrame) {
     // XXX unexpected, drop
   } else if (frame_type == ErrorFrame) {
