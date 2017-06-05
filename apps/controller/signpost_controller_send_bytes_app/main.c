@@ -361,12 +361,10 @@ static void energy_api_callback(uint8_t source_address,
   } else if (frame_type == CommandFrame) {
     if (message_type == EnergyQueryMessage) {
       signpost_energy_information_t info;
-      info.energy_limit_24h_mJ = 1;
-      info.energy_used_24h_mJ = 2;
-      info.current_limit_60s_mA = 3;
-      info.current_average_60s_mA = 4;
-      info.energy_limit_warning_threshold = 5;
-      info.energy_limit_critical_threshold = 6;
+      info.energy_limit_mWh = 1000;
+      info.average_power_mW = 60;
+      info.energy_limit_warning_threshold = 0;
+      info.energy_limit_critical_threshold = 0;
 
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
