@@ -195,7 +195,6 @@ int main (void) {
 
     //init adc
     adc_set_callback(adc_callback, NULL);
-    adc_initialize();
 
     //start timer
     timer_subscribe(timer_callback, NULL);

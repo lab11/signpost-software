@@ -275,7 +275,6 @@ int main (void) {
 
     // initialize adc
     adc_set_callback(adc_callback, NULL);
-    adc_initialize();
 
     // Setup a watchdog
     app_watchdog_set_kernel_timeout(60000);

@@ -43,12 +43,6 @@ int main (void) {
   gpio_clear(MSGEQ7_RESET_PIN);
   gpio_clear(MSGEQ7_STROBE_PIN);
 
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("Initialize errored: %d\n", err);
-  }
-
   printf("Sampling data\n");
   while (true) {
 
@@ -66,7 +60,11 @@ int main (void) {
       gpio_clear(MSGEQ7_STROBE_PIN);
 
       for(uint8_t i = 0; i < 6; i++) {
-        uint16_t data = (uint16_t)adc_read_single_sample(0);
+        uint16_t data;
+        int ret = adc_sample_sync(0,&data);
+        if(ret < 0) {
+            printf("ADC Sample Error");
+        }
         master_write_buf[2+i*2] = (uint8_t)((data >> 8) & 0xff);
         master_write_buf[2+i*2+1] = (uint8_t)(data & 0xff);
         delay_ms(1);
@@ -74,7 +72,11 @@ int main (void) {
         delay_ms(1);
         gpio_clear(MSGEQ7_STROBE_PIN);
       }
-      uint16_t data = (uint16_t)adc_read_single_sample(0);
+      uint16_t data;
+      int ret = adc_sample_sync(0,&data);
+      if(ret < 0) {
+          printf("ADC Sample Error");
+      }
       master_write_buf[14] = (uint8_t)((data >> 8) & 0xff);
       master_write_buf[15] = (uint8_t)(data & 0xff);
 

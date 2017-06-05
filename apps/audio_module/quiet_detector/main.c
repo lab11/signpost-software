@@ -27,23 +27,17 @@ int main (void) {
   int err = SUCCESS;
   printf("[Audio Module] Quiet Detector\n");
 
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("Initialize errored: %d\n", err);
-  }
-
   printf("Sampling data\n");
   uint8_t sample_index = 0;
   uint16_t min_amplitude = 100;
   while (true) {
 
     // read data from ADC
-    err = adc_read_single_sample(3);
+    uint16_t sample;
+    err = adc_sample_sync(3,&sample);
     if (err < SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
-    uint16_t sample = err & 0xFFFF;
 
     // calculate amplitude of sample
     uint16_t amplitude = abs(sample-ZERO_MAGNITUDE);
