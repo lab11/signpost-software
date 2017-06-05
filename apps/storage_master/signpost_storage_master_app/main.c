@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <i2c_master_slave.h>
+#include <gpio.h>
 #include <led.h>
 #include <sdcard.h>
 #include <timer.h>
@@ -19,6 +20,7 @@
 #include "storage_master.h"
 
 #define DEBUG_RED_LED 0
+#define RPC_PENDING_PIN 5
 
 //This is the RPC queue
 //For right now we are limiting RPC to 255 characters - if they are over that, too bad
@@ -159,6 +161,9 @@ static void processing_api_callback(uint8_t source_address,
 
 int main (void) {
   printf("\n[Storage Master]\n** Main App **\n");
+  
+  gpio_enable_output(RPC_PENDING_PIN);
+  gpio_clear(RPC_PENDING_PIN);
 
   // set up the SD card and storage system
   int rc = storage_initialize();
