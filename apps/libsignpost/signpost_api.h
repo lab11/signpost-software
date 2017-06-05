@@ -339,10 +339,9 @@ int signpost_energy_query_async(signpost_energy_information_t* energy, signbus_a
 __attribute__((warn_unused_result))
 int signpost_energy_query_reply(uint8_t destination_address, signpost_energy_information_t* info);
 
-//response from controller to  requesting module
-//this acks the percentages assigned to each module
-//reports a module integer percent of 0 on failure
-int signpost_energy_report_reply(uint8_t destination_address, signpost_energy_report_t* report_response);
+//response from controller to requesting module
+//returns a signpost error define
+int signpost_energy_report_reply(uint8_t destination_address, int return_code);
 
 /**************************************************************************/
 /* TIME & LOCATION API                                                    */
