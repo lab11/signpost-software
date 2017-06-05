@@ -913,7 +913,6 @@ static void energy_query_sync_callback(int result) {
     energy_query_result = result;
 }
 
-
 static void signpost_energy_report_callback(__attribute__ ((unused)) int result) {
     energy_report_received = true;
 }
@@ -985,6 +984,12 @@ int signpost_energy_query_async(
     };
 
     return SUCCESS;
+}
+
+int signpost_energy_duty_cycle(uint32_t time_ms) {
+    return signpost_api_send(ModuleAddressController,
+            NotificationFrame, EnergyApiType, EnergyDutyCycleMessage,
+            sizeof(uint32_t), (uint8_t*)&time_ms);
 }
 
 int signpost_energy_report(signpost_energy_report_t* report) {
