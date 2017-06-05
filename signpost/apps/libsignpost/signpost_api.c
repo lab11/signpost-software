@@ -979,8 +979,9 @@ int signpost_energy_query_async(
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
 
+    //This properly catches the error if the send fails
+    //and allows for subsequent calls to query async to succeed
     if (rc < 0) {
-        printf("ERROR: Energy api send returned with code %d\n",rc);
         //abort the transaction
         energy_cb_data = NULL;
         incoming_active_callback = NULL;
@@ -1002,9 +1003,12 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     energy_report_received = false;
     yield_for(&energy_report_received);
 
-    memcpy(report, incoming_message, incoming_message[0]*2 +1);
+    //there is an integer in the incoming message that should be
+    //sent back as the return code
+    int return_code;
+    memcpy(&return_code,incoming_message,sizeof(int));
 
-    return SB_PORT_SUCCESS;
+    return return_code;
 }
 
 int signpost_energy_query_reply(uint8_t destination_address,
@@ -1015,11 +1019,11 @@ int signpost_energy_query_reply(uint8_t destination_address,
 }
 
 int signpost_energy_report_reply(uint8_t destination_address,
-        signpost_energy_report_t* report) {
+        int return_code) {
 
     return signpost_api_send(destination_address,
             ResponseFrame, EnergyApiType, EnergyReportMessage,
-            report->num_reports*2+1, (uint8_t*) report);
+            sizeof(int), (uint8_t*)&return_code);
 }
 
 /**************************************************************************/
