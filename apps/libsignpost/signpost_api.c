@@ -10,6 +10,7 @@
 #include "signpost_entropy.h"
 #include "port_signpost.h"
 #include "tock.h"
+#include "signpost_mod_io.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -25,9 +26,6 @@ static struct module_struct {
     uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
 } module_info = {.i2c_address_mods = {ModuleAddressController, ModuleAddressStorage, ModuleAddressRadio}};
 
-
-uint8_t* signpost_api_addr_to_key(uint8_t addr);
-int      signpost_api_addr_to_mod_num(uint8_t addr);
 
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
@@ -835,11 +833,17 @@ static bool energy_query_ready;
 static int  energy_query_result;
 static signbus_app_callback_t* energy_cb = NULL;
 static signpost_energy_information_t* energy_cb_data = NULL;
+static bool energy_report_received;
 
 static void energy_query_sync_callback(int result) {
     SIGNBUS_DEBUG("result %d\n", result);
     energy_query_ready = true;
     energy_query_result = result;
+}
+
+
+static void signpost_energy_report_callback(__attribute__ ((unused)) int result) {
+    energy_report_received = true;
 }
 
 int signpost_energy_query(signpost_energy_information_t* energy) {
@@ -884,10 +888,12 @@ int signpost_energy_query_async(
         ) {
     if (incoming_active_callback != NULL) {
         // XXX: Consider multiplexing based on API
-        return -TOCK_EBUSY;
+        printf("ERROR: Energy query callback busy!\n");
+        return TOCK_EBUSY;
     }
     if (energy_cb != NULL) {
-        return -TOCK_EBUSY;
+        printf("ERROR: Energy query callback busy!\n");
+        return TOCK_EBUSY;
     }
     incoming_active_callback = energy_query_async_callback;
     energy_cb_data = energy;
@@ -897,7 +903,31 @@ int signpost_energy_query_async(
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
+
+    if (rc < 0) {
+        printf("ERROR: Energy api send returned with code %d\n",rc);
+        //abort the transaction
+        energy_cb_data = NULL;
+        incoming_active_callback = NULL;
+        energy_cb = NULL;
+        return rc;
+    };
+
+    return SUCCESS;
+}
+
+int signpost_energy_report(signpost_energy_report_t* report) {
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyReportMessage,
+            report->num_reports*2+1, (uint8_t*)report);
     if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_report_callback;
+    energy_report_received = false;
+    yield_for(&energy_report_received);
+
+    memcpy(report, incoming_message, incoming_message[0]*2 +1);
 
     return TOCK_SUCCESS;
 }
@@ -907,6 +937,14 @@ int signpost_energy_query_reply(uint8_t destination_address,
     return signpost_api_send(destination_address,
             ResponseFrame, EnergyApiType, EnergyQueryMessage,
             sizeof(signpost_energy_information_t), (uint8_t*) info);
+}
+
+int signpost_energy_report_reply(uint8_t destination_address,
+        signpost_energy_report_t* report) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyReportMessage,
+            report->num_reports*2+1, (uint8_t*) report);
 }
 
 /**************************************************************************/
