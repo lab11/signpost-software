@@ -12,24 +12,13 @@
 #include "i2c_selector.h"
 #include "signpost_energy_monitors.h"
 
-static void print_data (int module, int energy, int current) {
-  int int_energy = signpost_ltc_to_uAh(energy, POWER_MODULE_RSENSE);
-  if (module == 3) {
-    printf("Controller energy: %i uAh\tcurrent: %i uA\n", int_energy, current);
-  } else if (module == 4) {
-    printf("Linux energy: %i uAh\t\tcurrent: %i uA\n", int_energy, current);
-  } else {
-    printf("Module %i energy: %i uAh\t\tcurrent: %i uA\n", module, int_energy, current);
-  }
-}
-
 int main (void) {
-  int energy;
-  int current;
+  uint32_t energy;
+  uint32_t current;
 
   signpost_energy_init_ltc2943();
 
-  signpost_energy_reset();
+  signpost_energy_reset_all_energy();
 
   controller_init_module_switches();
   controller_all_modules_enable_power();
@@ -45,30 +34,30 @@ int main (void) {
       if (i == 3 || i == 4) continue;
 
       energy = signpost_energy_get_module_energy(i);
-      current = signpost_energy_get_module_current_ua(i);
-      print_data(i, energy, current);
+      current = signpost_energy_get_module_current(i);
+      printf("Module %d energy: %lu uWh, current: %lu uAh\n",i, energy, current);
     }
 
     energy = signpost_energy_get_controller_energy();
-    current = signpost_energy_get_controller_current_ua();
-    print_data(3, energy, current);
+    current = signpost_energy_get_controller_current();
+    printf("Controller energy: %lu uWh, current: %lu uAh\n",energy, current);
 
     energy = signpost_energy_get_linux_energy();
-    current = signpost_energy_get_linux_current_ua();
-    print_data(4, energy, current);
+    current = signpost_energy_get_linux_current();
+    printf("Linux energy: %lu uWh, current: %lu uAh\n",energy, current);
 
-    int v = signpost_energy_get_battery_voltage_mv();
-    int c = signpost_energy_get_battery_current_ua();
-    int e = signpost_energy_get_battery_energy();
-    int p = signpost_energy_get_battery_percent();
-    int cap = signpost_energy_get_battery_capacity();
+    uint16_t v = signpost_energy_get_battery_voltage();
+    int32_t c = signpost_energy_get_battery_current();
+    uint32_t e = signpost_energy_get_battery_energy();
+    uint32_t p = signpost_energy_get_battery_percent();
+    uint32_t cap = signpost_energy_get_battery_capacity();
 
-    int s_voltage = signpost_energy_get_solar_voltage_mv();
-    int s_current = signpost_energy_get_solar_current_ua();
+    uint16_t s_voltage = signpost_energy_get_solar_voltage();
+    uint32_t s_current = signpost_energy_get_solar_current();
 
-    printf("Battery Voltage (mV): %d\tcurrent (uA): %d\tenergy (uAh):%d\n",(int)v,(int)c,(int)e);
-    printf("Battery Percent: %d\tcapacity (uAh): %d\n",(int)p,(int)cap);
-    printf("Solar Voltage (mV): %d\tcurrent (uA): %d\n",s_voltage,s_current);
+    printf("Battery Voltage (mV): %hu\tcurrent (uA): %ld\tenergy (uWh):%lu\n",v,c,e);
+    printf("Battery Percent: %lu\tcapacity (uWh): %lu\n",p/1000,cap);
+    printf("Solar Voltage (mV): %hu\tcurrent (uA): %lu\n",s_voltage,s_current);
 
     delay_ms(1000);
   }
