@@ -169,11 +169,11 @@ static void get_energy (void) {
     uint32_t* last_reading = &energy_last_readings[i];
 
     if (i == 3) {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_controller_energy(), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_controller_energy();
     } else if (i == 4) {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_linux_energy(), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_linux_energy();
     } else {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_module_energy(i), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_module_energy(i);
     }
 
     uint32_t diff = energy - *last_reading;
@@ -240,13 +240,13 @@ static void get_energy (void) {
 }
 
 static void get_batsol (void) {
-  int battery_voltage = signpost_energy_get_battery_voltage_mv();
-  int battery_current = signpost_energy_get_battery_current_ua();
+  int battery_voltage = signpost_energy_get_battery_voltage();
+  int battery_current = signpost_energy_get_battery_current();
   uint8_t battery_percent = (uint8_t)(signpost_energy_get_battery_percent()/1000.0);
   uint16_t battery_full = (uint16_t)(signpost_energy_get_battery_capacity()/1000.0);
   uint16_t battery_energy = (uint16_t)(signpost_energy_get_battery_energy()/1000.0);
-  int solar_voltage = signpost_energy_get_solar_voltage_mv();
-  int solar_current = signpost_energy_get_solar_current_ua();
+  int solar_voltage = signpost_energy_get_solar_voltage();
+  int solar_current = signpost_energy_get_solar_current();
   printf("\n\nBattery and Solar Panel Data\n");
   printf("  Battery Voltage (mV): %d\tcurrent (uA): %d\n",battery_voltage,battery_current);
   printf("  Solar Voltage (mV): %d\tcurrent (uA): %d\n",solar_voltage,solar_current);
@@ -639,7 +639,7 @@ int main (void) {
 
   // Reset all of the LTC2941s
   printf("Resetting energy\n");
-  signpost_energy_reset();
+  signpost_energy_reset_all_energy();
 
   /////////////////////////////
   // Signpost Module Operations
