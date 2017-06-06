@@ -146,11 +146,11 @@ static void get_energy (void) {
     uint32_t* last_reading = &energy_last_readings[i];
 
     if (i == 3) {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_controller_energy(), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_controller_energy();
     } else if (i == 4) {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_linux_energy(), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_linux_energy();
     } else {
-      energy = signpost_ltc_to_uAh(signpost_energy_get_module_energy(i), POWER_MODULE_RSENSE);
+      energy = signpost_energy_get_module_energy(i);
     }
 
     uint32_t diff = energy - *last_reading;
@@ -427,11 +427,11 @@ int main (void) {
 
   // Configure all the I2C selectors
   printf("Init'ing energy\n");
-  signpost_energy_init();
+  signpost_energy_init_ltc2941();
 
   // Reset all of the LTC2941s
   printf("Resetting energy\n");
-  signpost_energy_reset();
+  signpost_energy_reset_all_energy();
 
   /////////////////////////////
   // Signpost Module Operations
