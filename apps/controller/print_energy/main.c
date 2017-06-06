@@ -12,23 +12,12 @@
 #include "i2c_selector.h"
 #include "signpost_energy_monitors.h"
 
-static void print_data (int module, int energy) {
-  int int_energy = signpost_ltc_to_uAh(energy, POWER_MODULE_RSENSE);
-  if (module == 3) {
-    printf("Controller energy: %i uAh\n", int_energy);
-  } else if (module == 4) {
-    printf("Linux energy: %i uAh\n", int_energy);
-  } else {
-    printf("Module %i energy: %i uAh\n", module, int_energy);
-  }
-}
-
 int main (void) {
-  int energy;
+  uint32_t energy;
 
-  signpost_energy_init();
+  signpost_energy_init_ltc2941();
 
-  signpost_energy_reset();
+  signpost_energy_reset_all_energy();
 
   controller_init_module_switches();
   controller_all_modules_enable_power();
@@ -44,14 +33,14 @@ int main (void) {
       if (i == 3 || i == 4) continue;
 
       energy = signpost_energy_get_module_energy(i);
-      print_data(i, energy);
+      printf("Module %d energy: %lu uWh", i, energy);
     }
 
     energy = signpost_energy_get_controller_energy();
-    print_data(3, energy);
+    printf("Controller energy: %lu uWh", energy);
 
     energy = signpost_energy_get_linux_energy();
-    print_data(4, energy);
+    printf("Linux energy: %lu uWh", energy);
 
     delay_ms(1000);
   }
