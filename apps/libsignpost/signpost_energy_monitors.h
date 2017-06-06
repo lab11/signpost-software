@@ -5,7 +5,7 @@ extern "C" {
 #endif
 
 // qlsb = 0.0625mAh with 0.017 Ohm sense resistor
-#define POWER_MODULE_PRESCALER 32
+#define POWER_MODULE_PRESCALER_LTC2941 32
 #define POWER_MODULE_PRESCALER_LTC2943 64
 
 //in Mohm
@@ -19,7 +19,7 @@ extern "C" {
 #define BATTERY_VOLTAGE_NOM 11.1
 
 //initialize based on the version of the monitors that we are using
-void signpost_energy_init (void);
+void signpost_energy_init_ltc2941 (void);
 void signpost_energy_init_ltc2943 (void);
 
 //this zeros the coulomb counters for each counter
@@ -48,7 +48,7 @@ uint32_t signpost_energy_get_module_current (int module_num);
 //uWh
 uint32_t signpost_energy_get_battery_capacity (void);
 //whole number percent
-uint8_t signpost_energy_get_battery_percent (void);
+uint32_t signpost_energy_get_battery_percent (void);
 //uWh
 uint32_t signpost_energy_get_battery_energy (void);
 

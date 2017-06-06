@@ -4,20 +4,23 @@
 #include "max17205.h"
 
 static uint8_t module_num_to_selector_mask[8] = {0x4, 0x8, 0x10, 0, 0, 0x20, 0x40, 0x80};
-static uint8_t is_ltc2943 = 0;
+static ltc294x_model_e model;
+static uint16_t prescaler;
+
 
 ////////////////////////////////////////////////////////////
 //Initialization functions
 //Make sure to call the right one
 /////////////////////////////////////////////////////////
-void signpost_energy_init (void) {
+void signpost_energy_init_ltc2941 (void) {
     // configure each ltc with the correct prescaler
     for (int i = 0; i < 8; i++) {
         i2c_selector_select_channels_sync(1<<i);
         ltc294x_configure_sync(LTC2941, InterruptPinAlertMode, POWER_MODULE_PRESCALER_LTC2941, VbatAlertOff);
     }
 
-    is_ltc2943 = 0;
+    model = LTC2941;
+    prescaler = POWER_MODULE_PRESCALER_LTC2941;
 
     // set all channels open for Alert Response
     i2c_selector_select_channels_sync(0xFF);
@@ -30,7 +33,8 @@ void signpost_energy_init_ltc2943 (void) {
         ltc294x_configure_sync(LTC2943, InterruptPinAlertMode, POWER_MODULE_PRESCALER_LTC2943, ADCScan);
     }
 
-    is_ltc2943 = 1;
+    model = LTC2943;
+    prescaler = POWER_MODULE_PRESCALER_LTC2943;
 
     // set all channels open for Alert Response
     i2c_selector_select_channels_sync(0x1FF);
@@ -42,28 +46,24 @@ void signpost_energy_init_ltc2943 (void) {
 // Static helper functions
 // ////////////////////////////////////////////
 static int get_ltc_energy_uah (int selector_mask, int rsense) {
-	// Select correct LTC2941
+	// Select correct LTC294x
 	i2c_selector_select_channels_sync(selector_mask);
 
-    if(!is_ltc2943) {
-	    return ltc2941_convert_to_coulomb_uah(ltc2941_get_charge_sync(),rsense);
-    } else {
-	    return ltc2943_convert_to_coulomb_uah(ltc2943_get_charge_sync(),rsense);
-    }
+    return ltc294x_convert_to_coulomb_uah(ltc294x_get_charge_sync(),rsense,prescaler,model);
 }
 
 static int get_ltc_current_ua (int selector_mask, int rsense) {
-	// Select correct LTC2941
+	// Select correct LTC294x
     i2c_selector_select_channels_sync(selector_mask);
 
-    return ltc2943_convert_to_current_ua(ltc2943_get_current_sync(),rsense);
+    return ltc294x_convert_to_current_ua(ltc294x_get_current_sync(),rsense);
 }
 
 static void reset_ltc_energy (int selector_mask) {
-	// Select correct LTC2941
+	// Select correct LTC294x
     i2c_selector_select_channels_sync(selector_mask);
 
-	ltc2941_reset_charge_sync();
+	ltc294x_reset_charge_sync();
 }
 
 ///////////////////////////////////////////////////
@@ -99,13 +99,13 @@ void signpost_energy_reset_linux_energy (void) {
 ///////////////////////////////////////////////////
 // Raw coulomb counter read functions
 // ///////////////////////////////////////////////
-int signpost_energy_get_controller_energy (void) {
+uint32_t signpost_energy_get_controller_energy (void) {
     return get_ltc_energy_uah(0x1,POWER_MODULE_RSENSE)*CONTROLLER_VOLTAGE;
 }
-int signpost_energy_get_linux_energy (void) {
+uint32_t signpost_energy_get_linux_energy (void) {
 	return get_ltc_energy_uah(0x2,POWER_MODULE_RSENSE)*LINUX_VOLTAGE;
 }
-int signpost_energy_get_module_energy (int module_num) {
+uint32_t signpost_energy_get_module_energy (int module_num) {
 	return get_ltc_energy_uah(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE)*MODULE_VOLTAGE;
 }
 
@@ -113,23 +113,23 @@ int signpost_energy_get_module_energy (int module_num) {
 // Raw current read functions
 // /////////////////////////////////////////////////////
 
-int signpost_energy_get_controller_current (void) {
+uint32_t signpost_energy_get_controller_current (void) {
     return get_ltc_current_ua(0x1, POWER_MODULE_RSENSE);
 }
 
-int signpost_energy_get_linux_current (void) {
+uint32_t signpost_energy_get_linux_current (void) {
     return get_ltc_current_ua(0x2, POWER_MODULE_RSENSE);
 }
 
-int signpost_energy_get_module_current (int module_num) {
+uint32_t signpost_energy_get_module_current (int module_num) {
     return get_ltc_current_ua(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE);
 }
 
-int signpost_energy_get_solar_current (void) {
+uint32_t signpost_energy_get_solar_current (void) {
     return get_ltc_current_ua(0x100,POWER_MODULE_SOLAR_RSENSE);
 }
 
-int signpost_energy_get_battery_current (void) {
+int32_t signpost_energy_get_battery_current (void) {
     uint16_t voltage;
     int16_t current;
     max17205_read_voltage_current_sync(&voltage,&current);
@@ -141,7 +141,7 @@ int signpost_energy_get_battery_current (void) {
 ///////////////////////////////////////////////
 //More information about the battery
 //////////////////////////////////////////////
-int signpost_energy_get_battery_capacity (void) {
+uint32_t signpost_energy_get_battery_capacity (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -149,7 +149,7 @@ int signpost_energy_get_battery_capacity (void) {
     return max17205_get_capacity_uAh(full)*BATTERY_VOLTAGE_NOM;
 }
 
-int signpost_energy_get_battery_percent (void) {
+uint32_t signpost_energy_get_battery_percent (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -157,7 +157,7 @@ int signpost_energy_get_battery_percent (void) {
     return max17205_get_percentage_mP(percent);
 }
 
-int signpost_energy_get_battery_energy (void) {
+uint32_t signpost_energy_get_battery_energy (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -169,7 +169,7 @@ int signpost_energy_get_battery_energy (void) {
 /////////////////////////////////////////////////////////////////////
 // These functions give you voltages for battery and solar
 // ///////////////////////////////////////////////////////////////////
-int signpost_energy_get_battery_voltage (void) {
+uint16_t signpost_energy_get_battery_voltage (void) {
     uint16_t voltage;
     int16_t current;
     max17205_read_voltage_current_sync(&voltage,&current);
@@ -178,9 +178,9 @@ int signpost_energy_get_battery_voltage (void) {
 }
 
 
-int signpost_energy_get_solar_voltage (void) {
+uint16_t signpost_energy_get_solar_voltage (void) {
     //selector #3 slot 1
     i2c_selector_select_channels_sync(0x100);
 
-    return ltc2943_convert_to_voltage_mv(ltc2943_get_voltage_sync());
+    return ltc294x_convert_to_voltage_mv(ltc294x_get_voltage_sync());
 }
