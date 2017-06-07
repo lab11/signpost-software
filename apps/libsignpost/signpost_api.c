@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "CRC16.h"
 #include "signbus_app_layer.h"
@@ -906,6 +907,7 @@ static int  energy_query_result;
 static signbus_app_callback_t* energy_cb = NULL;
 static signpost_energy_information_t* energy_cb_data = NULL;
 static bool energy_report_received;
+static int energy_report_result;
 
 static void energy_query_sync_callback(int result) {
     SIGNBUS_DEBUG("result %d\n", result);
@@ -913,7 +915,8 @@ static void energy_query_sync_callback(int result) {
     energy_query_result = result;
 }
 
-static void signpost_energy_report_callback(__attribute__ ((unused)) int result) {
+static void signpost_energy_report_callback(int result) {
+    energy_report_result = result;
     energy_report_received = true;
 }
 
@@ -993,22 +996,35 @@ int signpost_energy_duty_cycle(uint32_t time_ms) {
 }
 
 int signpost_energy_report(signpost_energy_report_t* report) {
+    // Since we can take in a variable number of reports we
+    // should make a message buffer and pack the reports into it.
+    uint8_t reports_size = report->num_reports*sizeof(signpost_energy_report_module_t);
+    uint8_t report_buf_size = reports_size + 1; 
+    uint8_t* report_buf = malloc(report_buf_size);
+    if(!report_buf) {
+        return ENOMEM;
+    }
+
+    report_buf[0] = report->num_reports;
+    memcpy(report_buf,report->reports,reports_size);
+    
     int rc;
     rc = signpost_api_send(ModuleAddressController,
-            CommandFrame, EnergyApiType, EnergyReportMessage,
-            report->num_reports*2+1, (uint8_t*)report);
+            CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            report_buf_size, report_buf);
     if (rc < 0) return rc;
 
     incoming_active_callback = signpost_energy_report_callback;
     energy_report_received = false;
     yield_for(&energy_report_received);
 
-    //there is an integer in the incoming message that should be
-    //sent back as the return code
-    int return_code;
-    memcpy(&return_code,incoming_message,sizeof(int));
-
-    return return_code;
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_report_result < 0) {
+        return FAIL;
+    } else {
+        return *incoming_message;
+    }
 }
 
 int signpost_energy_query_reply(uint8_t destination_address,
@@ -1022,7 +1038,7 @@ int signpost_energy_report_reply(uint8_t destination_address,
         int return_code) {
 
     return signpost_api_send(destination_address,
-            ResponseFrame, EnergyApiType, EnergyReportMessage,
+            ResponseFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
             sizeof(int), (uint8_t*)&return_code);
 }
 
