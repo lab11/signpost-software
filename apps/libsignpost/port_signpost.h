@@ -71,7 +71,3 @@ void port_signpost_delay_ms(unsigned ms);
 int port_signpost_debug_led_on(void);
 int port_signpost_debug_led_off(void);
 
-//An optional debug print statement
-extern char port_print_buf[PORT_PRINT_MAX_LEN];
-void port_signpost_debug_print(char * msg);
-

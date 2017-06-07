@@ -140,6 +140,3 @@ int port_signpost_debug_led_off(void){
     return led_off(DEBUG_LED);
 }
 
-void port_signpost_debug_print(char * msg) {
-    putstr(msg);
-}
