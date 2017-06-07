@@ -267,13 +267,12 @@ int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t* r
 /* ENERGY API                                                             */
 /**************************************************************************/
 
-//message types
 enum energy_message_type {
     EnergyQueryMessage = 0,
     EnergyLevelWarning24hMessage = 1,
     EnergyLevelCritical24hMessage = 2,
     EnergyCurrentWarning60sMessage = 3,
-    EnergyReportMessage = 4,
+    EnergyReportModuleConsumptionMessage = 4,
     EnergyDutyCycleMessage = 5,
 };
 
@@ -292,7 +291,8 @@ _Static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure s
 #endif
 
 //a mechanism for modules to report energy usage from other modules
-//this structure is for each module
+//For instance this allows the radio to tell the controller some
+//of its energy was used when providing a service to other modules
 typedef struct __attribute__((packed)) energy_report_module {
     uint8_t module_address; //module i2c address
     uint8_t module_percent; //an integer percent 0-100 that  the module has used
@@ -301,7 +301,7 @@ typedef struct __attribute__((packed)) energy_report_module {
 //we make an array of them to report full usage
 typedef struct __attribute__((packed)) energy_report {
     uint8_t num_reports;
-    signpost_energy_report_module_t reports[8];
+    signpost_energy_report_module_t* reports;
 } signpost_energy_report_t;
 
 // Query the controller for energy information
@@ -339,8 +339,8 @@ int signpost_energy_query_async(signpost_energy_information_t* energy, signbus_a
 __attribute__((warn_unused_result))
 int signpost_energy_query_reply(uint8_t destination_address, signpost_energy_information_t* info);
 
-//response from controller to requesting module
-//returns a signpost error define
+// Response from controller to requesting module
+// returns a signpost error define.
 int signpost_energy_report_reply(uint8_t destination_address, int return_code);
 
 /**************************************************************************/
