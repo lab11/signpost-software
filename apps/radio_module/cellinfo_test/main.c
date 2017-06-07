@@ -24,7 +24,7 @@ int main (void) {
     while(1) {
         int num_returned = sara_u260_get_ops_information(inf,10);
         for(int i = 0; i < num_returned; i++) {
-            printf("MCC: %hu, MNC: %hu, LAC: %hx, CI: %lx, BSIC: %hu, ARFCN: %hu,RXLEV: %hu\n",
+            printf("MCC: %hu, MNC: %hu, LAC: %hx, CI: %lx, BSIC: %hu, ARFCN: %hu ,RXLEV: %hu\n",
                             inf[i].mcc,inf[i].mnc,inf[i].lac,inf[i].ci,inf[i].bsic,inf[i].arfcn,inf[i].rxlev);
         }
         delay_ms(5000);
