@@ -347,7 +347,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
         yield_for(&done);
     }
 
-    port_signpost_gpio_disable_interrupt();
+    port_signpost_mod_in_disable_interrupt();
     port_signpost_mod_out_set();
     port_signpost_debug_led_off();
     SIGNBUS_DEBUG("complete\n");
@@ -359,7 +359,7 @@ int signpost_initialization_request_isolation(void) {
     // both are active low
     port_signpost_mod_out_set();
     port_signpost_debug_led_off();
-    port_signpost_gpio_enable_interrupt(signpost_initialization_isolation_callback);
+    port_signpost_mod_in_enable_interrupt(signpost_initialization_isolation_callback);
 
     // Pull Mod_Out Low to signal controller
     // Wait on controller interrupt on MOD_IN

@@ -113,7 +113,7 @@ int port_signpost_mod_in_read(void) {
 
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
-int port_signpost_gpio_enable_interrupt(port_signpost_callback cb) {
+int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb) {
     int rc = 0;
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
@@ -121,7 +121,7 @@ int port_signpost_gpio_enable_interrupt(port_signpost_callback cb) {
     return gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
 }
 
-int port_signpost_gpio_disable_interrupt(void) {
+int port_signpost_mod_in_disable_interrupt(void) {
     return gpio_disable_interrupt(MOD_IN);
 }
 
