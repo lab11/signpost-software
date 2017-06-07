@@ -296,13 +296,13 @@ int sara_u260_get_ops_information(sara_u260_ops_info_t* inf, size_t num_info) {
     if (ret < 0) return SARA_U260_ERROR;
 
     //this size should allow us to receive numinfo neighbors
-    const uint32_t retbuf_size = num_info*50*sizeof(uint8_t);
-    uint8_t* retbuf = malloc(retbuf_size);
+    const uint32_t retbuf_size = num_info*50*sizeof(char);
+    char* retbuf = malloc(retbuf_size);
     if(!retbuf) {
         return SARA_U260_ERROR;
     }
 
-    int ret_len = at_get_response(SARA_CONSOLE, num_info, retbuf, retbuf_size);
+    int ret_len = at_get_response(SARA_CONSOLE, num_info, (uint8_t*)retbuf, retbuf_size);
     if(ret_len < 0)  return SARA_U260_ERROR;
 
     uint8_t num_fields = 0;
