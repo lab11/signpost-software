@@ -10,13 +10,13 @@
 #define SARA_U260_NO_SERVICE -3
 
 typedef struct __attribute__((packed)) sara_u260_ops_info {
-    uint16_t mcc;
-    uint16_t mnc;
-    uint16_t lac;
-    uint32_t ci;
-    uint8_t  bsic;
-    uint16_t arfcn;
-    uint8_t  rxlev;
+    uint16_t mcc; //mobile country code
+    uint16_t mnc; //mobile network code
+    uint16_t lac; //local area code
+    uint32_t ci;  //cell identifier
+    uint8_t  bsic; //base station identity code - GSM only
+    uint16_t arfcn; //aboslute radio frequency channel number - GSM only
+    uint8_t  rxlev; //RSSI
 } sara_u260_ops_info_t;
 
 //initializes and turns off command echo
