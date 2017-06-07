@@ -9,8 +9,8 @@ static uint16_t prescaler;
 
 
 ////////////////////////////////////////////////////////////
-//Initialization functions
-//Make sure to call the right one
+// Initialization functions
+// Make sure to call the right one
 /////////////////////////////////////////////////////////
 void signpost_energy_init_ltc2941 (void) {
     // configure each ltc with the correct prescaler
@@ -42,7 +42,7 @@ void signpost_energy_init_ltc2943 (void) {
 
 ////////////////////////////////////////////////
 // Static helper functions
-// /////////////////////////////////////////////
+////////////////////////////////////////////////
 static int get_ltc_energy_uah (int selector_mask, int rsense) {
 	// Select correct LTC294x
 	i2c_selector_select_channels_sync(selector_mask);
