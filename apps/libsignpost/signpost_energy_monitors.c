@@ -99,37 +99,37 @@ void signpost_energy_reset_linux_energy (void) {
 ///////////////////////////////////////////////////
 // Raw coulomb counter read functions
 // ///////////////////////////////////////////////
-uint32_t signpost_energy_get_controller_energy (void) {
-    return get_ltc_energy_uah(0x1,POWER_MODULE_RSENSE)*CONTROLLER_VOLTAGE;
+uint32_t signpost_energy_get_controller_energy_uwh (void) {
+    return get_ltc_energy_uah(0x1,POWER_MODULE_RSENSE_MOHM)*CONTROLLER_VOLTAGE;
 }
-uint32_t signpost_energy_get_linux_energy (void) {
-	return get_ltc_energy_uah(0x2,POWER_MODULE_RSENSE)*LINUX_VOLTAGE;
+uint32_t signpost_energy_get_linux_energy_uwh (void) {
+	return get_ltc_energy_uah(0x2,POWER_MODULE_RSENSE_MOHM)*LINUX_VOLTAGE;
 }
-uint32_t signpost_energy_get_module_energy (int module_num) {
-	return get_ltc_energy_uah(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE)*MODULE_VOLTAGE;
+uint32_t signpost_energy_get_module_energy_uwh (int module_num) {
+	return get_ltc_energy_uah(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE_MOHM)*MODULE_VOLTAGE;
 }
 
 ////////////////////////////////////////////////////
 // Raw current read functions
 // /////////////////////////////////////////////////////
 
-uint32_t signpost_energy_get_controller_current (void) {
-    return get_ltc_current_ua(0x1, POWER_MODULE_RSENSE);
+uint32_t signpost_energy_get_controller_current_ua (void) {
+    return get_ltc_current_ua(0x1, POWER_MODULE_RSENSE_MOHM);
 }
 
-uint32_t signpost_energy_get_linux_current (void) {
-    return get_ltc_current_ua(0x2, POWER_MODULE_RSENSE);
+uint32_t signpost_energy_get_linux_current_ua (void) {
+    return get_ltc_current_ua(0x2, POWER_MODULE_RSENSE_MOHM);
 }
 
-uint32_t signpost_energy_get_module_current (int module_num) {
-    return get_ltc_current_ua(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE);
+uint32_t signpost_energy_get_module_current_ua (int module_num) {
+    return get_ltc_current_ua(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE_MOHM);
 }
 
-uint32_t signpost_energy_get_solar_current (void) {
-    return get_ltc_current_ua(0x100,POWER_MODULE_SOLAR_RSENSE);
+uint32_t signpost_energy_get_solar_current_ua (void) {
+    return get_ltc_current_ua(0x100,POWER_MODULE_SOLAR_RSENSE_MOHM);
 }
 
-int32_t signpost_energy_get_battery_current (void) {
+int32_t signpost_energy_get_battery_current_ua (void) {
     uint16_t voltage;
     int16_t current;
     max17205_read_voltage_current_sync(&voltage,&current);
@@ -141,7 +141,7 @@ int32_t signpost_energy_get_battery_current (void) {
 ///////////////////////////////////////////////
 //More information about the battery
 //////////////////////////////////////////////
-uint32_t signpost_energy_get_battery_capacity (void) {
+uint32_t signpost_energy_get_battery_capacity_uwh (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -149,7 +149,7 @@ uint32_t signpost_energy_get_battery_capacity (void) {
     return max17205_get_capacity_uAh(full)*BATTERY_VOLTAGE_NOM;
 }
 
-uint32_t signpost_energy_get_battery_percent (void) {
+uint32_t signpost_energy_get_battery_percent_mp (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -157,7 +157,7 @@ uint32_t signpost_energy_get_battery_percent (void) {
     return max17205_get_percentage_mP(percent);
 }
 
-uint32_t signpost_energy_get_battery_energy (void) {
+uint32_t signpost_energy_get_battery_energy_uwh (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
@@ -169,7 +169,7 @@ uint32_t signpost_energy_get_battery_energy (void) {
 /////////////////////////////////////////////////////////////////////
 // These functions give you voltages for battery and solar
 // ///////////////////////////////////////////////////////////////////
-uint16_t signpost_energy_get_battery_voltage (void) {
+uint16_t signpost_energy_get_battery_voltage_mv (void) {
     uint16_t voltage;
     int16_t current;
     max17205_read_voltage_current_sync(&voltage,&current);
@@ -178,7 +178,7 @@ uint16_t signpost_energy_get_battery_voltage (void) {
 }
 
 
-uint16_t signpost_energy_get_solar_voltage (void) {
+uint16_t signpost_energy_get_solar_voltage_mv (void) {
     //selector #3 slot 1
     i2c_selector_select_channels_sync(0x100);
 

@@ -169,11 +169,11 @@ static void get_energy (void) {
     uint32_t* last_reading = &energy_last_readings[i];
 
     if (i == 3) {
-      energy = signpost_energy_get_controller_energy();
+      energy = signpost_energy_get_controller_energy_uwh();
     } else if (i == 4) {
-      energy = signpost_energy_get_linux_energy();
+      energy = signpost_energy_get_linux_energy_uwh();
     } else {
-      energy = signpost_energy_get_module_energy(i);
+      energy = signpost_energy_get_module_energy_uwh(i);
     }
 
     uint32_t diff = energy - *last_reading;
@@ -240,13 +240,13 @@ static void get_energy (void) {
 }
 
 static void get_batsol (void) {
-  int battery_voltage = signpost_energy_get_battery_voltage();
-  int battery_current = signpost_energy_get_battery_current();
-  uint8_t battery_percent = (uint8_t)(signpost_energy_get_battery_percent()/1000.0);
-  uint16_t battery_full = (uint16_t)(signpost_energy_get_battery_capacity()/1000.0);
-  uint16_t battery_energy = (uint16_t)(signpost_energy_get_battery_energy()/1000.0);
-  int solar_voltage = signpost_energy_get_solar_voltage();
-  int solar_current = signpost_energy_get_solar_current();
+  int battery_voltage = signpost_energy_get_battery_voltage_mv();
+  int battery_current = signpost_energy_get_battery_current_ua();
+  uint8_t battery_percent = (uint8_t)(signpost_energy_get_battery_percent_mp()/1000.0);
+  uint16_t battery_full = (uint16_t)(signpost_energy_get_battery_capacity_uwh()/1000.0);
+  uint16_t battery_energy = (uint16_t)(signpost_energy_get_battery_energy_uwh()/1000.0);
+  int solar_voltage = signpost_energy_get_solar_voltage_mv();
+  int solar_current = signpost_energy_get_solar_current_ua();
   printf("\n\nBattery and Solar Panel Data\n");
   printf("  Battery Voltage (mV): %d\tcurrent (uA): %d\n",battery_voltage,battery_current);
   printf("  Solar Voltage (mV): %d\tcurrent (uA): %d\n",solar_voltage,solar_current);

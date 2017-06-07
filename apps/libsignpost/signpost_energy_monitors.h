@@ -9,8 +9,8 @@ extern "C" {
 #define POWER_MODULE_PRESCALER_LTC2943 64
 
 //in Mohm
-#define POWER_MODULE_RSENSE 17
-#define POWER_MODULE_SOLAR_RSENSE 50
+#define POWER_MODULE_RSENSE_MOHM 17
+#define POWER_MODULE_SOLAR_RSENSE_MOHM 50
 
 //voltages for the energy numbers
 #define MODULE_VOLTAGE 5
@@ -33,29 +33,29 @@ void signpost_energy_reset_module_energy (int module_num);
 //the coulomb counters and multiplying by the voltage
 //Note that energy cannot flow from modules back into the battery
 //So we use unsigned energy types here
-uint32_t signpost_energy_get_controller_energy (void);
-uint32_t signpost_energy_get_linux_energy (void);
-uint32_t signpost_energy_get_module_energy (int module_num);
+uint32_t signpost_energy_get_controller_energy_uwh (void);
+uint32_t signpost_energy_get_linux_energy_uwh (void);
+uint32_t signpost_energy_get_module_energy_uwh (int module_num);
 
 //these function return the instantaneous current in uA
 //Battery current can be positive or negative
-int32_t signpost_energy_get_battery_current (void);
-uint32_t signpost_energy_get_solar_current (void);
-uint32_t signpost_energy_get_controller_current (void);
-uint32_t signpost_energy_get_linux_current (void);
-uint32_t signpost_energy_get_module_current (int module_num);
+int32_t signpost_energy_get_battery_current_ua (void);
+uint32_t signpost_energy_get_solar_current_ua (void);
+uint32_t signpost_energy_get_controller_current_ua (void);
+uint32_t signpost_energy_get_linux_current_ua (void);
+uint32_t signpost_energy_get_module_current_ua (int module_num);
 
 //uWh
-uint32_t signpost_energy_get_battery_capacity (void);
-//whole number percent
-uint32_t signpost_energy_get_battery_percent (void);
+uint32_t signpost_energy_get_battery_capacity_uwh (void);
+//returns millipercent
+uint32_t signpost_energy_get_battery_percent_mp (void);
 //uWh
-uint32_t signpost_energy_get_battery_energy (void);
+uint32_t signpost_energy_get_battery_energy_uwh (void);
 
 //these functions return instantaneous current for Voltage
 //These are returned in mV
-uint16_t signpost_energy_get_battery_voltage (void);
-uint16_t signpost_energy_get_solar_voltage (void);
+uint16_t signpost_energy_get_battery_voltage_mv (void);
+uint16_t signpost_energy_get_solar_voltage_mv (void);
 
 #ifdef __cplusplus
 }

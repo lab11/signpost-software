@@ -146,11 +146,11 @@ static void get_energy (void) {
     uint32_t* last_reading = &energy_last_readings[i];
 
     if (i == 3) {
-      energy = signpost_energy_get_controller_energy();
+      energy = signpost_energy_get_controller_energy_uwh();
     } else if (i == 4) {
-      energy = signpost_energy_get_linux_energy();
+      energy = signpost_energy_get_linux_energy_uwh();
     } else {
-      energy = signpost_energy_get_module_energy(i);
+      energy = signpost_energy_get_module_energy_uwh(i);
     }
 
     uint32_t diff = energy - *last_reading;
