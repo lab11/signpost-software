@@ -1,15 +1,14 @@
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include "tock.h"
-#include "timer.h"
 #include "sara_u260.h"
-
+#include "timer.h"
+#include "tock.h"
 
 int main (void) {
     printf("Starting Cell Info Test\n");
