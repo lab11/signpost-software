@@ -1,7 +1,7 @@
 #![crate_name = "storage_master"]
 #![no_std]
 #![no_main]
-#![feature(asm,compiler_builtins_lib,const_fn,lang_items)]
+#![feature(asm,compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
 
 extern crate capsules;
 extern crate compiler_builtins;
@@ -216,8 +216,7 @@ pub unsafe fn reset_handler() {
         Console::new(&usart::USART3,
                      115200,
                      &mut console::WRITE_BUF,
-                     kernel::Container::create()),
-        224/8);
+                     kernel::Container::create()));
     hil::uart::UART::set_client(&usart::USART3, console);
 
     //
@@ -227,25 +226,21 @@ pub unsafe fn reset_handler() {
 
     let mux_alarm = static_init!(
         MuxAlarm<'static, sam4l::ast::Ast>,
-        MuxAlarm::new(&sam4l::ast::AST),
-        16);
+        MuxAlarm::new(&sam4l::ast::AST));
     ast.configure(mux_alarm);
 
     let virtual_alarm1 = static_init!(
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
-        VirtualMuxAlarm::new(mux_alarm),
-        24);
+        VirtualMuxAlarm::new(mux_alarm));
     let timer = static_init!(
         TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        TimerDriver::new(virtual_alarm1, kernel::Container::create()),
-        12);
+        TimerDriver::new(virtual_alarm1, kernel::Container::create()));
     virtual_alarm1.set_client(timer);
 
     // Setup RNG
     let rng = static_init!(
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
-            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()),
-            96/8);
+            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
     sam4l::trng::TRNG.set_client(rng);
 
     //
@@ -256,8 +251,7 @@ pub unsafe fn reset_handler() {
         capsules::i2c_master_slave_driver::I2CMasterSlaveDriver::new(&sam4l::i2c::I2C0,
             &mut capsules::i2c_master_slave_driver::BUFFER1,
             &mut capsules::i2c_master_slave_driver::BUFFER2,
-            &mut capsules::i2c_master_slave_driver::BUFFER3),
-        864/8);
+            &mut capsules::i2c_master_slave_driver::BUFFER3));
     sam4l::i2c::I2C0.set_master_client(i2c_modules);
     sam4l::i2c::I2C0.set_slave_client(i2c_modules);
 
@@ -270,30 +264,25 @@ pub unsafe fn reset_handler() {
     //
     let mux_spi = static_init!(
         capsules::virtual_spi::MuxSpiMaster<'static, usart::USART>,
-        capsules::virtual_spi::MuxSpiMaster::new(&sam4l::usart::USART1),
-        96/8);
+        capsules::virtual_spi::MuxSpiMaster::new(&sam4l::usart::USART1));
     hil::spi::SpiMaster::set_client(&sam4l::usart::USART1, mux_spi);
     hil::spi::SpiMaster::init(&sam4l::usart::USART1);
     let sdcard_spi = static_init!(
         capsules::virtual_spi::VirtualSpiMasterDevice<'static, usart::USART>,
-        capsules::virtual_spi::VirtualSpiMasterDevice::new(mux_spi, Some(&sam4l::gpio::PA[13])),
-        384/8);
+        capsules::virtual_spi::VirtualSpiMasterDevice::new(mux_spi, Some(&sam4l::gpio::PA[13])));
     let sdcard_virtual_alarm = static_init!(
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
-        VirtualMuxAlarm::new(mux_alarm),
-        192/8);
+        VirtualMuxAlarm::new(mux_alarm));
     let sdcard = static_init!(
         capsules::sdcard::SDCard<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
         capsules::sdcard::SDCard::new(sdcard_spi, sdcard_virtual_alarm,
-            Some(&sam4l::gpio::PA[17]), &mut capsules::sdcard::TXBUFFER, &mut capsules::sdcard::RXBUFFER),
-        672/8);
+            Some(&sam4l::gpio::PA[17]), &mut capsules::sdcard::TXBUFFER, &mut capsules::sdcard::RXBUFFER));
     sdcard_spi.set_client(sdcard);
     sdcard_virtual_alarm.set_client(sdcard);
     sam4l::gpio::PA[17].set_client(sdcard);
     let sdcard_driver = static_init!(
         capsules::sdcard::SDCardDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        capsules::sdcard::SDCardDriver::new(sdcard, &mut capsules::sdcard::KERNEL_BUFFER),
-        480/8);
+        capsules::sdcard::SDCardDriver::new(sdcard, &mut capsules::sdcard::KERNEL_BUFFER));
     sdcard.set_client(sdcard_driver);
 
     //
@@ -307,14 +296,12 @@ pub unsafe fn reset_handler() {
         [&sam4l::gpio::PB[14], // Fake MOD_IN for init
          &sam4l::gpio::PB[15], // Fake MOD_OUT for init
          &sam4l::gpio::PA[05], // EDISON_PWRBTN
-         &sam4l::gpio::PA[06],  // LINUX_ENABLE_POWER
-         &sam4l::gpio::PA[21]], // SD_ENABLE
-        5 * 4
+         &sam4l::gpio::PA[06], // LINUX_ENABLE_POWER
+         &sam4l::gpio::PA[21]] // SD_ENABLE
     );
     let gpio = static_init!(
         capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
-        capsules::gpio::GPIO::new(gpio_pins),
-        224/8);
+        capsules::gpio::GPIO::new(gpio_pins));
     for pin in gpio_pins.iter() {
         pin.set_client(gpio);
     }
@@ -327,12 +314,10 @@ pub unsafe fn reset_handler() {
         [(&sam4l::gpio::PB[04], capsules::led::ActivationMode::ActiveHigh), // STORAGE_DEBUG_GPIO1
          (&sam4l::gpio::PB[05], capsules::led::ActivationMode::ActiveHigh), // STORAGE_DEBUG_GPIO2
          (&sam4l::gpio::PA[07], capsules::led::ActivationMode::ActiveLow),  // STORAGE_LED
-        ],
-        192/8);
+        ]);
     let led = static_init!(
         capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
-        capsules::led::LED::new(led_pins),
-        64/8);
+        capsules::led::LED::new(led_pins));
 
     // configure initial state for debug LEDs
     sam4l::gpio::PB[04].clear(); // red LED off
@@ -356,8 +341,7 @@ pub unsafe fn reset_handler() {
     // Attach the kernel debug interface to this console
     let debug_console = static_init!(
         capsules::console::App,
-        capsules::console::App::default(),
-        480/8);
+        capsules::console::App::default());
     kernel::debug::assign_console_driver(Some(signpost_storage_master.console), debug_console);
 
     let mut chip = sam4l::chip::Sam4l::new();
