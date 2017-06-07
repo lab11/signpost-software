@@ -981,8 +981,8 @@ int signpost_energy_query_async(
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
 
-    //This properly catches the error if the send fails
-    //and allows for subsequent calls to query async to succeed
+    // This properly catches the error if the send fails
+    // and allows for subsequent calls to query async to succeed
     if (rc < 0) {
         //abort the transaction
         energy_cb_data = NULL;
