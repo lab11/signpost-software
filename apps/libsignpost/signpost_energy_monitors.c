@@ -38,13 +38,11 @@ void signpost_energy_init_ltc2943 (void) {
 
     // set all channels open for Alert Response
     i2c_selector_select_channels_sync(0x1FF);
-
-    //max17205_configure_pack_sync();
 }
 
 ////////////////////////////////////////////////
 // Static helper functions
-// ////////////////////////////////////////////
+// /////////////////////////////////////////////
 static int get_ltc_energy_uah (int selector_mask, int rsense) {
 	// Select correct LTC294x
 	i2c_selector_select_channels_sync(selector_mask);
@@ -68,7 +66,7 @@ static void reset_ltc_energy (int selector_mask) {
 
 ///////////////////////////////////////////////////
 // Energy Reset Functions
-// ////////////////////////////////////////////////
+///////////////////////////////////////////////////
 void signpost_energy_reset_all_energy (void) {
     signpost_energy_reset_controller_energy();
     signpost_energy_reset_solar_energy();
@@ -111,7 +109,7 @@ uint32_t signpost_energy_get_module_energy_uwh (int module_num) {
 
 ////////////////////////////////////////////////////
 // Raw current read functions
-// /////////////////////////////////////////////////////
+////////////////////////////////////////////////////
 
 uint32_t signpost_energy_get_controller_current_ua (void) {
     return get_ltc_current_ua(0x1, POWER_MODULE_RSENSE_MOHM);
@@ -134,13 +132,13 @@ int32_t signpost_energy_get_battery_current_ua (void) {
     int16_t current;
     max17205_read_voltage_current_sync(&voltage,&current);
     float c = max17205_get_current_uA(current);
-    return (int)c;
+    return (int32_t)c;
 }
 
 
 ///////////////////////////////////////////////
-//More information about the battery
-//////////////////////////////////////////////
+// More information about the battery
+///////////////////////////////////////////////
 uint32_t signpost_energy_get_battery_capacity_uwh (void) {
     uint16_t percent;
     uint16_t charge;
@@ -166,9 +164,9 @@ uint32_t signpost_energy_get_battery_energy_uwh (void) {
 }
 
 
-/////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
 // These functions give you voltages for battery and solar
-// ///////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
 uint16_t signpost_energy_get_battery_voltage_mv (void) {
     uint16_t voltage;
     int16_t current;
