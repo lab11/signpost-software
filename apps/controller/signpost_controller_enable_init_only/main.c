@@ -13,7 +13,7 @@
 #include "controller.h"
 #include "gpio_async.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
+#include "signpost_energy_monitors.h"
 
 int mod_isolated_out = -1;
 int mod_isolated_in = -1;

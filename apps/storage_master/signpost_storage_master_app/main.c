@@ -14,7 +14,6 @@
 
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
 #include "signpost_storage.h"
 #include "storage_master.h"
 
