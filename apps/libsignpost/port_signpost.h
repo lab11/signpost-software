@@ -43,7 +43,7 @@ extern mbedtls_ctr_drbg_context ctr_drbg_context;
 //These are the callback definitions
 
 //This is the typedef of the callback you should call when you get an i2c slave write
-//You can either return the (positive) length or an error code
+//You can either pass in the (positive) length or an error code
 typedef void (*port_signpost_callback)(int len_or_rc);
 
 //This function is called upon signpost initialization
