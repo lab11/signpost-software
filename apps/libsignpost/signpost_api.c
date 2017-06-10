@@ -8,7 +8,8 @@
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "port_signpost.h"
-#include "tock.h"
+
+#include "error_codes.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -575,7 +576,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
     }
 
     // wait for response
-    yield_for(&storage_ready);
+    port_signpost_wait_for(&storage_ready);
     return storage_result;
 }
 
@@ -616,7 +617,7 @@ int signpost_processing_init(const char* path) {
     if (rc < 0) return rc;
 
     //wait for a response
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     if(incoming_message_length >= 5) {
         //this byte should be the return code
@@ -649,7 +650,7 @@ int signpost_processing_oneway_send(uint8_t* buf, uint16_t len) {
     processing_ready = false;
     //wait for a response
     //the response is just an ack that it got there
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     return incoming_message[0];
 }
@@ -680,7 +681,7 @@ int signpost_processing_twoway_send(uint8_t* buf, uint16_t len) {
 
 int signpost_processing_twoway_receive(uint8_t* buf, uint16_t* len) {
 
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     //get the header and confirm it matches
     uint16_t size;
@@ -822,7 +823,7 @@ int signpost_networking_post(const char* url, http_request request, http_respons
     if (rc < 0) return rc;
 
     //wait for a response
-    yield_for(&networking_ready);
+    port_signpost_wait_for(&networking_ready);
 
     //parse the response
     //deserialize
@@ -936,7 +937,7 @@ int signpost_energy_query(signpost_energy_information_t* energy) {
         }
     }
 
-    yield_for(&energy_query_ready);
+    port_signpost_wait_for(&energy_query_ready);
 
     return energy_query_result;
 }
@@ -1025,7 +1026,7 @@ static int signpost_timelocation_sync(signpost_timelocation_message_type_e messa
     if (rc < 0) return rc;
 
     // Wait for a response message to come back
-    yield_for(&timelocation_query_answered);
+    port_signpost_wait_for(&timelocation_query_answered);
 
     // Check the response message type
     if (incoming_message_type != message_type) {
@@ -1115,7 +1116,7 @@ int signpost_watchdog_start(void) {
 
     incoming_active_callback = signpost_watchdog_cb;
 
-    yield_for(&watchdog_reply);
+    port_signpost_wait_for(&watchdog_reply);
 
     return 1;
 }
@@ -1131,7 +1132,7 @@ int signpost_watchdog_tickle(void) {
 
     incoming_active_callback = signpost_watchdog_cb;
 
-    yield_for(&watchdog_reply);
+    port_signpost_wait_for(&watchdog_reply);
 
     return 1;
 }
