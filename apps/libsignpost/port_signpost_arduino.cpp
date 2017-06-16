@@ -1,13 +1,14 @@
 #include "Arduino.h"
-#include <SignWire.h>
+#include <Wire.h>
 #include "port_signpost.h"
 
 //TODO: Verify/test multi-master support
 
 //TODO: choose mod in, mod out, and debug led pins for arduino
-#define ARDUINO_MOD_OUT
-#define ARDUINO_MOD_IN
-#define DEBUG_LED
+//Current defined values are for the Arduino Micro
+#define ARDUINO_MOD_OUT 5
+#define ARDUINO_MOD_IN 6
+#define DEBUG_LED LED_BUILTIN
 #define SIGNPOST_I2C_SPEED 400000
 
 //TODO: Add error handling and error codes
@@ -16,7 +17,7 @@ static void slave_listen_callback_helper(int num_bytes);
 static void slave_read_callback_helper();
 
 //TwoWire object used solely for Signpost i2c
-TwoWire SignWire();
+TwoWire SignWire = TwoWire();
 
 uint8_t g_arduino_i2c_address;
 port_signpost_callback g_mod_in_callback = NULL;
@@ -30,7 +31,7 @@ uint8_t* g_slave_transmit_buf = NULL;
 size_t g_slave_transmit_buf_len = 0;
 
 int port_signpost_init(uint8_t i2c_address) {
-	SignWire.begin();
+	SignWire.begin(i2c_address);
 	SignWire.setClock(SIGNPOST_I2C_SPEED);
 	g_arduino_i2c_address = i2c_address;
 	pinMode(ARDUINO_MOD_IN, INPUT_PULLUP);
@@ -41,17 +42,17 @@ int port_signpost_init(uint8_t i2c_address) {
 }
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
-	SignWire.begin();
-	SignWire.setClock(SIGNPOST_I2C_SPEED);
+	// SignWire.begin();
+	// SignWire.setClock(SIGNPOST_I2C_SPEED);
 	SignWire.beginTransmission(addr);
 	int num_written = SignWire.write(buf, len);
-	SignWire.endTransmission(stop);
+	SignWire.endTransmission(1);
 	return num_written;
 }
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
-	SignWire.begin(g_arduino_i2c_address);
-	SignWire.setClock(SIGNPOST_I2C_SPEED);
+	// SignWire.begin(g_arduino_i2c_address);
+	// SignWire.setClock(SIGNPOST_I2C_SPEED);
 	g_slave_receive_buf = buf;
 	g_slave_receive_buf_max_len = max_len;
 	g_slave_receive_buf_len = 0;
@@ -59,8 +60,8 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len) {
-	SignWire.begin(g_arduino_i2c_address);
-	SignWire.setClock(SIGNPOST_I2C_SPEED);
+	// SignWire.begin(g_arduino_i2c_address);
+	// SignWire.setClock(SIGNPOST_I2C_SPEED);
 	//Set global i2c transmit buffer to input buffer
 	g_slave_transmit_buf = buf;
 	g_slave_transmit_buf_len = len;
@@ -112,32 +113,44 @@ int port_signpost_debug_led_off() {
 	return 0;
 }
 
+//Uses pseudo-random number generation 
+//TODO: Connect hardware rng to arduino and poll that device for random numbers
+int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
+	randomSeed(analogRead(3));
+	uint32_t i = 0;
+	for (; i < num && i < len; ++i) {
+		buf[i] = random(0, 256) & 0xFF;
+	}
+	return i;
+}
+
 static void mod_in_callback_helper() {
 	//If no callback is assigned, return
-	if (g_mod_in_callback == nullptr) {
+	if (g_mod_in_callback == NULL) {
 		return;
 	}
-	*(g_mod_in_callback) (0);
+	(*(g_mod_in_callback)) (0);
 }
 //TODO: Add condition for overflow of g_slave_receive_buf
 static void slave_listen_callback_helper(int num_bytes) {
 	//If no callback is assigned, return
-	if (g_slave_listen_callback == nullptr) {
+	if (g_slave_listen_callback == NULL) {
 		return;
 	}
-	if (g_slave_receive_buf == nullptr) {
+	//If no buffer is assigned, return
+	if (g_slave_receive_buf == NULL) {
 		return;
 	}
 	//Transfer data from read buffer in SignWire object to g_slave_receive_buf, then call custom callback
-	for (uint i = 0; i < num_bytes && i < g_slave_receive_buf_max_len; ++i, ++g_slave_receive_buf_len) {
+	for (uint32_t i = 0; i < num_bytes && i < g_slave_receive_buf_max_len; ++i, ++g_slave_receive_buf_len) {
 		g_slave_receive_buf[g_slave_receive_buf_len] = SignWire.read();
 	}
-	*(g_slave_listen_callback) (num_bytes);
+	(*(g_slave_listen_callback)) (num_bytes);
 }
 
 static void slave_read_callback_helper() {
 	//If no buffer is assigned, return
-	if (g_slave_transmit_buf == nullptr) {
+	if (g_slave_transmit_buf == NULL) {
 		return;
 	}
 	SignWire.write(g_slave_transmit_buf, g_slave_transmit_buf_len);
