@@ -2,7 +2,8 @@
 
 #include "mbedtls/entropy.h"
 
-#include "rng.h"
+//#include "rng.h"
+#include "port_signpost.h"
 #include "signpost_entropy.h"
 #include "port_signpost.h"
 
@@ -11,7 +12,7 @@ static mbedtls_entropy_context entropy_context;
 static uint8_t drbg_data[32];
 
 static int rng_wrapper(void* data __attribute__ ((unused)), uint8_t* out, size_t len, size_t* olen) {
-    int num = rng_sync(out, len, len);
+    int num = port_rng_sync(out, len, len);
     if (num < 0) return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
     *olen = num;
     return 0;
@@ -20,7 +21,7 @@ static int rng_wrapper(void* data __attribute__ ((unused)), uint8_t* out, size_t
 int signpost_entropy_init (void) {
     int ret;
     // random start seed
-    ret = rng_sync(drbg_data, 32, 32);
+    ret = port_rng_sync(drbg_data, 32, 32);
     if (ret < 0) return ret;
 
     // init entropy and prng
