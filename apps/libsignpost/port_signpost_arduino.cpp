@@ -5,9 +5,9 @@
 //TODO: Verify/test multi-master support
 
 //TODO: choose mod in, mod out, and debug led pins for arduino
-//Current defined values are for the Arduino Micro
+//Current defined values are for the Arduino MKRZero
 #define ARDUINO_MOD_OUT 5
-#define ARDUINO_MOD_IN 6
+#define ARDUINO_MOD_IN 4
 #define DEBUG_LED LED_BUILTIN
 #define SIGNPOST_I2C_SPEED 400000
 
@@ -17,7 +17,7 @@ static void slave_listen_callback_helper(int num_bytes);
 static void slave_read_callback_helper();
 
 //TwoWire object used solely for Signpost i2c
-TwoWire SignWire = TwoWire();
+//TwoWire Wire = TwoWire();
 
 uint8_t g_arduino_i2c_address;
 port_signpost_callback g_mod_in_callback = NULL;
@@ -31,28 +31,28 @@ uint8_t* g_slave_transmit_buf = NULL;
 size_t g_slave_transmit_buf_len = 0;
 
 int port_signpost_init(uint8_t i2c_address) {
-	SignWire.begin(i2c_address);
-	SignWire.setClock(SIGNPOST_I2C_SPEED);
+	//Wire.begin(i2c_address);
+	//Wire.setClock(SIGNPOST_I2C_SPEED);
 	g_arduino_i2c_address = i2c_address;
 	pinMode(ARDUINO_MOD_IN, INPUT_PULLUP);
 	pinMode(ARDUINO_MOD_OUT, OUTPUT);
 	pinMode(DEBUG_LED, OUTPUT);
-	SignWire.onReceive(slave_listen_callback_helper);
+	Wire.onReceive(slave_listen_callback_helper);
 	return 0;
 }
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
-	// SignWire.begin();
-	// SignWire.setClock(SIGNPOST_I2C_SPEED);
-	SignWire.beginTransmission(addr);
-	int num_written = SignWire.write(buf, len);
-	SignWire.endTransmission(1);
+	Wire.begin();
+	// Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.beginTransmission(addr);
+	int num_written = Wire.write(buf, len);
+	Wire.endTransmission();
 	return num_written;
 }
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
-	// SignWire.begin(g_arduino_i2c_address);
-	// SignWire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.begin(g_arduino_i2c_address);
+	// Wire.setClock(SIGNPOST_I2C_SPEED);
 	g_slave_receive_buf = buf;
 	g_slave_receive_buf_max_len = max_len;
 	g_slave_receive_buf_len = 0;
@@ -60,8 +60,8 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len) {
-	// SignWire.begin(g_arduino_i2c_address);
-	// SignWire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.begin(g_arduino_i2c_address);
+	// Wire.setClock(SIGNPOST_I2C_SPEED);
 	//Set global i2c transmit buffer to input buffer
 	g_slave_transmit_buf = buf;
 	g_slave_transmit_buf_len = len;
@@ -141,9 +141,9 @@ static void slave_listen_callback_helper(int num_bytes) {
 	if (g_slave_receive_buf == NULL) {
 		return;
 	}
-	//Transfer data from read buffer in SignWire object to g_slave_receive_buf, then call custom callback
+	//Transfer data from read buffer in Wire object to g_slave_receive_buf, then call custom callback
 	for (uint32_t i = 0; i < num_bytes && i < g_slave_receive_buf_max_len; ++i, ++g_slave_receive_buf_len) {
-		g_slave_receive_buf[g_slave_receive_buf_len] = SignWire.read();
+		g_slave_receive_buf[g_slave_receive_buf_len] = Wire.read();
 	}
 	(*(g_slave_listen_callback)) (num_bytes);
 }
@@ -153,5 +153,5 @@ static void slave_read_callback_helper() {
 	if (g_slave_transmit_buf == NULL) {
 		return;
 	}
-	SignWire.write(g_slave_transmit_buf, g_slave_transmit_buf_len);
+	Wire.write(g_slave_transmit_buf, g_slave_transmit_buf_len);
 }
