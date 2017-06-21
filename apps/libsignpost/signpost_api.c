@@ -14,6 +14,8 @@
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
 
+extern HardwareSerial Serial;
+
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
 static struct module_struct {
@@ -595,7 +597,7 @@ static void signpost_processing_callback(__attribute__((unused)) int result){
 }
 
 int signpost_processing_init(const char* path) {
-    erpc_client_init(NULL);
+    //erpc_client_init(NULL);
 
     //form the sending message
     uint16_t size = strlen(path);
