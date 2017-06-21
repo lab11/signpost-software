@@ -2,7 +2,7 @@
 //#include <stdio.h>
 #include <string.h>
 #include "CRC16.h"
-#include "erpc_client_setup.h"
+
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
@@ -12,6 +12,8 @@
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
+
+extern HardwareSerial Serial;
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
 

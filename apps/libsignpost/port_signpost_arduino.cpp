@@ -8,6 +8,7 @@
 //TODO: Verify/test multi-master support
 
 //TODO: choose mod in, mod out, and debug led pins for arduino
+
 //Current values are defined for the Arduino MKRZero
 #define ARDUINO_MOD_IN 			4
 #define ARDUINO_MOD_OUT 		5
@@ -24,7 +25,6 @@ static void slave_listen_callback_helper(int num_bytes);
 static void slave_read_callback_helper();
 
 //TODO: Implement separate i2c bus solely for use with signpost.
-
 
 static char g_port_printf_buf[_PRINTF_BUFFER_LENGTH_];
 
