@@ -45,10 +45,12 @@ static void sample_sensors (void) {
   // read data from sensors and save locally
   sample_sensors_successful = true;
 
+  printf("Getting pressure\n");
   //get pressure
   int pressure = lps25hb_get_pressure_sync();
 
   // get light
+  printf("Getting light\n");
   int light = 0;
   int err_code = isl29035_read_light_intensity();
   if (err_code < TOCK_SUCCESS) {
@@ -142,26 +144,30 @@ int main (void) {
   message_buf[1] = 0x00;
   // set up watchdog
   // Resets after 30 seconds without a valid response
-  app_watchdog_set_kernel_timeout(60000);
+  app_watchdog_set_kernel_timeout(10000);
   app_watchdog_start();
   printf(" * Watchdog started\n");
 
   printf(" * Initialization complete\n\n");
 
-  // perform main application
-  while (true) {
-    // sample from onboard sensors
-    sample_sensors();
+  // sample from onboard sensors
+  sample_sensors();
 
-    // send HTTP POST over Signpost API
-    post_to_radio();
+  printf("Done sampling sensors\n");
+  // send HTTP POST over Signpost API
+    do {
+        post_to_radio();
+        if(post_to_radio_successful == false) {
+            delay_ms(1000);
+        }
 
-    // check the watchdog
-    tickle_watchdog();
-    printf("\n");
+    } while(post_to_radio_successful == false);
 
-    // sleep for a bit
-    delay_ms(10000);
+  //tell the controlelr to duty cycle for 60s
+  printf("requesting duty cycle\n");
+  while(true) {
+    signpost_energy_duty_cycle(600000);
+    delay_ms(1000);
   }
 }
 
