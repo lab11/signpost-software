@@ -62,6 +62,10 @@ uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
 uint8_t status_send_buf[20] = {0};
 
+//these structures for reporting energy to the controller
+signpost_energy_report_t energy_report;
+
+
 static void increment_queue_pointer(uint8_t* p) {
     if(*p == (QUEUE_SIZE -1)) {
         *p = 0;
@@ -91,7 +95,7 @@ static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
     if(status == DEVMGMT_STATUS_OK) {
         lora_packets_sent++;
     } else {
-        putstr("Lora error, resetting...");
+        //putstr("Lora error, resetting...");
         //app_watchdog_reset_app();
     }
 }
@@ -116,7 +120,14 @@ static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
 }*/
 
 static void count_module_packet(uint8_t module_address) {
+
+    if(module_address == 0x0) {
+        //this was an error
+        return;
+    }
+
     for(uint8_t i = 0; i < NUMBER_OF_MODULES; i++) {
+
         if(module_num_map[i] == 0) {
             module_num_map[i] = module_address;
             module_packet_count[i]++;
@@ -173,7 +184,7 @@ void ble_address_set(void) {
 
 void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //this has to be here too
-    putstr("ble error, resetting...");
+    //putstr("ble error, resetting...");
     //app_watchdog_reset_app();
 }
 
@@ -189,6 +200,7 @@ void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
     //and maybe this
 }
 
+static uint8_t sn = 0;
 static void timer_callback (
     int callback_type __attribute__ ((unused)),
     int length __attribute__ ((unused)),
@@ -202,7 +214,7 @@ static void timer_callback (
 
         if(lora_last_packets_sent == lora_packets_sent) {
             //error
-            putstr("lora error! Reseting..\n");
+            //putstr("lora error! Reseting..\n");
             //app_watchdog_reset_app();
         } else {
             lora_last_packets_sent = lora_packets_sent;
@@ -210,6 +222,8 @@ static void timer_callback (
 
         //count the packet
         count_module_packet(data_queue[queue_head][0]);
+
+        data_queue[queue_head][2] = sn;
 
         //send the packet
         memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
@@ -222,8 +236,10 @@ static void timer_callback (
         //parse the HCI layer error codes
         if(status != 0) {
             //error
-            putstr("lora error! Resetting...\n");
+            //putstr("lora error! Resetting...\n");
             //app_watchdog_reset_app();
+        } else {
+            sn++;
         }
         increment_queue_pointer(&queue_head);
     }
@@ -238,22 +254,44 @@ static void timer_callback (
         status_send_buf[2] = number_of_modules;
 
         //copy the modules and their send numbers into the buffer
+        //at the same time total up the packets sent
         uint8_t i = 0;
+        uint16_t packets_total = 0;
         for(; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
                 status_send_buf[3+ i*2] = module_num_map[i];
+                energy_report.reports[i].module_address = module_num_map[i];
                 status_send_buf[3+ i*2 + 1] = module_packet_count[i];
+                packets_total += module_packet_count[i];
             } else {
                 break;
             }
         }
 
+        //now figure out the percentages for each module
+        for(i = 0; i < NUMBER_OF_MODULES; i++){
+            if(module_num_map[i] != 0) {
+                energy_report.reports[i].module_percent =
+                        (uint8_t)((module_packet_count[i]/(float)packets_total)*100);
+            } else {
+                break;
+            }
+        }
+
+        //now pack it into an energy report structure
+        energy_report.num_reports = number_of_modules;
+
+        //send it to the controller
+        signpost_energy_report(&energy_report);
+
+        //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
             status_send_buf[3+i*2] = queue_tail-queue_head;
         } else {
             status_send_buf[3+i*2] = QUEUE_SIZE-(queue_head-queue_tail);
         }
 
+        //put it in the send buffer
         add_buffer_to_queue(0x22, status_send_buf, BUFFER_SIZE);
 
         //reset send_counter
