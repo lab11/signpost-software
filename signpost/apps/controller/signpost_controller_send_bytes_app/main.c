@@ -17,11 +17,13 @@
 #include "gps.h"
 #include "minmea.h"
 #include "signpost_api.h"
+#include "signpost_energy_policy.h"
 #include "signpost_energy_monitors.h"
 
 #include "bonus_timer.h"
 
-static void get_energy (void);
+static void get_energy_remaining (void);
+static void get_energy_average (void);
 static void get_batsol (void);
 static void gps_callback (gps_data_t* gps_data);
 
@@ -51,15 +53,76 @@ uint8_t module_addresses[8] = {0};
 
 uint8_t gps_buf[20];
 uint8_t energy_buf[20];
+uint8_t energy_av_buf[20];
 uint8_t batsol_buf[20];
+int32_t module_duty_cycle[8] = {-1};
 uint8_t num_inited = 0;
+uint8_t module_disabled[8] = {0};
+
+#define USE_PRESETS
+
+static void enable_all_enabled_i2c(void) {
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i == 3 || i == 4) continue;
+        if(module_disabled[i] == 0 && module_duty_cycle[i] == -1) {
+            controller_module_enable_i2c(i);
+        }
+    }
+}
+
+static void enable_all_enabled_power(void) {
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i == 3 || i == 4) continue;
+        if(module_disabled[i] == 0 && module_duty_cycle[i] == -1) {
+            controller_module_enable_power(i);
+        }
+    }
+}
+
+static void check_module_energy_remaining(void) {
+    //now after updating energy we should disable the modules that
+    //have used too much energy - also add them to a disabled list
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i==3 || i == 4 || i == 1) continue;
+
+        if(signpost_energy_policy_get_module_energy_remaining(i) < 0) {
+            module_disabled[i] = 1;
+            controller_module_disable_power(i);
+            controller_module_disable_i2c(i);
+        } else {
+            //turn them back on only if they had used too much power
+            //we don't want to turn on modules being duty cycled
+            if(module_disabled[i] == 1) {
+                module_disabled[i] = 0;
+                controller_module_enable_power(i);
+                controller_module_enable_i2c(i);
+            }
+        }
+    }
+}
+
+static void check_module_duty_cycle(void) {
+    for(uint8_t i = 0; i < 8; i++) {
+        if(module_duty_cycle[i] == 0) {
+            //turn them back on - only if they haven't used too much pwoer
+            if(module_disabled[i] == 0) {
+                controller_module_enable_power(i);
+            }
+
+            //set it back to -1
+            module_duty_cycle[i] = -1;
+        } else if(module_duty_cycle[i] > 0) {
+            module_duty_cycle[i]--;
+        }
+    }
+}
 
 static void check_module_initialization (void) {
     if (mod_isolated_out < 0) {
         for (size_t i = 0; i < NUM_MOD_IO; i++) {
             if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i]) {
 
-                printf("Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
+                printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
                 currently_initializing = 1;
                 // module requesting isolation
                 mod_isolated_out = MOD_OUTS[i];
@@ -83,18 +146,18 @@ static void check_module_initialization (void) {
         }
     } else {
         if (gpio_read(mod_isolated_out) == 1) {
-            printf("Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+            printf("ISOLATION: Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
             currently_initializing = 0;
             gpio_set(mod_isolated_in);
             mod_isolated_out = -1;
             mod_isolated_in  = -1;
-            controller_all_modules_enable_i2c();
+            enable_all_enabled_i2c();
             module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)] = 0;
         }
         // this module took too long to talk to controller
         // XXX need more to police bad modules (repeat offenders)
-        else if (isolated_count > 15) {
-            printf("Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+        else if (isolated_count > 5) {
+            printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
             currently_initializing = 0;
             gpio_set(mod_isolated_in);
             module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)]++;
@@ -107,7 +170,7 @@ static void check_module_initialization (void) {
             }
             mod_isolated_out = -1;
             mod_isolated_in  = -1;
-            controller_all_modules_enable_i2c();
+            enable_all_enabled_i2c();
         } else {
           isolated_count++;
         }
@@ -117,14 +180,8 @@ static void check_module_initialization (void) {
 
 typedef struct {
   uint32_t magic;
-  uint32_t energy_controller;
-  uint32_t energy_linux;
-  uint32_t energy_module0;
-  uint32_t energy_module1;
-  uint32_t energy_module2;
-  uint32_t energy_module5;
-  uint32_t energy_module6;
-  uint32_t energy_module7;
+  signpost_energy_remaining_t energy;
+  signpost_average_power_t power;
 } controller_fram_t;
 
 // Keep track of the last time we got data from the ltc chips
@@ -151,80 +208,102 @@ static void watchdog_tickler (int which) {
   }
 }
 
-static void print_energy_data (int module, int energy) {
-  if (module == 3) {
-    printf("  Controller energy: %10i uAh\n", energy);
-  } else if (module == 4) {
-    printf("  Linux energy:      %10i uAh\n", energy);
-  } else {
-    printf("  Module %i energy:   %10i uAh\n", module, energy);
+
+static void get_energy_average (void) {
+
+    fram.power.controller_average_power = signpost_energy_policy_get_controller_average_power();
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i == 3 || i == 4) continue;
+        fram.power.module_average_power[i] = signpost_energy_policy_get_module_average_power(i);
+    }
+
+  fm25cl_write_sync(0, sizeof(controller_fram_t));
+
+  int c_power = signpost_energy_policy_get_controller_average_power()/1000;
+  if(c_power <= 0) {
+      c_power = 0;
   }
+
+  energy_av_buf[8] = (((c_power) & 0xFF00) >> 8 );
+  energy_av_buf[9] = (((c_power) & 0xFF));
+  energy_av_buf[10] = 0;
+  energy_av_buf[11] = 0;
+
+  //send this data to the radio module
+  for(uint8_t i = 0; i < 8; i++) {
+      if(i==3 || i == 4) continue;
+
+      int mod_energy = signpost_energy_policy_get_module_average_power(i)/1000;
+
+      if(mod_energy <= 0) {
+          mod_energy = 0;
+      }
+
+      energy_av_buf[2+i*2] = (((mod_energy) & 0xFF00) >> 8);
+      energy_av_buf[2+i*2+1] = (((mod_energy) & 0xFF));
+  }
+
+  int rc;
+  if(!currently_initializing && num_inited > 0) {
+    rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_av_buf,18);
+    energy_av_buf[1]++;
+  } else {
+    rc = 0;
+  }
+
+
+  if(rc >= 0) {
+    // Tickle the watchdog because something good happened.
+  }
+
+  watchdog_tickler(2);
+
 }
 
-static void get_energy (void) {
-  printf("\n\nEnergy Data\n");
+static void get_energy_remaining (void) {
 
-  for (int i=0; i<8; i++) {
-    uint32_t energy;
-    uint32_t* last_reading = &energy_last_readings[i];
-
-    if (i == 3) {
-      energy = signpost_energy_get_controller_energy_uwh();
-    } else if (i == 4) {
-      energy = signpost_energy_get_linux_energy_uwh();
-    } else {
-      energy = signpost_energy_get_module_energy_uwh(i);
+    //read the energy remaining data
+    fram.energy.controller_energy_remaining = signpost_energy_policy_get_controller_energy_remaining();
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i == 3 || i == 4) continue;
+        fram.energy.module_energy_remaining[i] = signpost_energy_policy_get_module_energy_remaining(i);
+        if(fram.energy.module_energy_remaining[i] < 0) {
+            fram.energy.module_energy_remaining[i] = 0;
+        }
     }
-
-    uint32_t diff = energy - *last_reading;
-    *last_reading = energy;
-
-    switch (i) {
-      case 0: fram.energy_module0 += diff; break;
-      case 1: fram.energy_module1 += diff; break;
-      case 2: fram.energy_module2 += diff; break;
-      case 3: fram.energy_controller += diff; break;
-      case 4: fram.energy_linux += diff; break;
-      case 5: fram.energy_module5 += diff; break;
-      case 6: fram.energy_module6 += diff; break;
-      case 7: fram.energy_module7 += diff; break;
-    }
-
-    // Test print
-    switch (i) {
-      case 0: print_energy_data(i, fram.energy_module0); break;
-      case 1: print_energy_data(i, fram.energy_module1); break;
-      //case 2: print_energy_data(i, fram.energy_module2); break;
-      case 3: print_energy_data(i, fram.energy_controller); break;
-      case 4: print_energy_data(i, fram.energy_linux); break;
-      //case 5: print_energy_data(i, fram.energy_module5); break;
-      //case 6: print_energy_data(i, fram.energy_module6); break;
-      //case 7: print_energy_data(i, fram.energy_module7); break;
-    }
-  }
 
   fm25cl_write_sync(0, sizeof(controller_fram_t));
 
   //send this data to the radio module
-  energy_buf[2] = ((fram.energy_module0 & 0xFF00) >> 8 );
-  energy_buf[3] = ((fram.energy_module0 & 0xFF));
-  energy_buf[4] = ((fram.energy_module1 & 0xFF00) >> 8 );
-  energy_buf[5] = ((fram.energy_module1 & 0xFF));
-  energy_buf[6] = ((fram.energy_module2 & 0xFF00) >> 8 );
-  energy_buf[7] = ((fram.energy_module2 & 0xFF));
-  energy_buf[8] = ((fram.energy_controller & 0xFF00) >> 8 );
-  energy_buf[9] = ((fram.energy_controller & 0xFF));
-  energy_buf[10] = ((fram.energy_linux & 0xFF00) >> 8 );
-  energy_buf[11] = ((fram.energy_linux & 0xFF));
-  energy_buf[12] = ((fram.energy_module5 & 0xFF00) >> 8 );
-  energy_buf[13] = ((fram.energy_module5 & 0xFF));
-  energy_buf[14] = ((fram.energy_module6 & 0xFF00) >> 8 );
-  energy_buf[15] = ((fram.energy_module6 & 0xFF));
-  energy_buf[16] = ((fram.energy_module7 & 0xFF00) >> 8 );
-  energy_buf[17] = ((fram.energy_module7 & 0xFF));
+  energy_buf[2] = (((fram.energy.module_energy_remaining[0]/1000) & 0xFF00) >> 8 );
+  energy_buf[3] = (((fram.energy.module_energy_remaining[0]/1000) & 0xFF));
+  energy_buf[4] = (((fram.energy.module_energy_remaining[1]/1000) & 0xFF00) >> 8 );
+  energy_buf[5] = (((fram.energy.module_energy_remaining[1]/1000) & 0xFF));
+  energy_buf[6] = (((fram.energy.module_energy_remaining[2]/1000) & 0xFF00) >> 8 );
+  energy_buf[7] = (((fram.energy.module_energy_remaining[2]/1000) & 0xFF));
+  energy_buf[8] = (((fram.energy.controller_energy_remaining/1000) & 0xFF00) >> 8 );
+  energy_buf[9] = (((fram.energy.controller_energy_remaining/1000) & 0xFF));
+  energy_buf[10] = 0;
+  energy_buf[11] = 0;
+  energy_buf[12] = (((fram.energy.module_energy_remaining[5]/1000) & 0xFF00) >> 8 );
+  energy_buf[13] = (((fram.energy.module_energy_remaining[5]/1000) & 0xFF));
+  energy_buf[14] = (((fram.energy.module_energy_remaining[6]/1000) & 0xFF00) >> 8 );
+  energy_buf[15] = (((fram.energy.module_energy_remaining[6]/1000) & 0xFF));
+  energy_buf[16] = (((fram.energy.module_energy_remaining[7]/1000) & 0xFF00) >> 8 );
+  energy_buf[17] = (((fram.energy.module_energy_remaining[7]/1000) & 0xFF));
+
+  printf("/**************************************/\n");
+  printf("\tModule 0 energy remaining %d uWh\n",fram.energy.module_energy_remaining[0]);
+  printf("\tModule 1 energy remaining %d uWh\n",fram.energy.module_energy_remaining[1]);
+  printf("\tModule 2 energy remaining %d uWh\n",fram.energy.module_energy_remaining[2]);
+  printf("\tModule 5 energy remaining %d uWh\n",fram.energy.module_energy_remaining[5]);
+  printf("\tModule 6 energy remaining %d uWh\n",fram.energy.module_energy_remaining[6]);
+  printf("\tModule 7 energy remaining %d uWh\n",fram.energy.module_energy_remaining[7]);
+  printf("\tController energy remaining %d uWh\n",fram.energy.controller_energy_remaining);
+  printf("/**************************************/\n");
 
   int rc;
-  if(!currently_initializing && num_inited > 1) {
+  if(!currently_initializing && num_inited > 0) {
     rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_buf,18);
     energy_buf[1]++;
   } else {
@@ -242,14 +321,16 @@ static void get_energy (void) {
 static void get_batsol (void) {
   int battery_voltage = signpost_energy_get_battery_voltage_mv();
   int battery_current = signpost_energy_get_battery_current_ua();
-  uint8_t battery_percent = (uint8_t)(signpost_energy_get_battery_percent_mp()/1000.0);
-  uint16_t battery_full = (uint16_t)(signpost_energy_get_battery_capacity_uwh()/1000.0);
-  uint16_t battery_energy = (uint16_t)(signpost_energy_get_battery_energy_uwh()/1000.0);
+  int battery_energy = (int)((signpost_energy_get_battery_energy_uwh()/BATTERY_VOLTAGE_NOM)/1000.0);
+  int battery_percent = (int)(signpost_energy_get_battery_percent_mp()/1000.0);
+  int battery_full = (int)((signpost_energy_get_battery_capacity_uwh()/BATTERY_VOLTAGE_NOM)/1000.0);
   int solar_voltage = signpost_energy_get_solar_voltage_mv();
   int solar_current = signpost_energy_get_solar_current_ua();
-  printf("\n\nBattery and Solar Panel Data\n");
-  printf("  Battery Voltage (mV): %d\tcurrent (uA): %d\n",battery_voltage,battery_current);
-  printf("  Solar Voltage (mV): %d\tcurrent (uA): %d\n",solar_voltage,solar_current);
+  printf("/**************************************/\n");
+  printf("\tBattery Voltage (mV): %d\tcurrent (uA): %d\n",battery_voltage,battery_current);
+  printf("\tBattery remaining (mAh): %d\n",battery_energy);
+  printf("\tSolar Voltage (mV): %d\tcurrent (uA): %d\n",solar_voltage,solar_current);
+  printf("/**************************************/\n");
 
   batsol_buf[2] = ((battery_voltage & 0xFF00) >> 8);
   batsol_buf[3] = ((battery_voltage & 0xFF));
@@ -270,7 +351,7 @@ static void get_batsol (void) {
   batsol_buf[18] = ((battery_full & 0xFF));
 
   int rc;
-  if(!currently_initializing && num_inited > 1) {
+  if(!currently_initializing && num_inited > 0) {
     rc = signpost_networking_send_bytes(ModuleAddressRadio,batsol_buf,19);
     batsol_buf[1]++;
   } else {
@@ -348,7 +429,10 @@ static void initialization_api_callback(uint8_t source_address,
 
 static void energy_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
+    uint8_t message_type, size_t message_length, uint8_t* message) {
+
+  printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
+
   if (api_type != EnergyApiType) {
     signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     return;
@@ -357,20 +441,68 @@ static void energy_api_callback(uint8_t source_address,
   int rc;
 
   if (frame_type == NotificationFrame) {
-    // XXX unexpected, drop
+      if(message_type == EnergyDutyCycleMessage) {
+        printf("CALLBACK_ENERGY: received duty cycle request\n");
+        //this is a duty cycle message
+        //
+        //how long does the module want to be duty cycled?
+        uint32_t time;
+        memcpy(&time, message, 4);
+
+        //what module slot wants to be duty cycled?
+        uint8_t mod = signpost_api_addr_to_mod_num(source_address);
+
+        int timer = (int)(time/1000.0);
+        printf("CALLBACK_ENERGY: Requested duty cycle for %ds\n",timer);
+        //set up the value for the timer to check
+        module_duty_cycle[mod] = (int)(time/1000.0);
+
+        //turn it off
+        printf("CALLBACK_ENERGY: Turning off module %d\n", mod);
+        controller_module_disable_power(mod);
+        controller_module_disable_i2c(mod);
+      }
   } else if (frame_type == CommandFrame) {
     if (message_type == EnergyQueryMessage) {
       signpost_energy_information_t info;
-      info.energy_limit_mWh = 1000;
-      info.average_power_mW = 60;
-      info.energy_limit_warning_threshold = 0;
-      info.energy_limit_critical_threshold = 0;
+      int limit = (int)(signpost_energy_policy_get_module_energy_remaining(
+                                    signpost_api_addr_to_mod_num(source_address))/1000.0);
+      printf("CALLBACK_ENERGY: Calculated energy limit to be %d\n",limit);
+      info.energy_limit_mWh = limit;
+      int average = (int)(signpost_energy_policy_get_module_average_power(
+                                    signpost_api_addr_to_mod_num(source_address))/1000.0);
+      printf("CALLBACK_ENERGY: Calculated average energy to be %d\n",average);
+      info.average_power_mW = average;
+      info.energy_limit_warning_threshold = ((info.energy_limit_mWh/info.average_power_mW) < 24);
+      info.energy_limit_critical_threshold = ((info.energy_limit_mWh/info.average_power_mW) < 6);
 
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
         printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
       }
+    } else if (message_type == EnergyReportModuleConsumptionMessage) {
+        //this is for the radio to report other module's energy usage
+        printf("CALLBACK_ENERGY: Received energy report from 0x%.2x\n", source_address);
+
+        //first we should get the message and unpack it
+        signpost_energy_report_t report;
+        memcpy(&report, message, message_length);
+
+        //now we should convert the report module addresses to module slot numbers
+        for(uint8_t i = 0; i < report.num_reports; i++) {
+            printf("CALLBACK_ENERGY: Reported module address 0x%.2x in module slot %d for %d%% of energy\n",
+                    report.reports[i].module_address,
+                    signpost_api_addr_to_mod_num(report.reports[i].module_address),
+                    report.reports[i].module_percent);
+            report.reports[i].module_address = signpost_api_addr_to_mod_num(report.reports[i].module_address);
+        }
+
+        //now send the report to the energy
+        signpost_energy_policy_update_energy_from_report(signpost_api_addr_to_mod_num(source_address), &report);
+
+        //reply to the report
+        signpost_energy_report_reply(source_address, 1);
     } else if (message_type == EnergyLevelWarning24hMessage) {
       signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     } else if (message_type == EnergyLevelCritical24hMessage) {
@@ -494,7 +626,7 @@ static void watchdog_api_callback(uint8_t source_address,
 static void gps_callback (gps_data_t* gps_data) {
   // Got new gps data
 
-  static uint8_t count = 0;
+  static uint32_t count = 0;
   /*printf("\n\nGPS Data: %d:%02d:%02d.%lu %d/%d/%d\n",
           gps_data->hours, gps_data->minutes, gps_data->seconds, gps_data->microseconds,
           gps_data->month, gps_data->day, gps_data->year
@@ -530,7 +662,7 @@ static void gps_callback (gps_data_t* gps_data) {
 
   //send a gps reading to the radio so that it can transmit it
   int rc;
-  if(!currently_initializing && (count % 30) == 0 && count != 0 && num_inited > 1) {
+  if(!currently_initializing && (count % 30) == 0 && count != 0 && num_inited > 0) {
     gps_buf[2] = _current_day;
     gps_buf[3] = _current_month;
     gps_buf[4] = _current_year;
@@ -585,6 +717,9 @@ int main (void) {
   energy_buf[0] = 0x01;
   energy_buf[1] = 0x00;
 
+  energy_av_buf[0] = 0x04;
+  energy_av_buf[1] = 0x00;
+
   gps_buf[0] = 0x02;
   gps_buf[1] = 0x00;
 
@@ -598,23 +733,84 @@ int main (void) {
   fm25cl_set_write_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
 
   // Read FRAM to see if anything is stored there
-  const unsigned FRAM_MAGIC_VALUE = 0x49A80004;
+  const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
   fm25cl_read_sync(0, sizeof(controller_fram_t));
   if (fram.magic == FRAM_MAGIC_VALUE) {
     // Great. We have saved data.
+    // Initialize the energy algorithm with those values
+    signpost_energy_policy_init(&fram.energy, &fram.power);
+
+    int bat = signpost_energy_get_battery_energy_uwh();
+
+    printf("Energy remaining values saved in fram\n");
+    printf("/**************************************/\n");
+    printf("\tModule 0 energy remaining %d uWh\n",fram.energy.module_energy_remaining[0]);
+    printf("\tModule 1 energy remaining %d uWh\n",fram.energy.module_energy_remaining[1]);
+    printf("\tModule 2 energy remaining %d uWh\n",fram.energy.module_energy_remaining[2]);
+    printf("\tModule 5 energy remaining %d uWh\n",fram.energy.module_energy_remaining[5]);
+    printf("\tModule 6 energy remaining %d uWh\n",fram.energy.module_energy_remaining[6]);
+    printf("\tModule 7 energy remaining %d uWh\n",fram.energy.module_energy_remaining[7]);
+    printf("\tController energy remaining %d uWh\n",fram.energy.controller_energy_remaining);
+    printf("\t Battery energy remaining %d uWh\n",bat);
+    printf("/**************************************/\n");
   } else {
     // Initialize this
     fram.magic = FRAM_MAGIC_VALUE;
-    fram.energy_controller = 0;
-    fram.energy_linux = 0;
-    fram.energy_module0 = 0;
-    fram.energy_module1 = 0;
-    fram.energy_module2 = 0;
-    fram.energy_module5 = 0;
-    fram.energy_module6 = 0;
-    fram.energy_module7 = 0;
+
+#ifdef USE_PRESETS
+    int bat = signpost_energy_get_battery_energy_uwh();
+    int total = 0;
+    fram.energy.module_energy_remaining[0] = 1500000;
+    total += fram.energy.module_energy_remaining[0];
+    fram.energy.module_energy_remaining[1] = 9900000;
+    total += fram.energy.module_energy_remaining[1];
+    fram.energy.module_energy_remaining[2] = 9900000;
+    total += fram.energy.module_energy_remaining[2];
+    fram.energy.module_energy_remaining[5] = 6240000;
+    total += fram.energy.module_energy_remaining[5];
+    fram.energy.module_energy_remaining[6] = 1500000;
+    total += fram.energy.module_energy_remaining[6];
+    fram.energy.module_energy_remaining[7] = 2560000;
+    total += fram.energy.module_energy_remaining[7];
+
+    if(bat - total > 10000) {
+        //this worked
+        fram.energy.controller_energy_remaining = bat - total;
+        fm25cl_write_sync(0, sizeof(controller_fram_t));
+        signpost_energy_policy_init(&fram.energy, NULL);
+    } else {
+        //this didn't work - screw it
+        signpost_energy_policy_init(NULL, NULL);
+    }
+
+#else
+    //let the energy algorithm figure out how to initialize all the energies
+    signpost_energy_policy_init(NULL, NULL);
+#endif
+
+
+    fram.energy.controller_energy_remaining = signpost_energy_policy_get_controller_energy_remaining();
+    fram.power.controller_average_power = 0;
+    for(uint8_t i = 0; i < 8; i++) {
+        fram.energy.module_energy_remaining[i] = signpost_energy_policy_get_module_energy_remaining(i);
+        fram.power.module_average_power[i] = 0;
+    }
     fm25cl_write_sync(0, sizeof(controller_fram_t));
+
+    printf("Energy remaining values initialized from battery capacity\n");
+    printf("/**************************************/\n");
+    printf("\tModule 0 energy remaining %d uWh\n",fram.energy.module_energy_remaining[0]);
+    printf("\tModule 1 energy remaining %d uWh\n",fram.energy.module_energy_remaining[1]);
+    printf("\tModule 2 energy remaining %d uWh\n",fram.energy.module_energy_remaining[2]);
+    printf("\tModule 5 energy remaining %d uWh\n",fram.energy.module_energy_remaining[5]);
+    printf("\tModule 6 energy remaining %d uWh\n",fram.energy.module_energy_remaining[6]);
+    printf("\tModule 7 energy remaining %d uWh\n",fram.energy.module_energy_remaining[7]);
+    printf("\tController energy remaining %d uWh\n",fram.energy.controller_energy_remaining);
+    printf("\t Battery energy remaining %d uWh\n",bat);
+    printf("/**************************************/\n");
+
   }
+
 
   // Setup GPS
   // ---------
@@ -631,13 +827,7 @@ int main (void) {
   // Energy Management
   // -----------------
 
-  // Configure all the I2C selectors
-  printf("Init'ing energy\n");
-  signpost_energy_init_ltc2943();
 
-  // Reset all of the LTC2941s
-  printf("Resetting energy\n");
-  signpost_energy_reset_all_energy();
 
   /////////////////////////////
   // Signpost Module Operations
@@ -669,6 +859,8 @@ int main (void) {
   controller_gpio_set_all();
 
 
+  check_module_energy_remaining();
+
   ////////////////////////////////////////////////
   // Setup watchdog
   app_watchdog_set_kernel_timeout(180000);
@@ -676,28 +868,45 @@ int main (void) {
 
   printf("Everything intialized\n");
 
+
   printf("Entering loop\n");
 
   delay_ms(3000);
 
-  uint16_t index = 1;
+  uint32_t index = 1;
   while(1) {
     // always check for modules that need to be initialized
     check_module_initialization();
 
+    //check for any modules that need to be turned back on
+    check_module_duty_cycle();
+
     // get energy updates every 10 seconds
     if ((index % 60) == 0) {
-      get_energy();
+      printf("CONTROLLER_STATE: Check energy\n");
+      get_energy_remaining();
     }
 
-    if((index % 60) == 30) {
+    if((index %60) == 20) {
       get_batsol();
     }
 
-    if ((index % 50) == 0 && index != 0) {
+    if ((index % 60) == 40) {
+      printf("CONTROLLER_STATE: Check energy\n");
+      get_energy_average();
+    }
+
+    /*if ((index % 50) == 0 && index != 0) {
         if(mod_isolated_out < 0) {
             check_watchdogs();
         }
+    }*/
+
+    if ((index % 300) == 0) {
+        printf("CONTROLLER_STATE: updating energy remaining\n");
+        signpost_energy_policy_update_energy();
+
+        check_module_energy_remaining();
     }
 
     index++;
