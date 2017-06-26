@@ -40,7 +40,7 @@ int main (void) {
             printf("Did not get response\n");
         } else {
             dbuf[l] = 0;
-            printf("Got resposne of length %d: \n",l);
+            printf("Got response of length %d: \n",l);
             printf("%s\n", (char*)dbuf);
         }
     }
@@ -48,7 +48,7 @@ int main (void) {
     delay_ms(10000);
 
     printf("Now trying http get\n");
-    ret = sara_u260_basic_http_get("httpbin.org","/get.txt");
+    ret = sara_u260_basic_http_get("httpbin.org","/get");
 
     if(ret == SARA_U260_NO_SERVICE) {
         printf("No Service! try again in a bit.\n");
@@ -64,7 +64,7 @@ int main (void) {
             printf("Did not get response\n");
         } else {
             dbuf[l] = 0;
-            printf("Got resposne of length %d: \n",l);
+            printf("Got response of length %d: \n",l);
             printf("%s\n", (char*)dbuf);
         }
     }
