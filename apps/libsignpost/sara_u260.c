@@ -92,6 +92,34 @@ static int sara_u260_setup_packet_switch(void) {
     return SARA_U260_SUCCESS;
 }
 
+static int sara_u260_setup_http_profile(const char* url) {
+    //setup http profile
+    int ret = at_send(SARA_CONSOLE,"AT+UHTTP=0\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,1,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,url);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,5,80\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    if (ret < 0) return SARA_U260_ERROR;
+}
+
+
 static int sara_u260_del_file(const char* fname) {
     int ret;
 
@@ -177,33 +205,11 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     if(ret < 0) {
         return ret;
     }
-
-    //setup http profile
-    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0\r");
+    
+    ret = sara_u260_setup_http_profile(url);
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,1,\"");
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_send(SARA_CONSOLE,url);
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_send(SARA_CONSOLE,"\"\r");
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,5,80\r");
-    if (ret < 0) return SARA_U260_ERROR;
-
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
-    if (ret < 0) return SARA_U260_ERROR;
-
-    //now actually do the post
+    //now actually do the post, 0=profile 0, 4=post
     ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,4,\"");
     if (ret < 0) return SARA_U260_ERROR;
 
@@ -218,16 +224,16 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     return ret;
 }
 
-int sara_u260_get_post_response(uint8_t* buf, size_t max_len) {
-    return sara_u260_get_post_partial_response(buf, 0, max_len);
-}
+static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len) {
 
-int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_len) {
+    int ret = at_send(SARA_CONSOLE,"AT+URDBLOCK=\"");
+    if (ret < 0) return SARA_U260_ERROR;
     
-    int ret = at_send(SARA_CONSOLE,"AT+URDBLOCK=\"postresult.txt\",");
+    ret = at_send_buf(SARA_CONSOLE, (uint8_t*)fname, strlen(fname));
     if (ret < 0) return SARA_U260_ERROR;
 
-
+    ret = at_send(SARA_CONSOLE, "\",");
+    if (ret < 0) return SARA_U260_ERROR;
     
     char c[60];
     snprintf(c,60,"%lu,%lu\r",(uint32_t)offset,(uint32_t)max_len);
@@ -289,4 +295,50 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     free(tbuf);
 
     return dlen;
+}
+
+int sara_u260_get_post_response(uint8_t* buf, size_t max_len) {
+    return sara_u260_get_post_partial_response(buf, 0, max_len);
+}
+
+int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_len) {
+    return sara_u260_read_file("postresult.txt",buf,offset,max_len);
+}
+
+//Attempts to perform HTTP GET
+int sara_u260_basic_http_get(const char* url, const char* path) {
+
+    //make the connection
+    int ret = sara_u260_setup_packet_switch();
+    if(ret < 0) {
+        return ret;
+    }
+
+    ret = sara_u260_setup_http_profile(url);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //now actually do the get, 0=profile 0, 1=get
+    ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,1,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,path);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //store result in getresult so that we can read it in bits
+    ret = at_send(SARA_CONSOLE,"\",\"getresult.txt\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+
+    return ret;
+}
+
+//Returns response from most recent get
+int sara_u260_get_get_response(uint8_t* buf, size_t max_len) {
+    return sara_u260_get_get_partial_response(buf, 0, max_len);
+}
+
+//retruns part of response from most recent get
+int sara_u260_get_get_partial_response(uint8_t* buf, size_t offset, size_t max_len) {
+    return sara_u260_read_file("getresult.txt",buf,offset,max_len);
 }
