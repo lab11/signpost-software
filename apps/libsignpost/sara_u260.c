@@ -258,6 +258,7 @@ static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, s
         return SARA_U260_ERROR;
     }
 
+
     //okay we actually got some data, let's copy it into the buffer
     //first find the length
     int c1 = 0;
@@ -284,7 +285,7 @@ static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, s
     memcpy(dl,tbuf+c1+1,c2-c1-1);
     int dlen = atoi(dl);
 
-    if(dlen >=0 && (size_t)dlen >= max_len) {
+    if(dlen >=0 && (size_t)dlen > max_len) {
         free(tbuf);
         return SARA_U260_ERROR;
     }
