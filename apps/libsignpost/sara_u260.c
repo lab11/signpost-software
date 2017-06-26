@@ -140,7 +140,7 @@ static int sara_u260_setup_http_profile(const char* url, uint8_t security) {
         if (ret < 0) return SARA_U260_ERROR;
     }
 
-    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,4,0\"");
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,4,0");
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_wait_for_response(SARA_CONSOLE, 3);
