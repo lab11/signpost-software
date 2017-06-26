@@ -92,9 +92,29 @@ static int sara_u260_setup_packet_switch(void) {
     return SARA_U260_SUCCESS;
 }
 
-static int sara_u260_setup_http_profile(const char* url) {
+static int sara_u260_setup_http_profile(const char* url, uint8_t security) {
+    
+    int ret;
+
+    if(security) {
+        ret = at_send(SARA_CONSOLE, "AT+USECPRF=2\r");
+        if (ret < 0) return SARA_U260_ERROR;
+
+        ret = at_send(SARA_CONSOLE, "AT+USECPRF=2,0,2\r");
+        if (ret < 0) return SARA_U260_ERROR;
+
+        ret = at_send(SARA_CONSOLE, "AT+USECPRF=2,4,\"");
+        if (ret < 0) return SARA_U260_ERROR;
+
+        ret = at_send(SARA_CONSOLE, url);
+        if (ret < 0) return SARA_U260_ERROR;
+
+        ret = at_send(SARA_CONSOLE, "\"\r");
+        if (ret < 0) return SARA_U260_ERROR;
+    }
+
     //setup http profile
-    int ret = at_send(SARA_CONSOLE,"AT+UHTTP=0\r");
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0\r");
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_wait_for_response(SARA_CONSOLE, 3);
@@ -112,11 +132,21 @@ static int sara_u260_setup_http_profile(const char* url) {
     ret = at_wait_for_response(SARA_CONSOLE, 3);
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,5,80\r");
+    if(security) {
+        ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,6,1,2\r");
+        if (ret < 0) return SARA_U260_ERROR;
+    } else {
+        ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,5,80\r");
+        if (ret < 0) return SARA_U260_ERROR;
+    }
+
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,4,0\"");
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_wait_for_response(SARA_CONSOLE, 3);
     if (ret < 0) return SARA_U260_ERROR;
+
+    return SARA_U260_SUCCESS;
 }
 
 
@@ -206,7 +236,105 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
         return ret;
     }
     
-    ret = sara_u260_setup_http_profile(url);
+    ret = sara_u260_setup_http_profile(url,false);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //now actually do the post, 0=profile 0, 4=post
+    ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,4,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,path);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"\",\"postresult.txt\",\"postdata.bin\",2\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+
+    return ret;
+}
+
+int sara_u260_basic_https_post(const char* url, const char* path, uint8_t* buf, size_t len) {
+
+    //make the connection
+    int ret = sara_u260_setup_packet_switch();
+    if(ret < 0) {
+        return ret;
+    }
+
+    //delete the file
+    ret = sara_u260_del_file("postdata.bin");
+    //Don't catch this error - the file might not exist
+    /*if(ret < 0) {
+        return ret;
+    }*/
+
+    //write the data to a file
+    ret = sara_u260_write_to_file("postdata.bin", buf, len);
+    if(ret < 0) {
+        return ret;
+    }
+    
+    ret = sara_u260_setup_http_profile(url,true);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //now actually do the post, 0=profile 0, 4=post
+    ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,4,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,path);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"\",\"postresult.txt\",\"postdata.bin\",2\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+
+    return ret;
+}
+
+int sara_u260_basic_auth_https_post(const char* url, const char* path, uint8_t* buf, size_t len,
+                                            const char* username, const char* password) {
+
+    //make the connection
+    int ret = sara_u260_setup_packet_switch();
+    if(ret < 0) {
+        return ret;
+    }
+
+    //delete the file
+    ret = sara_u260_del_file("postdata.bin");
+    //Don't catch this error - the file might not exist
+    /*if(ret < 0) {
+        return ret;
+    }*/
+
+    //write the data to a file
+    ret = sara_u260_write_to_file("postdata.bin", buf, len);
+    if(ret < 0) {
+        return ret;
+    }
+    
+    ret = sara_u260_setup_http_profile(url,true);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //add the username and password to the http profile
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,2,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,username);
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,"\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,3,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,password);
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,"\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //set the profile to use the username and password
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,4,1\"");
     if (ret < 0) return SARA_U260_ERROR;
 
     //now actually do the post, 0=profile 0, 4=post
@@ -314,7 +442,83 @@ int sara_u260_basic_http_get(const char* url, const char* path) {
         return ret;
     }
 
-    ret = sara_u260_setup_http_profile(url);
+    ret = sara_u260_setup_http_profile(url,false);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //now actually do the get, 0=profile 0, 1=get
+    ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,1,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,path);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //store result in getresult so that we can read it in bits
+    ret = at_send(SARA_CONSOLE,"\",\"getresult.txt\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+
+    return ret;
+}
+
+//Attempts to perform HTTPS GET
+int sara_u260_basic_https_get(const char* url, const char* path) {
+
+    //make the connection
+    int ret = sara_u260_setup_packet_switch();
+    if(ret < 0) {
+        return ret;
+    }
+
+    ret = sara_u260_setup_http_profile(url,true);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //now actually do the get, 0=profile 0, 1=get
+    ret = at_send(SARA_CONSOLE,"AT+UHTTPC=0,1,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,path);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //store result in getresult so that we can read it in bits
+    ret = at_send(SARA_CONSOLE,"\",\"getresult.txt\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_wait_for_response(SARA_CONSOLE, 3);
+
+    return ret;
+}
+
+//Attempts to perform HTTPS with basic authentication GET
+int sara_u260_basic_auth_https_get(const char* url, const char* path,
+                                const char* username, const char* password) {
+
+    //make the connection
+    int ret = sara_u260_setup_packet_switch();
+    if(ret < 0) {
+        return ret;
+    }
+
+    ret = sara_u260_setup_http_profile(url,true);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //add the username and password to the http profile
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,2,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,username);
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,"\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,3,\"");
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,password);
+    if (ret < 0) return SARA_U260_ERROR;
+    ret = at_send(SARA_CONSOLE,"\"\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //set the profile to use the username and password
+    ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,4,1\"");
     if (ret < 0) return SARA_U260_ERROR;
 
     //now actually do the get, 0=profile 0, 1=get

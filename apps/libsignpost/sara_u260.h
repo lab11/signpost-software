@@ -16,6 +16,13 @@ int sara_u260_init(void);
 //Will attempt to join the network and setup a packet switch connect if one does not exist
 int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, size_t len);
 
+//Attempts to perform HTTPs Post
+int sara_u260_basic_https_post(const char* url, const char* path, uint8_t* buf, size_t len);
+
+//Attempts to perforom HTTPs Post with basic authentication
+int sara_u260_basic_auth_https_post(const char* url, const char* path, uint8_t* buf, size_t len, 
+                               const char* username, const char* password);
+
 //Returns the response from the most recent successful post
 int sara_u260_get_post_response(uint8_t* buf, size_t max_len);
 
@@ -24,6 +31,13 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
 
 //Attempts to perform HTTP GET
 int sara_u260_basic_http_get(const char* url, const char* path);
+
+//Perform Get using https
+int sara_u260_basic_https_get(const char* url, const char* path);
+
+//Perform Get using https
+int sara_u260_basic_auth_https_get(const char* url, const char* path,
+                                    const char* username, const char* password);
 
 //Returns response from most recent get
 int sara_u260_get_get_response(uint8_t* buf, size_t max_len);
