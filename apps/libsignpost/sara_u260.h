@@ -21,3 +21,12 @@ int sara_u260_get_post_response(uint8_t* buf, size_t max_len);
 
 //Returns part of the response from the most recent successful post
 int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_len);
+
+//Attempts to perform HTTP GET
+int sara_u260_basic_http_get(const char* url, const char* path);
+
+//Returns response from most recent get
+int sara_u260_get_get_response(uint8_t* buf, size_t max_len);
+
+//retruns part of response from most recent get
+int sara_u260_get_get_partial_response(uint8_t* buf, size_t offset, size_t max_len);
