@@ -14,7 +14,7 @@ the APIs. To use these APIs you must
 
 at the top of your application.
 
-##Contents
+## Contents
 1. [Initialization](#initialization)
 2. [Storage](#storage)
 3. [Networking](#networking)
@@ -25,7 +25,7 @@ at the top of your application.
 8. [Location](#location)
 9. [Processing](#processing)
 
-##Initialization
+## Initialization
 
 Initialization registers a signpost module with the controller and sets up
 shared symmetric keys with other modules. For now, this method could take a few seconds to run
@@ -51,7 +51,7 @@ we plan to add automatic address resolution so conflicting is not an issue.
 
 This is the first Signpost API function every module should call.
 
-##Storage
+## Storage
 
 Modules can storage data on an SD card that is on the control module.
 
@@ -73,7 +73,7 @@ int result = signpost_storage_write(data, 3, &record);
 where record could then be used by the Intel Edison to access the data,
 or in the future by your module to read the data.
 
-##Networking
+## Networking
 
 Currently the signpost API provides an http post abstraction. The prototype
 of this function is
@@ -118,7 +118,7 @@ a response with multiple headers, you would need to declare multiple
 to get a longer post body, you would need to declare a longer buffer to put that post
 body).
 
-###Simple Networking
+### Simple Networking
 
 Because the above code is both longer and more flexible than most people need,
 we created a simple wrapper around it called `simple_post`. To use it:
@@ -139,7 +139,7 @@ int status = simple_octetstream_post("httpbin.org/post", data, 3);
 Where the status is the http status returned by the website, or the error
 code if negative.
 
-###Posting to GDP
+### Posting to GDP
 While GDP does not currently have a rest API, your
 [signpost-debug-radio](../receiver/debug_radio/)
 will append to gdp if you post to the url `gdp.lab11.eecs.umich.edu/gdp/v1/<log_name>/append`
@@ -152,7 +152,7 @@ int status = simple_octetstream_post("gdp.lab11.eecs.umich.edu/gdp/v1/
                                       edu.umich.eecs.lab11/fake-data/append", data, 3);
 ```
 
-##Time
+## Time
 
 The time API returns current time. If you care about time synchronization,
 this _should_ be correlated with the pulse per second (PPS) line routed to your module.
@@ -192,7 +192,7 @@ typedef struct __attribute__((packed)) {
 
 The time will be valid if `satellite_count` > 0.
 
-##Location
+## Location
 
 The location API provides location from the GPS. To use the location API:
 
@@ -213,7 +213,7 @@ typedef struct __attribute__((packed)) {
 
 Location is valid if `satellite_count` >= 4.
 
-##Energy
+## Energy
 
 This API is not implemented yet (it returns junk data).
 
@@ -243,7 +243,7 @@ over the past 24h window and the `current_average_mJDay` should allow a
 module to easily compare its current usage to the limit and see if it
 will exceed the limit.
 
-##Processing
+## Processing
 
 The processing API allows a module to use the Intel Edison Linux computer
 on the signpost controller. Modules can access the Intel Edison
