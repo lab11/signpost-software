@@ -109,6 +109,8 @@ int port_rng_init(void);
  */
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
+int port_printf(const char *fmt, ...);
+
 #ifdef __cplusplus
 }
 #endif
