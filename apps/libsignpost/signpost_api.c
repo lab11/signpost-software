@@ -13,8 +13,6 @@
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
 
-extern HardwareSerial Serial;
-
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
 static struct module_struct {
