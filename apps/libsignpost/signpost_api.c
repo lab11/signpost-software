@@ -1,9 +1,17 @@
 #include <stdbool.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 
+<<<<<<< HEAD
 #include "CRC16.h"
 #include "erpc_client_setup.h"
+=======
+#include "Arduino.h"
+#include "arduino_printf.h"
+
+#include "crc.h"
+//#include "erpc_client_setup.h"
+>>>>>>> printf replaced with port_printf
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
@@ -13,8 +21,6 @@
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
-
-extern HardwareSerial Serial;
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
@@ -93,7 +99,7 @@ int signpost_api_send(uint8_t destination_address,
 }
 
 /**************************************************************************/
-/* INCOMING MESSAGE / ASYNCHRONOUS DISPATCH                                */
+/* INCOMING MESSAGE / ASYNCHRONOUS DISPATCH                               */
 /**************************************************************************/
 
 // We can only have one active receive call at a time, which means providing
@@ -324,6 +330,7 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
             InitializationKeyExchange, ecdh_param_len, ecdh_buf) > 0) {
       return SB_PORT_SUCCESS;
     }
+<<<<<<< HEAD
     else return SB_PORT_FAIL;
 }
 
@@ -374,6 +381,13 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
     module_info.haskey[signpost_api_addr_to_mod_num(source_address)] = true;
 
     return ret;
+=======
+    // Now isolated with controller
+    // Now declare self to controller
+    // Spin until we are able to send
+    //DEBUG
+    while(signpost_initialization_declare_controller() < SUCCESS) {port_signpost_delay_ms(50);}
+>>>>>>> printf replaced with port_printf
 }
 
 static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** api_handlers) {
@@ -385,10 +399,10 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     signbus_io_init(i2c_address);
     rc = port_rng_init();
     if (rc < 0) return rc;
-
+    SIGNBUS_DEBUG("io and entropty init complete\n\r");
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
-
+    SIGNBUS_DEBUG("async protocol setup\n\r");
     // Clear keys
     for (int i=0; i < NUM_MODULES; i++) {
         module_info.haskey[i] = false;
@@ -427,12 +441,37 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
 }
 
 int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
+<<<<<<< HEAD
     int rc;
     rc = signpost_initialization_common(i2c_address, api_handlers);
     if (rc < SB_PORT_SUCCESS) return rc;
 
     // Begin listening for replies
     signpost_api_start_new_async_recv();
+=======
+    SIGNBUS_DEBUG("Begin module init\n\r");
+    int rc = signpost_initialization_common(i2c_address, api_handlers);
+    if (rc < 0) return rc;
+    SIGNBUS_DEBUG("init_common complete\n\r");
+    // Begin listening for replies
+    signpost_api_start_new_async_recv();
+    // Request isolation from controller
+    done = 0;
+    signpost_initialization_request_isolation();
+    SIGNBUS_DEBUG("Module Isolated with Controller\n\r");
+    // Spin until isolated with controller
+    //int timeout = 0;
+    while(!done) {
+        port_signpost_wait_for(&done);
+    }
+
+    port_signpost_mod_in_disable_interrupt();
+    port_signpost_mod_out_set();
+    port_signpost_debug_led_off();
+    SIGNBUS_DEBUG("complete\n\r");
+    return 0;
+}
+>>>>>>> printf replaced with port_printf
 
     // Initialize Mod Out/In GPIO
     // both are active low
