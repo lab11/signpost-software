@@ -1,16 +1,17 @@
-#include "Arduino.h"
+#include <Arduino.h>
 #include <Wire.h>
+#include <stdarg.h>
 #include "port_signpost.h"
 
 //TODO: Verify/test multi-master support
 
 //TODO: choose mod in, mod out, and debug led pins for arduino
 //Current defined values are for the Arduino MKRZero
-#define ARDUINO_MOD_OUT 5
-#define ARDUINO_MOD_IN 4
-#define DEBUG_LED LED_BUILTIN
-#define SIGNPOST_I2C_SPEED 400000
-
+#define ARDUINO_MOD_OUT 		5
+#define ARDUINO_MOD_IN 			4
+#define DEBUG_LED 				LED_BUILTIN
+#define SIGNPOST_I2C_SPEED 		400000
+#define _PRINTF_BUFFER_LENGTH_	64
 //TODO: Add error handling and error codes
 static void mod_in_callback_helper();
 static void slave_listen_callback_helper(int num_bytes);
@@ -18,6 +19,8 @@ static void slave_read_callback_helper();
 
 //TwoWire object used solely for Signpost i2c
 //TwoWire Wire = TwoWire();
+
+static char g_port_printf_buf[_PRINTF_BUFFER_LENGTH_];
 
 uint8_t g_arduino_i2c_address;
 port_signpost_callback g_mod_in_callback = NULL;
@@ -122,6 +125,15 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
 		buf[i] = random(0, 256) & 0xFF;
 	}
 	return i;
+}
+
+int port_printf(const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(g_port_printf_buf, _PRINTF_BUFFER_LENGTH_, fmt, args);
+	Serial.print(g_port_printf_buf);
+	va_end(args);
+	return 0;
 }
 
 static void mod_in_callback_helper() {
