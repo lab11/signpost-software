@@ -81,7 +81,7 @@ struct SignpostController {
     coulomb_counter_i2c_selector: &'static signpost_drivers::i2c_selector::I2CSelector<'static, signpost_drivers::pca9544a::PCA9544A<'static>>,
     coulomb_counter_generic: &'static capsules::ltc294x::LTC294XDriver<'static>,
     battery_monitor: &'static signpost_drivers::max17205::MAX17205Driver<'static>,
-    fram: &'static capsules::fm25cl::FM25CLDriver<'static, capsules::virtual_spi::VirtualSpiMasterDevice<'static, usart::USART>>,
+    nonvolatile_storage: &'static capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
@@ -100,12 +100,12 @@ impl Platform for SignpostController {
             8 => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
+            27 => f(Some(self.nonvolatile_storage)),
 
             100 => f(Some(self.gpio_async)),
             101 => f(Some(self.coulomb_counter_i2c_selector)),
             102 => f(Some(self.coulomb_counter_generic)),
             110 => f(Some(self.battery_monitor)),
-            103 => f(Some(self.fram)),
             104 => f(Some(self.smbus_interrupt)),
             108 => f(Some(self.app_watchdog)),
             109 => f(Some(self.gps_console)),
@@ -487,10 +487,16 @@ pub unsafe fn reset_handler() {
         capsules::fm25cl::FM25CL::new(fm25cl_spi, &mut capsules::fm25cl::TXBUFFER, &mut capsules::fm25cl::RXBUFFER));
     fm25cl_spi.set_client(fm25cl);
     // Interface for applications
-    let fm25cl_driver = static_init!(
-        capsules::fm25cl::FM25CLDriver<'static, capsules::virtual_spi::VirtualSpiMasterDevice<'static, usart::USART>>,
-        capsules::fm25cl::FM25CLDriver::new(fm25cl, &mut capsules::fm25cl::KERNEL_TXBUFFER, &mut capsules::fm25cl::KERNEL_RXBUFFER));
-    fm25cl.set_client(fm25cl_driver);
+    let nonvolatile_storage = static_init!(
+        capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
+        capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
+            fm25cl, kernel::Container::create(),
+            0,      // Start address for userspace accessible region
+            8*1024, // Length of userspace accessible region
+            8*1024, // Start address of kernel accessible region
+            0,      // Length of kernel accessible region
+            &mut capsules::nonvolatile_storage_driver::BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(fm25cl, nonvolatile_storage);
 
     //
     // App Watchdog
@@ -583,7 +589,7 @@ pub unsafe fn reset_handler() {
         coulomb_counter_generic: ltc294x_driver,
         battery_monitor: max17205_driver,
         smbus_interrupt: smbusint_driver,
-        fram: fm25cl_driver,
+        nonvolatile_storage: nonvolatile_storage,
         i2c_master_slave: i2c_modules,
         app_watchdog: app_watchdog,
         rng: rng,

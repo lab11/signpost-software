@@ -26,9 +26,6 @@ int main (void) {
   fm25cl_set_read_buffer(read_buf, 256);
   fm25cl_set_write_buffer(write_buf, 256);
 
-  int status = fm25cl_read_status_sync();
-  print_status(status);
-
   write_buf[0] = 0x02;
   write_buf[1] = 0x06;
   write_buf[2] = 0x0a;
@@ -38,5 +35,14 @@ int main (void) {
   // Write buf to FRAM and then read it back
   fm25cl_write_sync(0x24, 5);
   fm25cl_read_sync(0x24, 5);
-  print_buf();
+
+  for (int i=0; i<5; i++) {
+    if (read_buf[i] != write_buf[i]) {
+      print("ERROR: mismatched bytes\n");
+      print_buf();
+      return;
+    }
+  }
+
+  print("SUCCESS\n");
 }
