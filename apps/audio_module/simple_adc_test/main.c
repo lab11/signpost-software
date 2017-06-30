@@ -12,7 +12,7 @@
 #include <tock.h>
 
 int main (void) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
   printf("[Audio Module] Simple ADC test\n");
 
   printf("Sampling data\n");
@@ -22,7 +22,7 @@ int main (void) {
     // read data from ADC
     uint16_t sample;
     err = adc_sample_sync(3,&sample);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
     printf("%d\n", sample);

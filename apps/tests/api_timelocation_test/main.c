@@ -18,7 +18,7 @@ int main (void) {
   int rc = signpost_initialization_module_init(
       random_i2c_address,
       SIGNPOST_INITIALIZATION_NO_APIS);
-  if (rc < SUCCESS) {
+  if (rc < TOCK_SUCCESS) {
     printf("Signpost initialization errored: %d\n", rc);
   }
 
@@ -28,14 +28,14 @@ int main (void) {
   while (true) {
     printf("Query Time\n");
     rc = signpost_timelocation_get_time(&time);
-    if (rc < SUCCESS) {
+    if (rc < TOCK_SUCCESS) {
       printf("Error querying time: %d\n\n", rc);
     } else {
       printf("  Current time: %d/%d/%d %d:%02d:%02d with %d satellites\n", time.year, time.month, time.day, time.hours, time.minutes, time.seconds, time.satellite_count);
     }
     printf("Query Location\n");
     rc = signpost_timelocation_get_location(&location);
-    if (rc < SUCCESS) {
+    if (rc < TOCK_SUCCESS) {
       printf("Error querying location: %d\n\n", rc);
     } else {
       float lat = ((float) location.latitude) / 1000000.0;

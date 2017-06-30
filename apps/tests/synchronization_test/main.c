@@ -74,7 +74,7 @@ int main (void) {
   int rc = signpost_initialization_module_init(
       random_i2c_address,
       SIGNPOST_INITIALIZATION_NO_APIS);
-  if (rc < SUCCESS) {
+  if (rc < TOCK_SUCCESS) {
     printf("Signpost initialization errored: %d\n", rc);
   }
 
