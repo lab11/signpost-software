@@ -12,10 +12,6 @@
 uint8_t read_buf[256];
 uint8_t write_buf[256];
 
-static void print_status (int status) {
-  printf("\tStatus: 0x%02x\n\n", status);
-}
-
 static void print_buf (void) {
   printf("\tData: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n\n", read_buf[0], read_buf[1], read_buf[2], read_buf[3], read_buf[4]);
 }
@@ -38,11 +34,11 @@ int main (void) {
 
   for (int i=0; i<5; i++) {
     if (read_buf[i] != write_buf[i]) {
-      print("ERROR: mismatched bytes\n");
+      printf("ERROR: mismatched bytes\n");
       print_buf();
       return;
     }
   }
 
-  print("Data written and read successfully\n");
+  printf("Data written and read successfully\n");
 }
