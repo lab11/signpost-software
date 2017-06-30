@@ -44,5 +44,5 @@ int main (void) {
     }
   }
 
-  print("SUCCESS\n");
+  print("Data written and read successfully\n");
 }
