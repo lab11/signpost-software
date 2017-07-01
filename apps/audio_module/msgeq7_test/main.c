@@ -1,7 +1,7 @@
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <adc.h>
@@ -19,7 +19,7 @@ static const uint8_t i2c_address = 0x33;
 #define MSGEQ7_STROBE_PIN  5
 #define MSGEQ7_ADC_CHANNEL 0
 
-//XXX: testing
+// XXX: testing
 uint8_t master_write_buf[20];
 #define GREEN_LED 0
 #define RED_LED 1
@@ -59,14 +59,14 @@ int main (void) {
       delay_ms(1);
       gpio_clear(MSGEQ7_STROBE_PIN);
 
-      for(uint8_t i = 0; i < 6; i++) {
+      for (uint8_t i = 0; i < 6; i++) {
         uint16_t data;
         int ret = adc_sample_sync(0,&data);
-        if(ret < 0) {
-            printf("ADC Sample Error");
+        if (ret < 0) {
+          printf("ADC Sample Error");
         }
-        master_write_buf[2+i*2] = (uint8_t)((data >> 8) & 0xff);
-        master_write_buf[2+i*2+1] = (uint8_t)(data & 0xff);
+        master_write_buf[2 + i * 2]     = (uint8_t)((data >> 8) & 0xff);
+        master_write_buf[2 + i * 2 + 1] = (uint8_t)(data & 0xff);
         delay_ms(1);
         gpio_set(MSGEQ7_STROBE_PIN);
         delay_ms(1);
@@ -74,21 +74,21 @@ int main (void) {
       }
       uint16_t data;
       int ret = adc_sample_sync(0,&data);
-      if(ret < 0) {
-          printf("ADC Sample Error");
+      if (ret < 0) {
+        printf("ADC Sample Error");
       }
       master_write_buf[14] = (uint8_t)((data >> 8) & 0xff);
       master_write_buf[15] = (uint8_t)(data & 0xff);
 
-      //give some indication of volume to the user
-      if((uint16_t)((master_write_buf[6] << 8) + master_write_buf[7]) > 400) {
-        //turn on green LED
+      // give some indication of volume to the user
+      if ((uint16_t)((master_write_buf[6] << 8) + master_write_buf[7]) > 400) {
+        // turn on green LED
         led_on(GREEN_LED);
       } else {
         led_off(GREEN_LED);
       }
-      if((uint16_t)((master_write_buf[6] << 8) + master_write_buf[7]) > 3500) {
-        //turn on red LED
+      if ((uint16_t)((master_write_buf[6] << 8) + master_write_buf[7]) > 3500) {
+        // turn on red LED
         led_on(RED_LED);
       } else {
         led_off(RED_LED);
@@ -96,14 +96,14 @@ int main (void) {
     }
 
     /*
-    // read data from ADC
-    err = adc_read_single_sample(3);
-    if (err < TOCK_SUCCESS) {
-      printf("ADC read error: %d\n", err);
-    }
-    uint16_t sample = err & 0xFFFF;
-    //printf("%d\n", data);
-    */
+       // read data from ADC
+       err = adc_read_single_sample(3);
+       if (err < TOCK_SUCCESS) {
+       printf("ADC read error: %d\n", err);
+       }
+       uint16_t sample = err & 0xFFFF;
+       //printf("%d\n", data);
+     */
   }
 }
 

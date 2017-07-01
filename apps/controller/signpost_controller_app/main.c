@@ -27,68 +27,68 @@ static void gps_callback (gps_data_t* gps_data);
 uint8_t fm25cl_read_buf[256];
 uint8_t fm25cl_write_buf[256];
 
-uint16_t _current_year = 0;
-uint8_t  _current_month = 0;
-uint8_t  _current_day = 0;
-uint8_t  _current_hour = 0;
-uint8_t  _current_minute = 0;
-uint8_t  _current_second = 0;
-uint8_t  _current_satellite_count = 0;
-uint8_t  _current_microsecond = 0;
-uint32_t _current_latitude = 0;
-uint32_t _current_longitude = 0;
+uint16_t _current_year  = 0;
+uint8_t _current_month  = 0;
+uint8_t _current_day    = 0;
+uint8_t _current_hour   = 0;
+uint8_t _current_minute = 0;
+uint8_t _current_second = 0;
+uint8_t _current_satellite_count = 0;
+uint8_t _current_microsecond     = 0;
+uint32_t _current_latitude       = 0;
+uint32_t _current_longitude      = 0;
 
-int mod_isolated_out = -1;
-int mod_isolated_in = -1;
+int mod_isolated_out      = -1;
+int mod_isolated_in       = -1;
 int last_mod_isolated_out = -1;
-size_t isolated_count = 0;
+size_t isolated_count     = 0;
 
 static void check_module_initialization (void) {
-    if (mod_isolated_out < 0) {
-        for (size_t i = 0; i < NUM_MOD_IO; i++) {
-            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i]) {
+  if (mod_isolated_out < 0) {
+    for (size_t i = 0; i < NUM_MOD_IO; i++) {
+      if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i]) {
 
-                printf("Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
-                // module requesting isolation
-                mod_isolated_out = MOD_OUTS[i];
-                mod_isolated_in = MOD_INS[i];
-                last_mod_isolated_out = MOD_OUTS[i];
-                isolated_count = 0;
+        printf("Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
+        // module requesting isolation
+        mod_isolated_out      = MOD_OUTS[i];
+        mod_isolated_in       = MOD_INS[i];
+        last_mod_isolated_out = MOD_OUTS[i];
+        isolated_count        = 0;
 
-                // create private channel for this module
-                //XXX warn modules of i2c disable
-                controller_all_modules_disable_i2c();
-                controller_module_enable_i2c(MODOUT_pin_to_mod_name(mod_isolated_out));
-                // signal to module that it has a private channel
-                // XXX this should be a controller function operating on the
-                // module number, not index
-                gpio_clear(mod_isolated_in);
-                delay_ms(1000);
-                break;
-            }
-            // didn't isolate anyone, reset last_mod_isolated_out
-            last_mod_isolated_out = -1;
-        }
-    } else {
-        if (gpio_read(mod_isolated_out) == 1) {
-            printf("Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
-            gpio_set(mod_isolated_in);
-            mod_isolated_out = -1;
-            mod_isolated_in  = -1;
-            controller_all_modules_enable_i2c();
-        }
-        // this module took too long to talk to controller
-        // XXX need more to police bad modules (repeat offenders)
-        else if (isolated_count > 15) {
-            printf("Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
-            gpio_set(mod_isolated_in);
-            mod_isolated_out = -1;
-            mod_isolated_in  = -1;
-            controller_all_modules_enable_i2c();
-        } else {
-          isolated_count++;
-        }
+        // create private channel for this module
+        // XXX warn modules of i2c disable
+        controller_all_modules_disable_i2c();
+        controller_module_enable_i2c(MODOUT_pin_to_mod_name(mod_isolated_out));
+        // signal to module that it has a private channel
+        // XXX this should be a controller function operating on the
+        // module number, not index
+        gpio_clear(mod_isolated_in);
+        delay_ms(1000);
+        break;
+      }
+      // didn't isolate anyone, reset last_mod_isolated_out
+      last_mod_isolated_out = -1;
     }
+  } else {
+    if (gpio_read(mod_isolated_out) == 1) {
+      printf("Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+      gpio_set(mod_isolated_in);
+      mod_isolated_out = -1;
+      mod_isolated_in  = -1;
+      controller_all_modules_enable_i2c();
+    }
+    // this module took too long to talk to controller
+    // XXX need more to police bad modules (repeat offenders)
+    else if (isolated_count > 15) {
+      printf("Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+      gpio_set(mod_isolated_in);
+      mod_isolated_out = -1;
+      mod_isolated_in  = -1;
+      controller_all_modules_enable_i2c();
+    } else {
+      isolated_count++;
+    }
+  }
 }
 
 
@@ -111,7 +111,7 @@ uint32_t energy_last_readings[128] = {0};
 controller_fram_t fram;
 
 static void watchdog_tickler (int which) {
-  static bool gps_tickle = false;
+  static bool gps_tickle    = false;
   static bool energy_tickle = false;
 
   if (which == 1) {
@@ -123,7 +123,7 @@ static void watchdog_tickler (int which) {
   if (gps_tickle && energy_tickle) {
     app_watchdog_tickle_kernel();
 
-    gps_tickle = false;
+    gps_tickle    = false;
     energy_tickle = false;
   }
 }
@@ -141,7 +141,7 @@ static void print_energy_data (int module, int energy) {
 static void get_energy (void) {
   printf("\n\nEnergy Data\n");
 
-  for (int i=0; i<8; i++) {
+  for (int i = 0; i < 8; i++) {
     uint32_t energy;
     uint32_t* last_reading = &energy_last_readings[i];
 
@@ -157,26 +157,26 @@ static void get_energy (void) {
     *last_reading = energy;
 
     switch (i) {
-      case 0: fram.energy_module0 += diff; break;
-      case 1: fram.energy_module1 += diff; break;
-      case 2: fram.energy_module2 += diff; break;
+      case 0: fram.energy_module0    += diff; break;
+      case 1: fram.energy_module1    += diff; break;
+      case 2: fram.energy_module2    += diff; break;
       case 3: fram.energy_controller += diff; break;
-      case 4: fram.energy_linux += diff; break;
-      case 5: fram.energy_module5 += diff; break;
-      case 6: fram.energy_module6 += diff; break;
-      case 7: fram.energy_module7 += diff; break;
+      case 4: fram.energy_linux      += diff; break;
+      case 5: fram.energy_module5    += diff; break;
+      case 6: fram.energy_module6    += diff; break;
+      case 7: fram.energy_module7    += diff; break;
     }
 
     // Test print
     switch (i) {
       case 0: print_energy_data(i, fram.energy_module0); break;
       case 1: print_energy_data(i, fram.energy_module1); break;
-      //case 2: print_energy_data(i, fram.energy_module2); break;
+      // case 2: print_energy_data(i, fram.energy_module2); break;
       case 3: print_energy_data(i, fram.energy_controller); break;
       case 4: print_energy_data(i, fram.energy_linux); break;
-      //case 5: print_energy_data(i, fram.energy_module5); break;
-      //case 6: print_energy_data(i, fram.energy_module6); break;
-      //case 7: print_energy_data(i, fram.energy_module7); break;
+        // case 5: print_energy_data(i, fram.energy_module5); break;
+        // case 6: print_energy_data(i, fram.energy_module6); break;
+        // case 7: print_energy_data(i, fram.energy_module7); break;
     }
   }
 
@@ -187,60 +187,62 @@ static void get_energy (void) {
 }
 
 static void initialization_api_callback(uint8_t source_address,
-    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, __attribute__ ((unused)) size_t message_length,
-    uint8_t* message) {
-    if (api_type != InitializationApiType) {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
-      return;
-    }
-    int module_number;
-    int rc;
-    switch (frame_type) {
-        case NotificationFrame:
-            // XXX unexpected, drop
-            break;
-        case CommandFrame:
-            switch (message_type) {
-                case InitializationDeclare:
-                    // only if we have a module isolated or from storage master
-                    if (mod_isolated_out < 0 && source_address != ModuleAddressStorage) return;
-                    if (source_address == ModuleAddressStorage) module_number = 4;
-                    else module_number = MODOUT_pin_to_mod_name(mod_isolated_out);
-                    rc = signpost_initialization_declare_respond(source_address, module_number);
-                    if (rc < 0) {
-                      printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
-                          __LINE__, module_number, source_address);
-                    }
-                    break;
-                case InitializationKeyExchange:
-                    // Prepare and reply ECDH key exchange
-                    rc = signpost_initialization_key_exchange_respond(source_address,
-                            message, message_length);
-                    if (rc < 0) {
-                      printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
-                          __LINE__, source_address);
-                    }
-                    break;
-                //exchange module
-                //get mods
-                default:
-                   break;
-            }
-        case ResponseFrame:
-            // XXX unexpected, drop
-            break;
-        case ErrorFrame:
-            // XXX unexpected, drop
-            break;
+                                        signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+                                        uint8_t message_type, __attribute__ ((unused)) size_t message_length,
+                                        uint8_t* message) {
+  if (api_type != InitializationApiType) {
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    return;
+  }
+  int module_number;
+  int rc;
+  switch (frame_type) {
+    case NotificationFrame:
+      // XXX unexpected, drop
+      break;
+    case CommandFrame:
+      switch (message_type) {
+        case InitializationDeclare:
+          // only if we have a module isolated or from storage master
+          if (mod_isolated_out < 0 && source_address != ModuleAddressStorage) return;
+          if (source_address == ModuleAddressStorage) module_number = 4;
+          else module_number = MODOUT_pin_to_mod_name(mod_isolated_out);
+          rc = signpost_initialization_declare_respond(source_address, module_number);
+          if (rc < 0) {
+            printf(
+              " - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
+              __LINE__, module_number, source_address);
+          }
+          break;
+        case InitializationKeyExchange:
+          // Prepare and reply ECDH key exchange
+          rc = signpost_initialization_key_exchange_respond(source_address,
+                                                            message, message_length);
+          if (rc < 0) {
+            printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
+                   __LINE__, source_address);
+          }
+          break;
+        // exchange module
+        // get mods
         default:
-            break;
-    }
+          break;
+      }
+    case ResponseFrame:
+      // XXX unexpected, drop
+      break;
+    case ErrorFrame:
+      // XXX unexpected, drop
+      break;
+    default:
+      break;
+  }
 }
 
 static void energy_api_callback(uint8_t source_address,
-    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
+                                signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+                                uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ (
+                                  (unused)) uint8_t* message) {
   if (api_type != EnergyApiType) {
     signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     return;
@@ -257,7 +259,7 @@ static void energy_api_callback(uint8_t source_address,
       info.energy_used_24h_mJ = 2;
       info.current_limit_60s_mA = 3;
       info.current_average_60s_mA = 4;
-      info.energy_limit_warning_threshold = 5;
+      info.energy_limit_warning_threshold  = 5;
       info.energy_limit_critical_threshold = 6;
 
       rc = signpost_energy_query_reply(source_address, &info);
@@ -283,8 +285,9 @@ static void energy_api_callback(uint8_t source_address,
 
 // Callback for when a different module requests time or location information.
 static void timelocation_api_callback(uint8_t source_address,
-    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
+                                      signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+                                      uint8_t message_type, __attribute__ (
+                                        (unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
   int rc;
 
   if (api_type != TimeLocationApiType) {
@@ -303,8 +306,8 @@ static void timelocation_api_callback(uint8_t source_address,
       time.month = _current_month;
       time.day = _current_day;
       time.hours = _current_hour;
-      time.minutes = _current_minute;
-      time.seconds = _current_second;
+      time.minutes         = _current_minute;
+      time.seconds         = _current_second;
       time.satellite_count = _current_satellite_count;
       rc = signpost_timelocation_get_time_reply(source_address, &time);
       if (rc < 0) {
@@ -314,8 +317,8 @@ static void timelocation_api_callback(uint8_t source_address,
 
     } else if (message_type == TimeLocationGetLocationMessage) {
       signpost_timelocation_location_t location;
-      location.latitude = _current_latitude;
-      location.longitude = _current_longitude;
+      location.latitude        = _current_latitude;
+      location.longitude       = _current_longitude;
       location.satellite_count = _current_satellite_count;
       rc = signpost_timelocation_get_location_reply(source_address, &location);
       if (rc < 0) {
@@ -334,22 +337,21 @@ static void gps_callback (gps_data_t* gps_data) {
   // Got new gps data
 
   printf("\n\nGPS Data: %d:%02d:%02d.%lu %d/%d/%d\n",
-          gps_data->hours, gps_data->minutes, gps_data->seconds, gps_data->microseconds,
-          gps_data->month, gps_data->day, gps_data->year
-          );
+         gps_data->hours, gps_data->minutes, gps_data->seconds, gps_data->microseconds,
+         gps_data->month, gps_data->day, gps_data->year
+         );
 
   printf("  Latitude:   %lu degrees\n", gps_data->latitude);
   printf("  Longitude:  %lu degrees\n", gps_data->longitude);
 
   const char* fix_str = "Invalid fix";
   if (gps_data->fix == 2) {
-      fix_str = "2D fix";
+    fix_str = "2D fix";
   } else if (gps_data->fix == 3) {
-      fix_str = "3D fix";
+    fix_str = "3D fix";
   }
   printf("  Status:     %s\n", fix_str);
   printf("  Satellites: %d\n", gps_data->satellite_count);
-
 
   // Save most recent GPS reading for anyone that wants location and time.
   // This isn't a great method for proving the TimeLocation API, but it's
@@ -361,13 +363,13 @@ static void gps_callback (gps_data_t* gps_data) {
   _current_hour = gps_data->hours;
   _current_minute = gps_data->minutes;
   _current_second = gps_data->seconds;
-  _current_microsecond = gps_data->microseconds;
-  _current_latitude = gps_data->latitude;
-  _current_longitude = gps_data->longitude;
+  _current_microsecond     = gps_data->microseconds;
+  _current_latitude        = gps_data->latitude;
+  _current_longitude       = gps_data->longitude;
   _current_satellite_count = gps_data->satellite_count;
 
   // Tickle the watchdog because something good happened.
-  //app_watchdog_tickle_kernel();
+  // app_watchdog_tickle_kernel();
   watchdog_tickler(1);
 
   // start sampling again to catch the next second
@@ -400,13 +402,13 @@ int main (void) {
     // Initialize this
     fram.magic = FRAM_MAGIC_VALUE;
     fram.energy_controller = 0;
-    fram.energy_linux = 0;
-    fram.energy_module0 = 0;
-    fram.energy_module1 = 0;
-    fram.energy_module2 = 0;
-    fram.energy_module5 = 0;
-    fram.energy_module6 = 0;
-    fram.energy_module7 = 0;
+    fram.energy_linux      = 0;
+    fram.energy_module0    = 0;
+    fram.energy_module1    = 0;
+    fram.energy_module2    = 0;
+    fram.energy_module5    = 0;
+    fram.energy_module6    = 0;
+    fram.energy_module7    = 0;
     fm25cl_write_sync(0, sizeof(controller_fram_t));
   }
 
@@ -439,8 +441,8 @@ int main (void) {
   // Initializations for the rest of the signpost
 
   // Install hooks for the signpost APIs we implement
-  static api_handler_t init_handler   = {InitializationApiType, initialization_api_callback};
-  static api_handler_t energy_handler = {EnergyApiType, energy_api_callback};
+  static api_handler_t init_handler         = {InitializationApiType, initialization_api_callback};
+  static api_handler_t energy_handler       = {EnergyApiType, energy_api_callback};
   static api_handler_t timelocation_handler = {TimeLocationApiType, timelocation_api_callback};
   static api_handler_t* handlers[] = {&init_handler, &energy_handler, &timelocation_handler, NULL};
   do {
@@ -461,7 +463,6 @@ int main (void) {
   controller_gpio_enable_all_MODOUTs(PullUp);
   controller_gpio_set_all();
 
-
   ////////////////////////////////////////////////
   // Setup watchdog
   app_watchdog_set_kernel_timeout(30000);
@@ -473,7 +474,7 @@ int main (void) {
 
   printf("Entering loop\n");
   uint8_t index = 0;
-  while(1) {
+  while (1) {
     // always check for modules that need to be initialized
     check_module_initialization();
 

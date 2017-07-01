@@ -19,16 +19,16 @@
 #define MOD7_GPIOA_PORT_NUM 5
 
 // Global store
-int _data = 5;
+int _data  = 5;
 int _data2 = 6;
 
 // Callback when the pressure reading is ready
 static void callback (
-    int callback_type __attribute__ ((unused)),
-    int data,
-    int data2,
-    void* callback_args __attribute__ ((unused))) {
-  _data = data;
+  int callback_type __attribute__ ((unused)),
+  int data,
+  int data2,
+  void* callback_args __attribute__ ((unused))) {
+  _data  = data;
   _data2 = data2;
 }
 
@@ -38,7 +38,6 @@ static void print_data (int i) {
 
 int main (void) {
   printf("Welcome to Tock...lets wait for an interrupt!!\n");
-
 
   // Pass a callback function to the kernel
   smbus_interrupt_set_callback(callback, NULL);

@@ -19,8 +19,6 @@ uint8_t master_write_buf[256];
 
 
 
-
-
 static void print_data (int length) {
   // Need at least two bytes to be a valid signpost message.
   if (length < 2) {
@@ -35,18 +33,18 @@ static void print_data (int length) {
   // Handle each type of message.
   switch (sender_address) {
     case 0x31: { // 802.15.4 scanner
-      if (message_type == 1 && length == (16+2)) {
+      if (message_type == 1 && length == (16 + 2)) {
         // Got valid message from 15.4 scanner
         printf("Message type 1 from Scanner15.4\n");
-        for (int channel=11; channel<27; channel++) {
-          printf("  Channel %i RSSI: %i\n", channel, (int) ((int8_t) slave_write_buf[2+(channel-11)]));
+        for (int channel = 11; channel < 27; channel++) {
+          printf("  Channel %i RSSI: %i\n", channel, (int) ((int8_t) slave_write_buf[2 + (channel - 11)]));
         }
       }
 
       break;
     }
     case 0x32: { // Ambient
-      if (message_type == 1 && length == (8+2)) {
+      if (message_type == 1 && length == (8 + 2)) {
         // Got valid message from ambient
         printf("Message type 1 from Ambient\n");
         int temp = (int) ((int16_t) ((((uint16_t) slave_write_buf[2]) << 8) | ((uint16_t) slave_write_buf[3])));
@@ -63,7 +61,7 @@ static void print_data (int length) {
     }
     default: {
       printf("Different message? %i\n  ", sender_address);
-      for (int i=0; i<length; i++) {
+      for (int i = 0; i < length; i++) {
         printf("0x%02x ", slave_write_buf[i]);
       }
       printf("\n");
@@ -72,11 +70,11 @@ static void print_data (int length) {
 }
 
 static void i2c_master_slave_callback (
-        int callback_type,
-        int length,
-        int unused __attribute__ ((unused)),
-        void* callback_args __attribute__ ((unused))
-        ) {
+  int callback_type,
+  int length,
+  int unused __attribute__ ((unused)),
+  void* callback_args __attribute__ ((unused))
+  ) {
 
   if (callback_type == 3) {
     print_data(length);

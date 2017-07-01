@@ -13,7 +13,8 @@ uint8_t read_buf[256];
 uint8_t write_buf[256];
 
 static void print_buf (void) {
-  printf("\tData: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n\n", read_buf[0], read_buf[1], read_buf[2], read_buf[3], read_buf[4]);
+  printf("\tData: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x\n\n", read_buf[0], read_buf[1], read_buf[2], read_buf[3],
+         read_buf[4]);
 }
 
 int main (void) {
@@ -32,7 +33,7 @@ int main (void) {
   fm25cl_write_sync(0x24, 5);
   fm25cl_read_sync(0x24, 5);
 
-  for (int i=0; i<5; i++) {
+  for (int i = 0; i < 5; i++) {
     if (read_buf[i] != write_buf[i]) {
       printf("ERROR: mismatched bytes\n");
       print_buf();

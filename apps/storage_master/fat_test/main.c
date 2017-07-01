@@ -1,32 +1,32 @@
+#include <led.h>
+#include <sdcard.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <led.h>
 #include <timer.h>
-#include <sdcard.h>
 #include <tock.h>
 
 #include "fatfs/ff.h"
 
 static FRESULT scan_files (const char* path) {
-    FRESULT res;
-    DIR dir;
-    static FILINFO fno;
+  FRESULT res;
+  DIR dir;
+  static FILINFO fno;
 
-    res = f_opendir(&dir, path);                       // Open the directory
-    if (res == FR_OK) {
-      while(1) {
-        res = f_readdir(&dir, &fno);                   // Read a directory item
-        if (res != FR_OK || fno.fname[0] == 0) break;  // Break on error or end of dir
-        if (fno.fattrib & AM_DIR) {                    // It's a directory
-          printf("+ %s/\n", fno.fname);
-        } else {                                       // It's a file
-          printf("  %s\n", fno.fname);
-        }
+  res = f_opendir(&dir, path);                         // Open the directory
+  if (res == FR_OK) {
+    while (1) {
+      res = f_readdir(&dir, &fno);                     // Read a directory item
+      if (res != FR_OK || fno.fname[0] == 0) break;    // Break on error or end of dir
+      if (fno.fattrib & AM_DIR) {                      // It's a directory
+        printf("+ %s/\n", fno.fname);
+      } else {                                         // It's a file
+        printf("  %s\n", fno.fname);
       }
-      f_closedir(&dir);
     }
+    f_closedir(&dir);
+  }
 
-    return res;
+  return res;
 }
 
 
@@ -70,7 +70,7 @@ int main (void) {
   scan_files("");
   printf("=== Done.\n");
 
-  while(1) {
+  while (1) {
     led_toggle(0);
     delay_ms(500);
   }

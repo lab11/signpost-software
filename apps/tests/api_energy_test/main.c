@@ -1,7 +1,7 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -19,8 +19,8 @@ int main (void) {
 
   do {
     rc = signpost_initialization_module_init(
-        random_i2c_address,
-        SIGNPOST_INITIALIZATION_NO_APIS);
+      random_i2c_address,
+      SIGNPOST_INITIALIZATION_NO_APIS);
     if (rc < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", rc);
       delay_ms(5000);

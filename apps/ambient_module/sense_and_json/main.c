@@ -2,9 +2,9 @@
 // Signpost API
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -42,17 +42,17 @@ static void sample_sensors (void) {
   sample_sensors_successful = true;
 
   // get light
-  int light = 0;
+  int light    = 0;
   int err_code = isl29035_read_light_intensity();
   if (err_code < TOCK_SUCCESS) {
     printf("Error reading from light sensor: %d\n", light);
   } else {
-    light = err_code;
+    light    = err_code;
     err_code = TOCK_SUCCESS;
   }
 
   // get temperature and humidity
-  int temperature = 0;
+  int temperature   = 0;
   unsigned humidity = 0;
   int err = si7021_get_temperature_humidity_sync(&temperature, &humidity);
   if (err < TOCK_SUCCESS) {
@@ -67,10 +67,10 @@ static void sample_sensors (void) {
   printf("\tLight %d (lux)\n", light);
 
   // store readings
-  samples.light = light;
+  samples.light       = light;
   samples.temperature = temperature;
-  samples.humidity = humidity;
-  samples.err_code = err_code;
+  samples.humidity    = humidity;
+  samples.err_code    = err_code;
 
   // track success
   if (err_code != TOCK_SUCCESS) {
@@ -80,9 +80,9 @@ static void sample_sensors (void) {
 
 static void send_json (void) {
   printf("--Sending JSON data--\n");
-  json_field_t temp_field  = {.name="p", .value=samples.temperature};
-  json_field_t humid_field = {.name="h", .value=samples.humidity};
-  json_field_t light_field = {.name="l", .value=samples.light};
+  json_field_t temp_field  = {.name = "p", .value = samples.temperature};
+  json_field_t humid_field = {.name = "h", .value = samples.humidity};
+  json_field_t light_field = {.name = "l", .value = samples.light};
   int response = signpost_json_send(ModuleAddressRadio, 3, temp_field, humid_field, light_field);
   if (response < TOCK_SUCCESS) {
     printf("Error sending JSON\n");
@@ -129,7 +129,7 @@ int main (void) {
     sample_sensors();
 
     // send HTTP POST over Signpost API
-    //post_over_http();
+    // post_over_http();
 
     // send JSON blob to radio over Signpost API
     send_json();

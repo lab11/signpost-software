@@ -13,11 +13,11 @@
 int counter = 0;
 
 static void timer_callback (
-        int callback_type __attribute__ ((unused)),
-        int pin_value __attribute__ ((unused)),
-        int unused __attribute__ ((unused)),
-        void* callback_args __attribute__ ((unused))
-        ) {
+  int callback_type __attribute__ ((unused)),
+  int pin_value __attribute__ ((unused)),
+  int unused __attribute__ ((unused)),
+  void* callback_args __attribute__ ((unused))
+  ) {
   counter++;
 
   if (counter < 15) {

@@ -34,20 +34,18 @@ int main (void) {
   printf("Initialized\n");
   uint8_t test_data[20];
 
-  while(1) {
-      delay_ms(1000);
-      const char* url = "httpbin.org/post";
+  while (1) {
+    delay_ms(1000);
+    const char* url = "httpbin.org/post";
 
-      int result = simple_octetstream_post(url, test_data, 20);
-      if(result == 200) {
-        printf("Append successful\n");
-      } else {
-        printf("Append failed\n");
-      }
+    int result = simple_octetstream_post(url, test_data, 20);
+    if (result == 200) {
+      printf("Append successful\n");
+    } else {
+      printf("Append failed\n");
+    }
 
-      delay_ms(5000);
+    delay_ms(5000);
   }
-
-
 
 }

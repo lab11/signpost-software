@@ -41,7 +41,7 @@ Storage_Status_t storage_status = {0};
 // buffers used by application
 static uint8_t sdcard_buf[SDCARD_BLOCK_SIZE] = {0};
 
-//XXX: TESTING
+// XXX: TESTING
 // static void storage_print_block (uint32_t block) {
 //   sdcard_read_block_sync(block);
 //   for (int i=0; i<SDCARD_BLOCK_SIZE; i+=16) {
@@ -66,14 +66,15 @@ static uint8_t sdcard_buf[SDCARD_BLOCK_SIZE] = {0};
 //   printf("\n");
 // }
 
-static int32_t storage_write_data (Storage_Record_Pointer_t curr_record, uint8_t* buf, size_t len, Storage_Record_Pointer_t* new_record) {
+static int32_t storage_write_data (Storage_Record_Pointer_t curr_record, uint8_t* buf, size_t len,
+                                   Storage_Record_Pointer_t* new_record) {
   int32_t err = TOCK_SUCCESS;
 
   // need to write len bytes to SD card
   uint32_t bytes_to_write = len;
 
   // read in the first block
-  uint32_t curr_block = curr_record.block;
+  uint32_t curr_block  = curr_record.block;
   uint32_t curr_offset = curr_record.offset;
   err = sdcard_read_block_sync(curr_block);
   if (err < TOCK_SUCCESS) {
@@ -99,7 +100,7 @@ static int32_t storage_write_data (Storage_Record_Pointer_t curr_record, uint8_t
       // adjust offsets
       curr_offset = 0;
       curr_block++;
-      buf_offset += bytes_in_block;
+      buf_offset     += bytes_in_block;
       bytes_to_write -= bytes_in_block;
 
     } else {
@@ -112,7 +113,7 @@ static int32_t storage_write_data (Storage_Record_Pointer_t curr_record, uint8_t
       }
 
       // update new record to this block and the next offset
-      curr_offset += bytes_to_write;
+      curr_offset   += bytes_to_write;
       bytes_to_write = 0;
     }
   }
@@ -120,20 +121,21 @@ static int32_t storage_write_data (Storage_Record_Pointer_t curr_record, uint8_t
   // data written to SD card
   // Update new record
   if (new_record != NULL) {
-    new_record->block = curr_block;
+    new_record->block  = curr_block;
     new_record->offset = curr_offset;
   }
   return TOCK_SUCCESS;
 }
 
-static int32_t storage_read_data (Storage_Record_Pointer_t curr_record, uint8_t* buf, size_t len, Storage_Record_Pointer_t* next_record) {
+static int32_t storage_read_data (Storage_Record_Pointer_t curr_record, uint8_t* buf, size_t len,
+                                  Storage_Record_Pointer_t* next_record) {
   int32_t err = TOCK_SUCCESS;
 
   // need to read in len bytes from SD card
   uint32_t bytes_to_read = len;
 
   // set initial offsets
-  uint32_t curr_block = curr_record.block;
+  uint32_t curr_block  = curr_record.block;
   uint32_t curr_offset = curr_record.offset;
 
   // read data split over multiple blocks as necessary
@@ -156,20 +158,20 @@ static int32_t storage_read_data (Storage_Record_Pointer_t curr_record, uint8_t*
       // adjust offsets
       curr_offset = 0;
       curr_block++;
-      buf_offset += bytes_in_block;
+      buf_offset    += bytes_in_block;
       bytes_to_read -= bytes_in_block;
     } else {
       // read the rest of the record
       memcpy(&buf[buf_offset], &sdcard_buf[curr_offset], bytes_to_read);
 
       // adjust offsets
-      curr_offset += bytes_to_read;
+      curr_offset  += bytes_to_read;
       bytes_to_read = 0;
     }
   }
 
   if (next_record != NULL) {
-    next_record->block = curr_block;
+    next_record->block  = curr_block;
     next_record->offset = curr_offset;
   }
   return TOCK_SUCCESS;
@@ -177,19 +179,20 @@ static int32_t storage_read_data (Storage_Record_Pointer_t curr_record, uint8_t*
 
 int32_t storage_update_status (void) {
   Storage_Record_Pointer_t status_record_pointer = {
-    .block = STORAGE_STATUS_BLOCK,
+    .block  = STORAGE_STATUS_BLOCK,
     .offset = STORAGE_STATUS_HEADER_OFFSET,
   };
   return storage_write_data(status_record_pointer, (uint8_t*)&storage_status, sizeof(Storage_Status_t), NULL);
 }
 
-int32_t storage_write_record (Storage_Record_Pointer_t record, uint8_t* buf, size_t buf_len, Storage_Record_Pointer_t* next_record) {
+int32_t storage_write_record (Storage_Record_Pointer_t record, uint8_t* buf, size_t buf_len,
+                              Storage_Record_Pointer_t* next_record) {
   int32_t err = TOCK_SUCCESS;
 
   // write the header first
   Storage_Record_Pointer_t new_record = {0};
-  Storage_Record_Header_t header = {
-    .magic_header = STORAGE_RECORD_HEADER,
+  Storage_Record_Header_t header      = {
+    .magic_header   = STORAGE_RECORD_HEADER,
     .message_length = buf_len,
   };
   err = storage_write_data(record, (uint8_t*)&header, sizeof(Storage_Record_Header_t), &new_record);
@@ -205,18 +208,19 @@ int32_t storage_write_record (Storage_Record_Pointer_t record, uint8_t* buf, siz
 
   // write complete, copy over values to user
   if (next_record != NULL) {
-    next_record->block = new_record.block;
+    next_record->block  = new_record.block;
     next_record->offset = new_record.offset;
   }
   return TOCK_SUCCESS;
 }
 
-int32_t storage_read_record (Storage_Record_Pointer_t record, uint8_t* buf, size_t* buf_len, Storage_Record_Pointer_t* next_record) {
+int32_t storage_read_record (Storage_Record_Pointer_t record, uint8_t* buf, size_t* buf_len,
+                             Storage_Record_Pointer_t* next_record) {
   int32_t err = TOCK_SUCCESS;
 
   // read the record header first
   Storage_Record_Pointer_t new_record = {0};
-  Storage_Record_Header_t header = {0};
+  Storage_Record_Header_t header      = {0};
   err = storage_read_data(record, (uint8_t*)&header, sizeof(Storage_Record_Header_t), &new_record);
   if (err < TOCK_SUCCESS) {
     return err;
@@ -239,7 +243,7 @@ int32_t storage_read_record (Storage_Record_Pointer_t record, uint8_t* buf, size
     *buf_len = header.message_length;
   }
   if (next_record != NULL) {
-    next_record->block = new_record.block;
+    next_record->block  = new_record.block;
     next_record->offset = new_record.offset;
   }
   return TOCK_SUCCESS;
@@ -275,7 +279,7 @@ int32_t storage_initialize (void) {
     return TOCK_FAIL;
   }
   printf(" * SD Card initialized.\tBlock size: %lu bytes\tSize: %lu kB\n",
-      block_size, size_in_kB);
+         block_size, size_in_kB);
 
   // give buffers to SD card driver
   err = sdcard_set_read_buffer(sdcard_buf, SDCARD_BLOCK_SIZE);
@@ -309,20 +313,20 @@ int32_t storage_initialize (void) {
     printf(" * Empty SD card. Initializing\n");
     // status does not exist. Create one
     storage_status.magic_header = STORAGE_STATUS_HEADER;
-    storage_status.block_size = block_size;
+    storage_status.block_size   = block_size;
 
     // figure out how to divide blocks between apps
     // divide between number of modules, leaving 1 KB at the start
-    uint32_t blocks_per_module = ((size_in_kB-1) * 2) / STORAGE_MODULE_COUNT;
+    uint32_t blocks_per_module = ((size_in_kB - 1) * 2) / STORAGE_MODULE_COUNT;
     storage_status.blocks_per_module = blocks_per_module;
 
     // initialize status record
     uint32_t initial_block = STORAGE_MODULES_INITIAL_BLOCK;
-    for (int i=0; i<STORAGE_MODULE_COUNT; i++) {
-      storage_status.status_records[i].start.block = initial_block + i*blocks_per_module;
+    for (int i = 0; i < STORAGE_MODULE_COUNT; i++) {
+      storage_status.status_records[i].start.block  = initial_block + i * blocks_per_module;
       storage_status.status_records[i].start.offset = 0;
-      storage_status.status_records[i].curr.block = initial_block + i*blocks_per_module;
-      storage_status.status_records[i].curr.offset = 0;
+      storage_status.status_records[i].curr.block   = initial_block + i * blocks_per_module;
+      storage_status.status_records[i].curr.offset  = 0;
     }
 
     // copy record to SD card

@@ -41,7 +41,7 @@ for makefile in $(find . | grep '/Makefile$'); do
 	fi
 
 	echo "${bold}${blue}Compiling${teal} $name${normal}"
-	make -j || { echo "${bold} ⤤ $name${normal}" ; echo "" ; failures+=("$name");}
+	yes | make format || { echo "${bold} ⤤ $name${normal}" ; echo "" ; failures+=("$name");}
 	popd > /dev/null
 done
 

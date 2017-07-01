@@ -21,8 +21,8 @@ int main (void) {
 
   do {
     err = signpost_initialization_module_init(
-        i2c_address,
-        SIGNPOST_INITIALIZATION_NO_APIS);
+      i2c_address,
+      SIGNPOST_INITIALIZATION_NO_APIS);
     if (err < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", err);
       delay_ms(5000);
@@ -42,7 +42,8 @@ int main (void) {
     } else {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-      printf("Wrote successfully! Block: %lu Offset: %lu\n", *(uint32_t*)&record.value[0], *(uint32_t*)&record.value[4]);
+      printf("Wrote successfully! Block: %lu Offset: %lu\n", *(uint32_t*)&record.value[0],
+             *(uint32_t*)&record.value[4]);
 #pragma GCC diagnostic pop
     }
     printf("\n");

@@ -1,12 +1,12 @@
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <tock.h>
 #include <timer.h>
+#include <tock.h>
 
 #include "controller.h"
 #include "i2c_selector.h"
@@ -29,7 +29,7 @@ int main (void) {
 
     printf("\nChecking Energy\n");
 
-    for (i=0; i<8; i++) {
+    for (i = 0; i < 8; i++) {
       if (i == 3 || i == 4) continue;
 
       energy = signpost_energy_get_module_energy_uwh(i);

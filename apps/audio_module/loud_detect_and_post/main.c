@@ -1,8 +1,8 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 #include <adc.h>
 #include <console.h>
@@ -12,8 +12,8 @@
 #include <tock.h>
 
 #include "app_watchdog.h"
-#include "simple_post.h"
 #include "signpost_api.h"
+#include "simple_post.h"
 
 static const uint8_t i2c_address = 0x33;
 #define ZERO_MAGNITUDE 2048 // middle value for a 12-bit ADC
@@ -71,12 +71,12 @@ int main (void) {
     }
 
     // calculate amplitude of sample
-    uint16_t amplitude = abs(sample-ZERO_MAGNITUDE);
+    uint16_t amplitude = abs(sample - ZERO_MAGNITUDE);
     sample_buf[sample_index] = amplitude;
 
     // calculate average amplitude over last N samples
     uint32_t amplitude_sum = 0;
-    for (int i=0; i<SAMPLE_COUNT; i++) {
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
       amplitude_sum += sample_buf[i];
     }
     uint16_t average_amplitude = amplitude_sum / SAMPLE_COUNT;

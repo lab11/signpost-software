@@ -23,78 +23,77 @@ static uint8_t rx_buffer[2048];
 static bool message_sent = false;
 
 static void tx_callback (
-            __attribute__ ((unused)) int u1,
-            __attribute__ ((unused)) int u2,
-            __attribute__ ((unused)) int u3,
-            __attribute__ ((unused)) void* userdata) {
+  __attribute__ ((unused)) int u1,
+  __attribute__ ((unused)) int u2,
+  __attribute__ ((unused)) int u3,
+  __attribute__ ((unused)) void* userdata) {
 
-    message_sent = true;
+  message_sent = true;
 }
 
 static bool waiting_for_response = 0;
 
 static void rx_callback (
-            int len,
-            __attribute__ ((unused)) int u2,
-            __attribute__ ((unused)) int u3,
-            __attribute__ ((unused)) void* userdata) {
+  int len,
+  __attribute__ ((unused)) int u2,
+  __attribute__ ((unused)) int u3,
+  __attribute__ ((unused)) void* userdata) {
 
-    waiting_for_response = 0;
-    signpost_networking_post_reply(src, rx_buffer, len);
+  waiting_for_response = 0;
+  signpost_networking_post_reply(src, rx_buffer, len);
 }
 
 static void watchdog_timer_cb (
-            __attribute__ ((unused)) int len,
-            __attribute__ ((unused)) int u2,
-            __attribute__ ((unused)) int u3,
-            __attribute__ ((unused)) void* userdata) {
+  __attribute__ ((unused)) int len,
+  __attribute__ ((unused)) int u2,
+  __attribute__ ((unused)) int u3,
+  __attribute__ ((unused)) void* userdata) {
 
-    app_watchdog_tickle_kernel();
+  app_watchdog_tickle_kernel();
 }
 
 
 static void networking_api_callback(uint8_t source_address,
-    signbus_frame_type_t frame_type, __attribute__ ((unused)) signbus_api_type_t api_type,
-    __attribute__ ((unused)) uint8_t message_type, size_t message_length, uint8_t* message) {
-
+                                    signbus_frame_type_t frame_type, __attribute__ (
+                                      (unused)) signbus_api_type_t api_type,
+                                    __attribute__ (
+                                      (unused)) uint8_t message_type, size_t message_length, uint8_t* message) {
 
   src = source_address;
 
   if (frame_type == NotificationFrame || frame_type == CommandFrame) {
 
-    if(frame_type == CommandFrame) {
-        static char d[2];
-        d[0] = '$';
-        message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
-        yield_for(&message_sent);
+    if (frame_type == CommandFrame) {
+      static char d[2];
+      d[0]         = '$';
+      message_sent = false;
+      allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
+      subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+      yield_for(&message_sent);
 
-
-        d[0] = message_length & 0xff;
-        d[1] = ((message_length & 0xff00) >> 8);
-        message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 2);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
-        yield_for(&message_sent);
+      d[0]         = message_length & 0xff;
+      d[1]         = ((message_length & 0xff00) >> 8);
+      message_sent = false;
+      allow(DRIVER_NUM_GPS, 1, (void*)d, 2);
+      subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+      yield_for(&message_sent);
     } else {
-        static char d[2];
-        //d[0] = '&';
-        message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
-        yield_for(&message_sent);
+      static char d[2];
+      // d[0] = '&';
+      message_sent = false;
+      allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
+      subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+      yield_for(&message_sent);
     }
-
 
     message_sent = false;
     allow(DRIVER_NUM_GPS, 1, (void*)message, message_length);
     subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
 
-    if(frame_type == CommandFrame) {
-        yield_for(&message_sent);
-        waiting_for_response = 1;
-        getauto((char *)rx_buffer,4096, rx_callback,NULL);
+    if (frame_type == CommandFrame) {
+      yield_for(&message_sent);
+      waiting_for_response = 1;
+      getauto((char *)rx_buffer,4096, rx_callback,NULL);
     }
 
   } else if (frame_type == ResponseFrame) {
@@ -117,7 +116,7 @@ int main (void) {
 
   // Install hooks for the signpost APIs we implement
   static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
-  static api_handler_t* handlers[] = {&networking_handler, NULL};
+  static api_handler_t* handlers[]        = {&networking_handler, NULL};
   delay_ms(1000);
   do {
     rc = signpost_initialization_module_init(ModuleAddressRadio, handlers);

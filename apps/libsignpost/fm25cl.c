@@ -1,6 +1,5 @@
-
-#include <tock.h>
 #include <internal/nonvolatile_storage.h>
+#include <tock.h>
 
 #include "fm25cl.h"
 

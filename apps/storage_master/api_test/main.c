@@ -17,8 +17,8 @@
 #include "storage_master.h"
 
 static void storage_api_callback(uint8_t source_address,
-    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, size_t message_length, uint8_t* message) {
+                                 signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+                                 uint8_t message_type, size_t message_length, uint8_t* message) {
   int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
@@ -30,43 +30,43 @@ static void storage_api_callback(uint8_t source_address,
     // XXX unexpected, drop
   } else if (frame_type == CommandFrame) {
     printf("Got a command message!: len = %d\n", message_length);
-    for (size_t i=0; i<message_length; i++) {
+    for (size_t i = 0; i < message_length; i++) {
       printf("%X ", message[i]);
     }
     printf("\n");
 
-    //XXX do some checking that the message type is right and all that jazz
-    //XXX also figure out what module index this is, somehow
+    // XXX do some checking that the message type is right and all that jazz
+    // XXX also figure out what module index this is, somehow
     int module_index = 0;
 
     printf("Writing data\n");
 
     // get initial record
     Storage_Record_Pointer_t write_record = {0};
-    write_record.block = storage_status.status_records[module_index].curr.block;
+    write_record.block  = storage_status.status_records[module_index].curr.block;
     write_record.offset = storage_status.status_records[module_index].curr.offset;
 
     // write data to storage
     err = storage_write_record(write_record, message, message_length, &write_record);
     if (err < TOCK_SUCCESS) {
       printf("Writing error: %d\n", err);
-      //XXX: send error
+      // XXX: send error
     }
 
     // update record
-    storage_status.status_records[module_index].curr.block = write_record.block;
+    storage_status.status_records[module_index].curr.block  = write_record.block;
     storage_status.status_records[module_index].curr.offset = write_record.offset;
     err = storage_update_status();
     if (err < TOCK_SUCCESS) {
       printf("Updating status error: %d\n", err);
-      //XXX: send error
+      // XXX: send error
     }
     printf("Complete. Final block: %lu offset: %lu\n", write_record.block, write_record.offset);
 
     // send response
     err = signpost_storage_write_reply(source_address, (uint8_t*)&write_record);
     if (err < TOCK_SUCCESS) {
-      //XXX: I guess just try to send an error...
+      // XXX: I guess just try to send an error...
     }
 
   } else if (frame_type == ResponseFrame) {
@@ -90,7 +90,7 @@ int main (void) {
 
   // Install hooks for the signpost APIs we implement
   static api_handler_t storage_handler = {StorageApiType, storage_api_callback};
-  static api_handler_t* handlers[] = {&storage_handler, NULL};
+  static api_handler_t* handlers[]     = {&storage_handler, NULL};
   do {
     rc = signpost_initialization_storage_master_init(handlers);
     if (rc < 0) {
@@ -100,8 +100,8 @@ int main (void) {
   } while (rc < 0);
 
   // Setup watchdog
-  //app_watchdog_set_kernel_timeout(30000);
-  //app_watchdog_start();
+  // app_watchdog_set_kernel_timeout(30000);
+  // app_watchdog_start();
 
   printf("\nStorage Master initialization complete\n");
 }

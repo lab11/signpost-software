@@ -1,9 +1,8 @@
-
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 #include <adc.h>
 #include <console.h>
@@ -28,7 +27,7 @@ int main (void) {
   printf("[Audio Module] Quiet Detector\n");
 
   printf("Sampling data\n");
-  uint8_t sample_index = 0;
+  uint8_t sample_index   = 0;
   uint16_t min_amplitude = 100;
   while (true) {
 
@@ -40,12 +39,12 @@ int main (void) {
     }
 
     // calculate amplitude of sample
-    uint16_t amplitude = abs(sample-ZERO_MAGNITUDE);
+    uint16_t amplitude = abs(sample - ZERO_MAGNITUDE);
     sample_buf[sample_index] = amplitude;
 
     // calculate average amplitude over last N samples
     uint32_t amplitude_sum = 0;
-    for (int i=0; i<SAMPLE_COUNT; i++) {
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
       amplitude_sum += sample_buf[i];
     }
     uint16_t average_amplitude = amplitude_sum / SAMPLE_COUNT;
@@ -67,7 +66,7 @@ int main (void) {
       }
 
       // reset wrote
-      wrote = false;
+      wrote         = false;
       min_amplitude = 100;
     }
 

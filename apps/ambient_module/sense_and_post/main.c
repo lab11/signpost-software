@@ -2,9 +2,9 @@
 // Signpost API
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -42,17 +42,17 @@ static void sample_sensors (void) {
   sample_sensors_successful = true;
 
   // get light
-  int light = 0;
+  int light    = 0;
   int err_code = isl29035_read_light_intensity();
   if (err_code < TOCK_SUCCESS) {
     printf("Error reading from light sensor: %d\n", light);
   } else {
-    light = err_code;
+    light    = err_code;
     err_code = TOCK_SUCCESS;
   }
 
   // get temperature and humidity
-  int temperature = 0;
+  int temperature   = 0;
   unsigned humidity = 0;
   int err = si7021_get_temperature_humidity_sync(&temperature, &humidity);
   if (err < TOCK_SUCCESS) {
@@ -67,10 +67,10 @@ static void sample_sensors (void) {
   printf("\tLight %d (lux)\n", light);
 
   // store readings
-  samples.light = light;
+  samples.light       = light;
   samples.temperature = temperature;
-  samples.humidity = humidity;
-  samples.err_code = err_code;
+  samples.humidity    = humidity;
+  samples.err_code    = err_code;
 
   // track success
   if (err_code != TOCK_SUCCESS) {

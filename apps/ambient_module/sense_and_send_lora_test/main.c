@@ -2,9 +2,9 @@
 // Signpost API
 
 #include <stdbool.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -39,27 +39,27 @@ uint8_t message_buf[20] = {0};
 
 // keep track of whether functions succeeded
 static bool sample_sensors_successful = true;
-static bool post_to_radio_successful = true;
+static bool post_to_radio_successful  = true;
 
 static void sample_sensors (void) {
   // read data from sensors and save locally
   sample_sensors_successful = true;
 
-  //get pressure
+  // get pressure
   int pressure = lps25hb_get_pressure_sync();
 
   // get light
-  int light = 0;
+  int light    = 0;
   int err_code = isl29035_read_light_intensity();
   if (err_code < TOCK_SUCCESS) {
     printf("Error reading from light sensor: %d\n", light);
   } else {
-    light = err_code;
+    light    = err_code;
     err_code = TOCK_SUCCESS;
   }
 
   // get temperature and humidity
-  int temperature = 0;
+  int temperature   = 0;
   unsigned humidity = 0;
   int err = si7021_get_temperature_humidity_sync(&temperature, &humidity);
   if (err < TOCK_SUCCESS) {
@@ -75,21 +75,21 @@ static void sample_sensors (void) {
   printf("\tLight %d (lux)\n", light);
 
   // store readings
-  samples.light = light;
+  samples.light       = light;
   samples.temperature = temperature;
-  samples.humidity = humidity;
-  samples.pressure = pressure;
-  samples.err_code = err_code;
+  samples.humidity    = humidity;
+  samples.pressure    = pressure;
+  samples.err_code    = err_code;
 
-  //also put them in the send buffer
-  message_buf[2] = (uint8_t) ((temperature >> 8) & 0xFF);
-  message_buf[3] = (uint8_t) (temperature & 0xFF);
-  message_buf[4] = (uint8_t) ((humidity >> 8) & 0xFF);
-  message_buf[5] = (uint8_t) (humidity & 0xFF);
-  message_buf[6] = (uint8_t) ((light >> 8) & 0xFF);
-  message_buf[7] = (uint8_t) (light & 0xFF);
-  message_buf[8] = (uint8_t) ((pressure >> 16) & 0xFF);
-  message_buf[9] = (uint8_t) ((pressure >> 8) & 0xFF);
+  // also put them in the send buffer
+  message_buf[2]  = (uint8_t) ((temperature >> 8) & 0xFF);
+  message_buf[3]  = (uint8_t) (temperature & 0xFF);
+  message_buf[4]  = (uint8_t) ((humidity >> 8) & 0xFF);
+  message_buf[5]  = (uint8_t) (humidity & 0xFF);
+  message_buf[6]  = (uint8_t) ((light >> 8) & 0xFF);
+  message_buf[7]  = (uint8_t) (light & 0xFF);
+  message_buf[8]  = (uint8_t) ((pressure >> 16) & 0xFF);
+  message_buf[9]  = (uint8_t) ((pressure >> 8) & 0xFF);
   message_buf[10] = (uint8_t) (pressure & 0xFF);
 
   // track success
@@ -102,7 +102,7 @@ static void post_to_radio (void) {
   // post sensor data over HTTP and get response
   post_to_radio_successful = true;
 
-  //send radio the data
+  // send radio the data
   printf("--Sendinging data--\n");
   int response = signpost_networking_send_bytes(ModuleAddressRadio, message_buf, 11);
   message_buf[1]++;

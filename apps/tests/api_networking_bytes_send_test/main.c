@@ -33,29 +33,27 @@ int main (void) {
 
   printf("Initialized\n");
 
-  while(1) {
-      delay_ms(1000);
-      const char* test = "This is my networking bytes test data";
-      printf("Sending test string to radio module\n");
-      int result = signpost_networking_send_bytes(ModuleAddressRadio, (uint8_t*)test, strlen(test));
-      if(result > 0) {
-        printf("Sent successfully\n");
-      } else {
-        printf("Send failed\n");
-      }
+  while (1) {
+    delay_ms(1000);
+    const char* test = "This is my networking bytes test data";
+    printf("Sending test string to radio module\n");
+    int result = signpost_networking_send_bytes(ModuleAddressRadio, (uint8_t*)test, strlen(test));
+    if (result > 0) {
+      printf("Sent successfully\n");
+    } else {
+      printf("Send failed\n");
+    }
 
-      delay_ms(1000);
-      printf("Sending test string to module address 0x30\n");
-      result = signpost_networking_send_bytes(0x30, (uint8_t*)test, strlen(test));
-      if(result > 0) {
-        printf("Sent successfully\n");
-      } else {
-        printf("Send failed\n");
-      }
+    delay_ms(1000);
+    printf("Sending test string to module address 0x30\n");
+    result = signpost_networking_send_bytes(0x30, (uint8_t*)test, strlen(test));
+    if (result > 0) {
+      printf("Sent successfully\n");
+    } else {
+      printf("Send failed\n");
+    }
 
-      delay_ms(5000);
+    delay_ms(5000);
   }
-
-
 
 }
