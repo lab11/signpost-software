@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <alarm.h>
 #include <gpio.h>
 #include <led.h>
 #include <timer.h>
@@ -42,7 +43,7 @@ static void pps_callback (int pin_num,
 
     if(pin_num == 2) {
 
-        last_pps_time = timer_read();
+        last_pps_time = alarm_read();
 
         printf("Got PPS interrupt\n");
 
@@ -54,7 +55,7 @@ static void pps_callback (int pin_num,
             flash_led = false;
         }
     } else if (pin_num == 1) {
-        pin_time = timer_read();
+        pin_time = alarm_read();
         got_int = 1;
         float seconds;
         if(new_time) {
@@ -90,10 +91,9 @@ int main (void) {
 
   printf("Starting Timer\n");
   //this is just to make sure the timer is running
-  timer_subscribe(timer_callback, NULL);
-  timer_start_repeating(2000);
+  timer_every(2000, timer_callback, NULL);
 
-  last_pps_time = timer_read();
+  last_pps_time = alarm_read();
 
   while (true) {
     if(new_time == 0) {

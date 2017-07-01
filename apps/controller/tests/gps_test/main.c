@@ -52,8 +52,7 @@ int main(void) {
 
     // option 1:
     // use GPS with a timer
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(7000);
+    timer_every(7000, timer_callback, NULL);
     printf("Setup complete\n");
 
     // other option:

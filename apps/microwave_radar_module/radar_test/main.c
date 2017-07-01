@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <adc.h>
+#include <alarm.h>
 #include <timer.h>
 #include <tock.h>
 
@@ -53,7 +54,7 @@ static uint32_t calculate_sample_frequency (uint32_t curr_data) {
         sample_index = 0;
 
         // starting this period sample
-        t1 = timer_read();
+        t1 = alarm_read();
         if (INITIAL_VAL < curr_data) {
             sample_state = RISING;
             max_sample = curr_data;
@@ -93,7 +94,7 @@ static uint32_t calculate_sample_frequency (uint32_t curr_data) {
 
         // calculate time for that period
         if (sample_state == FINISH_RISING || sample_state == FINISH_FALLING) {
-            t2 = timer_read();
+            t2 = alarm_read();
             time_intervals[sample_index] = t2-t1;
             sample_index++;
 

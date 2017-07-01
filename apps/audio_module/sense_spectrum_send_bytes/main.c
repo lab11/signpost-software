@@ -197,8 +197,7 @@ int main (void) {
     adc_set_callback(adc_callback, NULL);
 
     //start timer
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(10000);
+    timer_every(10000, timer_callback, NULL);
 
 
     while (1) {
