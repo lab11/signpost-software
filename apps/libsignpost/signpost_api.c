@@ -2,7 +2,6 @@
 //#include <stdio.h>
 #include <string.h>
 #include "CRC16.h"
-
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
@@ -290,6 +289,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
             key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
 
+<<<<<<< HEAD
     printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
     return 0;
 }
