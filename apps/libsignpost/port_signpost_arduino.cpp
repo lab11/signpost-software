@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <HardwareSerial.h>
 #include <Wire.h>
 #include <stdarg.h>
 #include "port_signpost.h"
@@ -6,12 +7,15 @@
 //TODO: Verify/test multi-master support
 
 //TODO: choose mod in, mod out, and debug led pins for arduino
-//Current defined values are for the Arduino MKRZero
-#define ARDUINO_MOD_OUT 		5
+//Current values are defined for the Arduino MKRZero
 #define ARDUINO_MOD_IN 			4
+#define ARDUINO_MOD_OUT 		5
 #define DEBUG_LED 				LED_BUILTIN
 #define SIGNPOST_I2C_SPEED 		400000
 #define _PRINTF_BUFFER_LENGTH_	64
+
+//#define ENABLE_PORT_PRINTF
+
 //TODO: Add error handling and error codes
 static void mod_in_callback_helper();
 static void slave_listen_callback_helper(int num_bytes);
@@ -22,6 +26,9 @@ static void slave_read_callback_helper();
 
 static char g_port_printf_buf[_PRINTF_BUFFER_LENGTH_];
 
+//Make sure to set i2c buffer size to 256 within hardware i2c library
+//For a regular avr arduino, this is located in twi.h
+//For the arduino MKRZero, it is in RingBuffer.h
 uint8_t g_arduino_i2c_address;
 port_signpost_callback g_mod_in_callback = NULL;
 port_signpost_callback g_slave_listen_callback = NULL;
@@ -35,9 +42,9 @@ size_t g_slave_transmit_buf_len = 0;
 
 int port_signpost_init(uint8_t i2c_address) {
 	//Wire.begin(i2c_address);
-	//Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.setClock(SIGNPOST_I2C_SPEED);
 	g_arduino_i2c_address = i2c_address;
-	pinMode(ARDUINO_MOD_IN, INPUT_PULLUP);
+	pinMode(ARDUINO_MOD_IN, INPUT);
 	pinMode(ARDUINO_MOD_OUT, OUTPUT);
 	pinMode(DEBUG_LED, OUTPUT);
 	Wire.onReceive(slave_listen_callback_helper);
@@ -46,7 +53,7 @@ int port_signpost_init(uint8_t i2c_address) {
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 	Wire.begin();
-	// Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.setClock(SIGNPOST_I2C_SPEED);
 	Wire.beginTransmission(addr);
 	int num_written = Wire.write(buf, len);
 	Wire.endTransmission();
@@ -55,7 +62,7 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
 	Wire.begin(g_arduino_i2c_address);
-	// Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.setClock(SIGNPOST_I2C_SPEED);
 	g_slave_receive_buf = buf;
 	g_slave_receive_buf_max_len = max_len;
 	g_slave_receive_buf_len = 0;
@@ -64,7 +71,7 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len) {
 	Wire.begin(g_arduino_i2c_address);
-	// Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.setClock(SIGNPOST_I2C_SPEED);
 	//Set global i2c transmit buffer to input buffer
 	g_slave_transmit_buf = buf;
 	g_slave_transmit_buf_len = len;
@@ -96,8 +103,8 @@ int port_signpost_mod_in_disable_interrupt(void) {
 }
 
 //TODO: Implement version that puts Arduino into a sleep state
-void port_signpost_wait_for(void* wait_on_true) {
-	while (!wait_on_true) {
+void port_signpost_wait_for(bool* wait_on_true) {
+	while (!(*wait_on_true)) {
 		continue;
 	}
 }
@@ -128,11 +135,13 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
 }
 
 int port_printf(const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(g_port_printf_buf, _PRINTF_BUFFER_LENGTH_, fmt, args);
-	Serial.print(g_port_printf_buf);
-	va_end(args);
+	#ifdef ENABLE_PORT_PRINTF
+		va_list args;
+		va_start(args, fmt);
+		vsnprintf(g_port_printf_buf, _PRINTF_BUFFER_LENGTH_, fmt, args);
+		Serial.print(g_port_printf_buf);
+		va_end(args);
+	#endif
 	return 0;
 }
 
