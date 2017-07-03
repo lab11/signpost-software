@@ -31,7 +31,6 @@ static char g_port_printf_buf[_PRINTF_BUFFER_LENGTH_];
 //Make sure to set i2c buffer size to 256 within hardware i2c library
 //For a regular avr arduino, this is located in twi.h
 //For the arduino MKRZero, this is located in RingBuffer.h
-
 uint8_t g_arduino_i2c_address;
 port_signpost_callback g_mod_in_callback = NULL;
 port_signpost_callback g_slave_listen_callback = NULL;
