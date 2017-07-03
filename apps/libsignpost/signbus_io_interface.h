@@ -17,18 +17,18 @@ extern "C" {
 //#define SIGNBUS_DEBUG(...)
 
 #define SIGNBUS_DEBUG(...) do {\
-    printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
-    printf(__VA_ARGS__);\
+    port_printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
+    port_printf(__VA_ARGS__);\
     } while (0)
 
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen)
 /*
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen) do {\
-    printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
+    port_printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
     for (size_t _i = 0; _i < _buflen; _i++) {\
-        printf("%02x", (unsigned)*(_buf+_i));\
+        port_printf("%02x", (unsigned)*(_buf+_i));\
     }\
-    printf("\n");\
+    port_printf("\n");\
 } while (0)
 */
 

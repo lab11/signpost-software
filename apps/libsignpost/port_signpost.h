@@ -28,6 +28,7 @@ for each platform*/
 #define PORT_SIGNPOST_ERROR -1
 #define PORT_SIGNPOST_I2C_WRITE_ERROR -2
 
+<<<<<<< HEAD
 //Error code definitions
 #define SB_PORT_SUCCESS       0
 #define SB_PORT_FAIL         -1
@@ -41,9 +42,12 @@ for each platform*/
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 //These are the callback definitions
+=======
+>>>>>>> Created and implemented new port_printf function
 #ifdef __cplusplus
 extern "C" {
 #endif
+//These are the callback definitions
 //This is the typedef of the callback you should call when you get an i2c slave write
 //You can either pass in the (positive) length or an error code
 typedef void (*port_signpost_callback)(int len_or_rc);
@@ -81,7 +85,7 @@ int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb);
 int port_signpost_mod_in_disable_interrupt(void);
 
 //This is a way to wait on a variable in a platform specific way
-void port_signpost_wait_for(void* wait_on_true);
+void port_signpost_wait_for(bool* wait_on_true);
 
 //This is a way to wait on a variable with a timeout.
 //Returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on timeout
