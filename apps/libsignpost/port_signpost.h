@@ -28,7 +28,6 @@ for each platform*/
 #define PORT_SIGNPOST_ERROR -1
 #define PORT_SIGNPOST_I2C_WRITE_ERROR -2
 
-<<<<<<< HEAD
 //Error code definitions
 #define SB_PORT_SUCCESS       0
 #define SB_PORT_FAIL         -1
@@ -42,8 +41,6 @@ for each platform*/
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 //These are the callback definitions
-=======
->>>>>>> Created and implemented new port_printf function
 #ifdef __cplusplus
 extern "C" {
 #endif

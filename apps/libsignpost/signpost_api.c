@@ -296,6 +296,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     return 0;
 }
 
+<<<<<<< HEAD
 int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
     printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
@@ -319,6 +320,16 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     if (signpost_api_send(destination_address, CommandFrame, InitializationApiType,
             InitializationKeyExchange, ecdh_param_len, ecdh_buf) > 0) {
       return SB_PORT_SUCCESS;
+=======
+static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
+    // debounce interrupt
+    //port_printf("ASYNC: Entered isolation callback\n\r");
+    port_signpost_delay_ms(50);
+    // are we supposed to be isolated?
+    if(port_signpost_mod_in_read() != 0) {
+    //    port_printf("WARN: spurious interrupt when not waiting for isolation\n");
+      return;
+>>>>>>> Fixed i2c slave receive issue
     }
     else return SB_PORT_FAIL;
 }
@@ -381,7 +392,7 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     signbus_io_init(i2c_address);
     rc = port_rng_init();
     if (rc < 0) return rc;
-    SIGNBUS_DEBUG("io and entropty init complete\n\r");
+    SIGNBUS_DEBUG("io and entropy init complete\n\r");
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
     SIGNBUS_DEBUG("async protocol setup\n\r");
