@@ -13,6 +13,8 @@
 #define DEBUG_LED 				LED_BUILTIN
 #define SIGNPOST_I2C_SPEED 		400000
 #define _PRINTF_BUFFER_LENGTH_	64
+#define ARDUINO_DEBUG_1 6
+#define ARDUINO_DEBUG_2 7
 
 //#define ENABLE_PORT_PRINTF
 
@@ -47,21 +49,31 @@ int port_signpost_init(uint8_t i2c_address) {
 	pinMode(ARDUINO_MOD_IN, INPUT);
 	pinMode(ARDUINO_MOD_OUT, OUTPUT);
 	pinMode(DEBUG_LED, OUTPUT);
+	pinMode(ARDUINO_DEBUG_1, OUTPUT);
+	pinMode(ARDUINO_DEBUG_2, OUTPUT);
 	Wire.onReceive(slave_listen_callback_helper);
+	Wire.onRequest(slave_read_callback_helper);
 	return 0;
 }
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 	Wire.begin();
+	digitalWrite(ARDUINO_DEBUG_1, HIGH);
+	digitalWrite(ARDUINO_DEBUG_2, LOW);
 	Wire.setClock(SIGNPOST_I2C_SPEED);
 	Wire.beginTransmission(addr);
 	int num_written = Wire.write(buf, len);
 	Wire.endTransmission();
+	Wire.begin(g_arduino_i2c_address);
+	digitalWrite(ARDUINO_DEBUG_1, HIGH);
+	digitalWrite(ARDUINO_DEBUG_2, LOW);
 	return num_written;
 }
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
 	Wire.begin(g_arduino_i2c_address);
+	digitalWrite(ARDUINO_DEBUG_1, LOW);
+	digitalWrite(ARDUINO_DEBUG_2, HIGH);
 	Wire.setClock(SIGNPOST_I2C_SPEED);
 	g_slave_receive_buf = buf;
 	g_slave_receive_buf_max_len = max_len;
@@ -71,6 +83,8 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len) {
 	Wire.begin(g_arduino_i2c_address);
+	digitalWrite(ARDUINO_DEBUG_1, LOW);
+	digitalWrite(ARDUINO_DEBUG_2, HIGH);
 	Wire.setClock(SIGNPOST_I2C_SPEED);
 	//Set global i2c transmit buffer to input buffer
 	g_slave_transmit_buf = buf;
@@ -110,7 +124,13 @@ void port_signpost_wait_for(bool* wait_on_true) {
 }
 
 void port_signpost_delay_ms(unsigned ms) {
-	delay(ms);
+	// For every 1 ms delay, call delayMicroseconds once.
+	// delayMicroseconds does not work for inputs > 16383,
+	// so a loop is used to divide up the duration.
+	for (unsigned i = 0; i < ms; ++i) {
+		delayMicroseconds(1000);
+	}
+	//delay(ms);
 }
 
 int port_signpost_debug_led_on() {
