@@ -53,6 +53,10 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
     return TOCK_FAIL;
 }
 
+uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
+    return appid & 0x00ff;
+}
+
 int signpost_api_error_reply(uint8_t destination_address,
         signbus_api_type_t api_type, uint8_t message_type) {
     return signpost_api_send(destination_address,
