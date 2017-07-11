@@ -2,7 +2,9 @@
 #include "tock.h"
 #include "i2c_selector.h"
 
-#define DRIVER_NUM_I2C_SELECTOR 101
+#define DRIVER_NUM_I2C_SELECTOR_0 1001
+#define DRIVER_NUM_I2C_SELECTOR_1 1002
+#define DRIVER_NUM_I2C_SELECTOR_2 1003
 
 
 struct i2c_selector_data {
@@ -24,26 +26,39 @@ static void i2c_selector_cb(__attribute__ ((unused)) int value,
 
 
 int i2c_selector_set_callback(subscribe_cb callback, void* callback_args) {
-    return subscribe(DRIVER_NUM_I2C_SELECTOR, 0, callback, callback_args);
+    int ret = subscribe(DRIVER_NUM_I2C_SELECTOR_0, 0, callback, callback_args);
+    ret |=    subscribe(DRIVER_NUM_I2C_SELECTOR_1, 0, callback, callback_args);
+    ret |=    subscribe(DRIVER_NUM_I2C_SELECTOR_2, 0, callback, callback_args);
+    return ret;
 }
 
 int i2c_selector_select_channels(uint32_t channels) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 0, channels);
+	int ret = command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0F);
+	ret |=    command(DRIVER_NUM_I2C_SELECTOR_1, 1, (channels >> 4) & 0x0F);
+	ret |=    command(DRIVER_NUM_I2C_SELECTOR_1, 1, (channels >> 8) & 0x0F);
+    return ret;
 }
 
 int i2c_selector_disable_all_channels(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 1, 0);
+	int ret = command(DRIVER_NUM_I2C_SELECTOR_0, 2, 0);
+	ret |= command(DRIVER_NUM_I2C_SELECTOR_1, 2, 0);
+    ret |= command(DRIVER_NUM_I2C_SELECTOR_2, 2, 0);
+    return ret;
 }
 
 int i2c_selector_read_interrupts(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 2, 0);
+	int ret =  command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0);
+    ret |= command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0);
+	ret |= command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0);
+    return ret;
 }
 
 int i2c_selector_read_selected(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 3, 0);
+	int ret = command(DRIVER_NUM_I2C_SELECTOR_0, 4, 0);
+	ret |= command(DRIVER_NUM_I2C_SELECTOR_1, 4, 0);
+	ret |= command(DRIVER_NUM_I2C_SELECTOR_2, 4, 0);
+    return ret;
 }
-
-
 
 int i2c_selector_select_channels_sync(uint32_t channels) {
     int err;

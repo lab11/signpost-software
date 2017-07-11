@@ -4,5 +4,3 @@
 #![no_std]
 
 extern crate kernel;
-
-pub mod i2c_selector;

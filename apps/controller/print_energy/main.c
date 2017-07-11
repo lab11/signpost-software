@@ -19,12 +19,14 @@ int main (void) {
 
   signpost_energy_reset_all_energy();
 
+  printf("Initing switches\n");
   controller_init_module_switches();
+  printf("Initing enable power\n");
   controller_all_modules_enable_power();
+  printf("Initing enable i2c\n");
   controller_all_modules_enable_i2c();
 
   int i;
-
   while (1) {
 
     printf("\nChecking Energy\n");
