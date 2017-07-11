@@ -33,9 +33,9 @@ int i2c_selector_set_callback(subscribe_cb callback, void* callback_args) {
 }
 
 int i2c_selector_select_channels(uint32_t channels) {
-	int ret = command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0F);
-	ret |=    command(DRIVER_NUM_I2C_SELECTOR_1, 1, (channels >> 4) & 0x0F);
-	ret |=    command(DRIVER_NUM_I2C_SELECTOR_1, 1, (channels >> 8) & 0x0F);
+	int ret = command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0000000F);
+	ret |=    command(DRIVER_NUM_I2C_SELECTOR_1, 1, (channels >> 4) & 0x000000000F);
+	ret |=    command(DRIVER_NUM_I2C_SELECTOR_2, 1, (channels >> 8) & 0x000000000F);
     return ret;
 }
 
