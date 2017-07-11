@@ -11,28 +11,43 @@ typedef struct energy_remaining {
     int module_energy_remaining[8];
 } signpost_energy_remaining_t;
 
-typedef struct average_power {
-    int controller_average_power;
-    int module_average_power[8];
-} signpost_average_power_t;
+typedef struct energy_used {
+    int controller_energy_used;
+    int linux_energy_used;
+    int module_energy_used[8];
+} signpost_energy_used_t;
 
+typedef struct time_since_reset {
+    int controller_time_since_reset;
+    int linux_time_since_reset;
+    int module_time_since_reset[8];
+} signpost_energy_time_since_reset_t;
 
 //if r == NULL then initialize from battery capacity
-void signpost_energy_policy_init(signpost_energy_remaining_t* r, signpost_average_power_t* p);
+void signpost_energy_policy_init(signpost_energy_remaining_t* remaining, 
+                                 signpost_energy_used_t* used, 
+                                 signpost_energy_time_since_reset_t* time);
 
 //these functions tell you how much each module has remaining in their logical capacitors
 //this is returned to the module on an energy query
-int signpost_energy_policy_get_controller_energy_remaining (void);
-int signpost_energy_policy_get_module_energy_remaining (int module_num);
-int signpost_energy_policy_get_battery_energy_remaining (void);
+int signpost_energy_policy_get_controller_energy_remaining_uwh (void);
+int signpost_energy_policy_get_module_energy_remaining_uwh (int module_num);
+int signpost_energy_policy_get_battery_energy_remaining_uwh (void);
 
-//these functions tell you the average current for each module over the last update period
-//this is what is returned to the module on an energy query
-int signpost_energy_policy_get_controller_average_power (void);
-int signpost_energy_policy_get_linux_average_power (void);
-int signpost_energy_policy_get_module_average_power (int module_num);
-int signpost_energy_policy_get_battery_average_power (void);
-int signpost_energy_policy_get_solar_average_power (void);
+//these functions tell you the energy used since the last reset of the module energy
+int signpost_energy_policy_get_controller_energy_used_uwh (void);
+int signpost_energy_policy_get_linux_energy_used_uwh (void);
+int signpost_energy_policy_get_module_energy_used_uwh (int module_num);
+
+//these functions reset the energy used field
+void signpost_energy_policy_reset_controller_energy_used (void);
+void signpost_energy_policy_reset_linux_energy_used (void);
+void signpost_energy_policy_reset_module_energy_used (int module_num);
+
+//these function return the time since the last energy reset
+int signpost_energy_policy_get_time_since_controller_reset_ms (void);
+int signpost_energy_policy_get_time_since_linux_reset_ms (void);
+int signpost_energy_policy_get_time_since_module_reset_ms (int module_num);
 
 //this function should be called every 600s to update energy capacities
 void signpost_energy_policy_update_energy (void);
