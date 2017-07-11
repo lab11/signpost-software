@@ -990,7 +990,7 @@ int signpost_energy_query_async(
         return rc;
     };
 
-    return SUCCESS;
+    return TOCK_SUCCESS;
 }
 
 int signpost_energy_duty_cycle(uint32_t time_ms) {
@@ -1006,7 +1006,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     uint8_t report_buf_size = reports_size + 1; 
     uint8_t* report_buf = malloc(report_buf_size);
     if(!report_buf) {
-        return ENOMEM;
+        return TOCK_ENOMEM;
     }
 
     report_buf[0] = report->num_reports;
@@ -1025,7 +1025,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     // There is an integer in the incoming message that should be
     // sent back as the return code.
     if(energy_report_result < 0) {
-        return FAIL;
+        return TOCK_FAIL;
     } else {
         return *incoming_message;
     }
