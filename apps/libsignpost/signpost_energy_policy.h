@@ -18,10 +18,17 @@ typedef struct energy_used {
 } signpost_energy_used_t;
 
 typedef struct time_since_reset {
-    int controller_time_since_reset;
-    int linux_time_since_reset;
-    int module_time_since_reset[8];
+    uint32_t controller_time_since_reset;
+    uint32_t linux_time_since_reset;
+    uint32_t module_time_since_reset[8];
 } signpost_energy_time_since_reset_t;
+
+typedef struct energy_reset_start {
+    uint32_t controller_energy_reset_start_time;
+    uint32_t linux_energy_reset_start_time;
+    uint32_t module_energy_reset_start_time[8];
+} signpost_energy_reset_start_time_t;
+
 
 //if r == NULL then initialize from battery capacity
 void signpost_energy_policy_init(signpost_energy_remaining_t* remaining, 

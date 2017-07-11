@@ -16,6 +16,7 @@ extern "C" {
 #define LINUX_VOLTAGE 5
 #define CONTROLLER_VOLTAGE 3.3
 #define BATTERY_VOLTAGE_NOM 11.1
+#define SOLAR_VOLTAGE 17
 
 // Initialize based on the version of the monitors that we are using
 void signpost_energy_init_ltc2941 (void);
@@ -34,6 +35,7 @@ void signpost_energy_reset_module_energy (int module_num);
 // so we use unsigned energy types here
 uint32_t signpost_energy_get_controller_energy_uwh (void);
 uint32_t signpost_energy_get_linux_energy_uwh (void);
+uint32_t signpost_energy_get_solar_energy_uwh (void);
 uint32_t signpost_energy_get_module_energy_uwh (int module_num);
 
 // These function return the instantaneous current in uA
