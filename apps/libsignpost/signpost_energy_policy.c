@@ -2,7 +2,10 @@
 #include "signpost_energy_monitors.h"
 #include "signpost_api.h"
 #include "timer.h"
+#include "alarm.h"
+#include "internal/alarm.h"
 #include <stdio.h>
+#include <limits.h>
 #include <string.h>
 
 /////////////////////////////////////////////////////
@@ -12,17 +15,10 @@
 signpost_energy_remaining_t energy_remaining;
 signpost_energy_used_t energy_used;
 signpost_energy_time_since_reset_t time_since_reset;
-
+signpost_energy_reset_start_time_t energy_reset_start_time;
 
 static int battery_last_energy_remaining = 0;
 static int battery_energy_remaining;
-
-static int controller_energy_used_since_update = 0;
-static int linux_energy;
-
-static int total_energy_used_since_update = 0;
-static int module_energy_used_since_update[8] = {0};
-static unsigned int last_time = 0;
 
 #define BATTERY_CAPACITY 9000000*11.1
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
@@ -69,9 +65,6 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
     //reset all of the coulomb counters for the algorithm to work
     signpost_energy_reset_all_energy();
 
-    //read the timer so the first iteration works out
-    last_time = timer_read();
-
     //read the battery now so that the first interation works
     int bat = signpost_energy_get_battery_energy_uwh();
     battery_last_energy_remaining = bat;
@@ -115,30 +108,83 @@ int signpost_energy_policy_get_module_energy_used_uwh (int module_num) {
 // They also reset the energy used timers
 ///////////////////////////////////////////////////////////////
 void signpost_energy_policy_reset_controller_energy_used (void) {
-
+    energy_used.controller_energy_used = 0;
+    time_since_reset.controller_time_since_reset = 0;
+    energy_reset_start_time.controller_energy_reset_start_time = alarm_read();
 }
 
 void signpost_energy_policy_reset_linux_energy_used (void) {
-
+    energy_used.linux_energy_used = 0;
+    time_since_reset.linux_time_since_reset = 0;
+    energy_reset_start_time.linux_energy_reset_start_time = alarm_read();
 }
 
 void signpost_energy_policy_reset_module_energy_used (int module_num) {
-
+    energy_used.module_energy_used[module_num] = 0;
+    time_since_reset.module_time_since_reset[module_num] = 0;
+    energy_reset_start_time.module_energy_reset_start_time[module_num] = alarm_read();
 }
 
 /////////////////////////////////////////////////////////////////////
 // These functions return the time on the timers
 /////////////////////////////////////////////////////////////////////
 int signpost_energy_policy_get_time_since_controller_reset_ms (void) {
+    //calculate ms since last update
+    uint32_t alarm_freq = alarm_internal_frequency();
+    uint32_t now = alarm_read();
+    uint32_t ms;
+    if(now < energy_reset_start_time.controller_energy_reset_start_time) {
+        ms = (uint32_t)(((((UINT32_MAX - energy_reset_start_time.controller_energy_reset_start_time) + now)*1.0)/alarm_freq)*1000);
+    } else {
+        ms = (uint32_t)((((now - energy_reset_start_time.controller_energy_reset_start_time)*1.0)/alarm_freq)*1000);
+    }
 
+    return time_since_reset.controller_time_since_reset + ms;
 }
 
 int signpost_energy_policy_get_time_since_linux_reset_ms (void) {
+    //calculate ms since last update
+    uint32_t alarm_freq = alarm_internal_frequency();
+    uint32_t now = alarm_read();
+    uint32_t ms;
+    if(now < energy_reset_start_time.linux_energy_reset_start_time) {
+        ms = (uint32_t)(((((UINT32_MAX - energy_reset_start_time.linux_energy_reset_start_time) + now)*1.0)/alarm_freq)*1000);
+    } else {
+        ms = (uint32_t)((((now - energy_reset_start_time.linux_energy_reset_start_time)*1.0)/alarm_freq)*1000);
+    }
 
+    return time_since_reset.linux_time_since_reset + ms;
 }
 
 int signpost_energy_policy_get_time_since_module_reset_ms (int module_num) {
+    //calculate ms since last update
+    uint32_t alarm_freq = alarm_internal_frequency();
+    uint32_t now = alarm_read();
+    uint32_t ms;
+    if(now < energy_reset_start_time.module_energy_reset_start_time[module_num]) {
+        ms = (uint32_t)(((((UINT32_MAX - energy_reset_start_time.module_energy_reset_start_time[module_num]) + now)*1.0)/alarm_freq)*1000);
+    } else {
+        ms = (uint32_t)((((now - energy_reset_start_time.module_energy_reset_start_time[module_num])*1.0)/alarm_freq)*1000);
+    }
 
+    return time_since_reset.module_time_since_reset[module_num] + ms;
+}
+
+////////////////////////////////////////////////////////////////////
+// local functions for updating timers without reseting counters
+///////////////////////////////////////////////////////////////////
+
+static void signpost_energy_policy_reset_and_update_energy_timers (void) {
+    time_since_reset.controller_time_since_reset = signpost_energy_policy_get_time_since_controller_reset_ms();
+    energy_reset_start_time.controller_energy_reset_start_time = alarm_read();
+
+    time_since_reset.linux_time_since_reset = signpost_energy_policy_get_time_since_linux_reset_ms();
+    energy_reset_start_time.linux_energy_reset_start_time = alarm_read();
+
+    for(uint8_t i = 0; i < 8; i++) {
+    time_since_reset.module_time_since_reset[i] = signpost_energy_policy_get_time_since_module_reset_ms(i);
+        energy_reset_start_time.module_energy_reset_start_time[i] = alarm_read();
+    }
 }
 
 
@@ -147,65 +193,91 @@ int signpost_energy_policy_get_time_since_module_reset_ms (int module_num) {
 ///////////////////////////////////////////////////////////////
 void signpost_energy_policy_update_energy (void) {
 
-    //first let's look at how long it has been since this was called
-    unsigned int time_now = timer_read();
-    unsigned int time;
-    if(time_now < last_time) {
-        time = (unsigned int)(((0xFFFFFFFF - last_time) + time_now)/16000.0);
-    } else {
-        time = (unsigned int)((time_now-last_time)/16000.0);
-    }
-    last_time = time_now;
+    //At every update the procedure:
+    // 1) read all of the coulomb counters
+    // 2) update the energy_used fields by adding the value
+    // 3) subtract the energy_remaining fields by subtracting the value
+    // 4) update the time_since_reset fields
+    // 5) calculate the energy harvesting over this time period
+    // 6) consolidate harvested and total energy used
+    // 7) distribute excess fairly to the modules
+
+    //////////////////////////////////////////////////////////////////////
+    // Read the coulomb counters
+    /////////////////////////////////////////////////////////////////////
 
     //now let's read all the coulomb counters
-    linux_energy = signpost_energy_get_linux_energy_uwh();
-    printf("ENERGY: Linux used %lu uWh since last update\n",signpost_energy_get_linux_energy_uwh());
-    total_energy_used_since_update += linux_energy;
-    controller_energy_used_since_update += signpost_energy_get_controller_energy_uwh();
-    printf("ENERGY: Controller used %d uWh since last update\n", controller_energy_used_since_update);
-    total_energy_used_since_update += controller_energy_used_since_update;
+    int total_energy = 0;
+    int linux_energy = signpost_energy_get_linux_energy_uwh();
+    total_energy += linux_energy;
+
+    int controller_energy = signpost_energy_get_controller_energy_uwh();
+    total_energy += controller_energy;
+
+    int module_energy[8];
+
     for(uint8_t i = 0; i < 8; i++) {
         if(i == 3 || i == 4) {
 
         } else {
-            module_energy_used_since_update[i] += signpost_energy_get_module_energy_uwh(i);
-            total_energy_used_since_update += module_energy_used_since_update[i];
-            printf("ENERGY: Module %d used %d uWh since last update\n",i,module_energy_used_since_update[i]);
+            module_energy[i] += signpost_energy_get_module_energy_uwh(i);
+            total_energy += module_energy[i];
         }
     }
     battery_energy_remaining = signpost_energy_get_battery_energy_uwh();
-    printf("ENERGY: Battery has %lu uWh remaining\n",signpost_energy_get_battery_energy_uwh());
-
-
-
     //reset all of the coulomb counters so we can use them next time
     signpost_energy_reset_all_energy();
 
-    //Now we should subtract all of the energies from what the modules had before
-    energy_remaining.controller_energy_remaining -= controller_energy_used_since_update;
+    ///////////////////////////////////////////////////////////////////
+    // Update energy used fields by adding these energies
+    ///////////////////////////////////////////////////////////////////
+    energy_used.controller_energy_used += controller_energy;
+    energy_used.linux_energy_used += linux_energy;
+    for(uint8_t i = 0; i < 8; i++) {
+        if(i == 3 || i == 4) {
+
+        } else {
+            energy_used.module_energy_used[i] += module_energy[i];
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    // Update energy remaining fields by subtracting these energies
+    ///////////////////////////////////////////////////////////////////
+    energy_remaining.controller_energy_remaining -= controller_energy;
     energy_remaining.controller_energy_remaining -= linux_energy;
     for(uint8_t i = 0; i < 8; i++) {
         if(i == 3 || i == 4) {
 
         } else {
-            energy_remaining.module_energy_remaining[i] -= module_energy_used_since_update[i];
+            energy_remaining.module_energy_remaining[i] -= module_energy[i];
         }
-        module_energy_used_since_update[i] = 0;
     }
+    
+    ////////////////////////////////////////////////////////////////////
+    // Update the timers
+    ////////////////////////////////////////////////////////////////////
+    signpost_energy_policy_reset_and_update_energy_timers();
 
-    controller_energy_used_since_update = 0;
-    linux_energy = 0;
+    ////////////////////////////////////////////////////////////////////
+    // Calculate the amount of energy we have used and harvested
+    ////////////////////////////////////////////////////////////////////
+    int battery_used = battery_last_energy_remaining-battery_energy_remaining;
+    battery_last_energy_remaining = battery_energy_remaining;
 
-    printf("ENERGY: Total energy since update: %d uWh\n", total_energy_used_since_update);
+    //theoretically battery_used = total_energy - solar_energy
+    //Let's try to consolidate these numbers
+    //we can't just distribute left over energy because the under-penalizes
+    //high consumers
 
     //now we need to figure out how much energy (if any) we got
     //This needs to be distributed among the modules
     // technically battery_energy_remaining = battery_last_energy_remaining - total_energy_used + solar_energy
     // This isn't going to be true due to efficiency losses and such
     // But what we can do:
-    if(battery_energy_remaining > battery_last_energy_remaining - total_energy_used_since_update) {
+    if(battery_used < total_energy) {
         //we have surplus!! let's distribute it
-        int surplus = battery_energy_remaining - (battery_last_energy_remaining - total_energy_used_since_update);
+        int surplus = total_energy - battery_used;
         int controller_surplus = (int)(surplus * 0.4);
         int module_surplus = (int)(surplus * 0.1);
 
@@ -214,10 +286,8 @@ void signpost_energy_policy_update_energy (void) {
             module_surplus += (int)((energy_remaining.controller_energy_remaining - MAX_CONTROLLER_ENERGY_REMAINING)/6.0);
             energy_remaining.controller_energy_remaining = MAX_CONTROLLER_ENERGY_REMAINING;
         }
-
-        //this is a two pass algorithm which can be games. Really it would take n passes to do it right
-        //I don't want to code the npass algorithm really, when are all the
-        //modules going to be full anyways?
+        
+        //this algorithm distributes energy while redistributing full modules
         uint8_t spill_elgible[8] = {1};
         while(module_surplus > 0) {
             int spill_over = 0;
@@ -249,11 +319,8 @@ void signpost_energy_policy_update_energy (void) {
 
     } else {
         //efficiency losses - we should probably also distribute those losses (or charge them to the controller?)
-        energy_remaining.controller_energy_remaining -= ((battery_last_energy_remaining - total_energy_used_since_update) - battery_energy_remaining);
+        energy_remaining.controller_energy_remaining -= battery_used - total_energy;
     }
-
-    total_energy_used_since_update = 0;
-    battery_last_energy_remaining = battery_energy_remaining;
 }
 
 void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot, signpost_energy_report_t* report) {
