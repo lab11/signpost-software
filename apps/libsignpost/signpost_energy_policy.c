@@ -3,82 +3,68 @@
 #include "signpost_api.h"
 #include "timer.h"
 #include <stdio.h>
+#include <string.h>
 
 /////////////////////////////////////////////////////
 //These are the RAM variables that we update
 //We are going to store them in nonvolatile memory too
 /////////////////////////////////////////////////////
-static int controller_energy_remaining = 0;
+signpost_energy_remaining_t energy_remaining;
+signpost_energy_used_t energy_used;
+signpost_energy_time_since_reset_t time_since_reset;
+
 
 static int battery_last_energy_remaining = 0;
-
-static int controller_average_power = 0;
-static int linux_average_power = 0;
-static int battery_average_power = 0;
-static int solar_average_power = 0;
+static int battery_energy_remaining;
 
 static int controller_energy_used_since_update = 0;
 static int linux_energy;
-static int battery_energy_remaining;
 
 static int total_energy_used_since_update = 0;
-static int module_average_power[8] = {0};
-static int module_energy_remaining[8] = {0};
 static int module_energy_used_since_update[8] = {0};
-static int module_energy_used_since_report[8] = {0};
 static unsigned int last_time = 0;
 
 #define BATTERY_CAPACITY 9000000*11.1
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
 #define MAX_MODULE_ENERGY_REMAINING BATTERY_CAPACITY*0.1
 
-void signpost_energy_policy_init (signpost_energy_remaining_t* r, signpost_average_power_t* p) {
+void signpost_energy_policy_init (signpost_energy_remaining_t* remaining, 
+                                    signpost_energy_used_t* used,
+                                    signpost_energy_time_since_reset_t* time) {
 
 
-    if(r == NULL) {
+    if(remaining == NULL) {
         //initialize all of the energy remainings
         //...We really should do this in a nonvolatile way
         int battery_remaining = signpost_energy_get_battery_energy_uwh();
-        controller_energy_remaining = battery_remaining*0.4;
+        energy_remaining.controller_energy_remaining = battery_remaining*0.4;
         for(uint8_t i = 0; i < 8; i++) {
             if(i == 4 || i == 3) {
 
             } else {
-                module_energy_remaining[i] = battery_remaining*0.1;
+                energy_remaining.module_energy_remaining[i] = battery_remaining*0.1;
             }
         }
     } else {
-        controller_energy_remaining = r->controller_energy_remaining;
-        for(uint8_t i = 0; i < 8; i++) {
-            if(i == 3 || i ==4) {
-
-            } else {
-                module_energy_remaining[i] = r->module_energy_remaining[i];
-            }
-        }
+        memcpy(&energy_remaining,remaining,sizeof(signpost_energy_remaining_t));
     }
 
-    if(p == NULL) {
-        //initialize all of the energy remainings
-        controller_average_power = 0;
+    if(used == NULL || time == NULL) {
+        //if we don't have any data from the last reset we will just reset
+        //everything to zero and restart the timers
+        signpost_energy_policy_reset_controller_energy_used();
+        signpost_energy_policy_reset_linux_energy_used();
         for(uint8_t i = 0; i < 8; i++) {
             if(i == 4 || i == 3) {
 
             } else {
-                module_average_power[i] = 0;
+                signpost_energy_policy_reset_module_energy_used(i);
             }
         }
     } else {
-        controller_average_power = p->controller_average_power;
-        for(uint8_t i = 0; i < 8; i++) {
-            if(i == 3 || i ==4) {
-
-            } else {
-                module_average_power[i] = p->module_average_power[i];
-            }
-        }
+        memcpy(&energy_used,used,sizeof(signpost_energy_used_t));
+        memcpy(&time_since_reset,time,sizeof(signpost_energy_time_since_reset_t));
     }
-
 
     //reset all of the coulomb counters for the algorithm to work
     signpost_energy_reset_all_energy();
@@ -96,37 +82,63 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* r, signpost_avera
 // This is updated at every call to the update function
 // /////////////////////////////////////////////////////////////
 
-int signpost_energy_policy_get_controller_energy_remaining (void) {
-    return controller_energy_remaining;
+int signpost_energy_policy_get_controller_energy_remaining_uwh (void) {
+    return (energy_remaining.controller_energy_remaining - signpost_energy_get_controller_energy_uwh());
 }
 
-int signpost_energy_policy_get_module_energy_remaining (int module_num) {
-    return module_energy_remaining[module_num];
+int signpost_energy_policy_get_module_energy_remaining_uwh (int module_num) {
+    return (energy_remaining.module_energy_remaining[module_num] - signpost_energy_get_module_energy_uwh(module_num));
 }
 
-////////////////////////////////////////////////////////////////////////////
-// These functions tell you the average energy of this module over the last period
-// This is updated at every call to the update function
-// /////////////////////////////////////////////////////////////////////////
-
-int signpost_energy_policy_get_controller_average_power (void) {
-    return controller_average_power;
+int signpost_energy_policy_get_battery_energy_remaining_uwh (void) { 
+    return battery_energy_remaining;
 }
 
-int signpost_energy_policy_get_linux_average_power(void) {
-    return linux_average_power;
+////////////////////////////////////////////////////////////////
+// These functions return the energy used since the last reset
+////////////////////////////////////////////////////////////////
+
+int signpost_energy_policy_get_controller_energy_used_uwh (void) {
+    return (energy_used.controller_energy_used + signpost_energy_get_controller_energy_uwh());
 }
 
-int signpost_energy_policy_get_module_average_power (int module_num) {
-    return module_average_power[module_num];
+int signpost_energy_policy_get_linux_energy_used_uwh (void) {
+    return (energy_used.linux_energy_used + signpost_energy_get_linux_energy_uwh());
 }
 
-int signpost_energy_policy_get_battery_average_power (void) {
-    return battery_average_power;
+int signpost_energy_policy_get_module_energy_used_uwh (int module_num) {
+    return (energy_used.module_energy_used[module_num] + signpost_energy_get_module_energy_uwh(module_num));
 }
 
-int signpost_energy_policy_get_solar_average_power (void) {
-    return solar_average_power;
+////////////////////////////////////////////////////////////////
+// These functions reset the energy used counters
+// They also reset the energy used timers
+///////////////////////////////////////////////////////////////
+void signpost_energy_policy_reset_controller_energy_used (void) {
+
+}
+
+void signpost_energy_policy_reset_linux_energy_used (void) {
+
+}
+
+void signpost_energy_policy_reset_module_energy_used (int module_num) {
+
+}
+
+/////////////////////////////////////////////////////////////////////
+// These functions return the time on the timers
+/////////////////////////////////////////////////////////////////////
+int signpost_energy_policy_get_time_since_controller_reset_ms (void) {
+
+}
+
+int signpost_energy_policy_get_time_since_linux_reset_ms (void) {
+
+}
+
+int signpost_energy_policy_get_time_since_module_reset_ms (int module_num) {
+
 }
 
 
@@ -157,7 +169,6 @@ void signpost_energy_policy_update_energy (void) {
 
         } else {
             module_energy_used_since_update[i] += signpost_energy_get_module_energy_uwh(i);
-            module_energy_used_since_report[i] += signpost_energy_get_module_energy_uwh(i);
             total_energy_used_since_update += module_energy_used_since_update[i];
             printf("ENERGY: Module %d used %d uWh since last update\n",i,module_energy_used_since_update[i]);
         }
@@ -170,32 +181,14 @@ void signpost_energy_policy_update_energy (void) {
     //reset all of the coulomb counters so we can use them next time
     signpost_energy_reset_all_energy();
 
-    //update all the averages over the amount of time used
-    linux_average_power = (int)(linux_energy*3600)/time;
-    controller_average_power = (int)(controller_energy_used_since_update*3600)/time;
-    for(uint8_t i = 0; i < 8; i++) {
-        if(i == 3 || i == 4) {
-
-        } else {
-            if(module_energy_used_since_update[i] < 0) {
-                module_average_power[i] = 0;
-            } else {
-                module_average_power[i] = (module_energy_used_since_update[i]*3600)/time;
-            }
-        }
-    }
-
-    battery_average_power = ((battery_last_energy_remaining-battery_energy_remaining)*3600)/time;
-
-
     //Now we should subtract all of the energies from what the modules had before
-    controller_energy_remaining -= controller_energy_used_since_update;
-    controller_energy_remaining -= linux_energy;
+    energy_remaining.controller_energy_remaining -= controller_energy_used_since_update;
+    energy_remaining.controller_energy_remaining -= linux_energy;
     for(uint8_t i = 0; i < 8; i++) {
         if(i == 3 || i == 4) {
 
         } else {
-            module_energy_remaining[i] -= module_energy_used_since_update[i];
+            energy_remaining.module_energy_remaining[i] -= module_energy_used_since_update[i];
         }
         module_energy_used_since_update[i] = 0;
     }
@@ -216,10 +209,10 @@ void signpost_energy_policy_update_energy (void) {
         int controller_surplus = (int)(surplus * 0.4);
         int module_surplus = (int)(surplus * 0.1);
 
-        controller_energy_remaining += controller_surplus;
-        if(controller_energy_remaining > MAX_CONTROLLER_ENERGY_REMAINING) {
-            module_surplus += (int)((controller_energy_remaining - MAX_CONTROLLER_ENERGY_REMAINING)/6.0);
-            controller_energy_remaining = MAX_CONTROLLER_ENERGY_REMAINING;
+        energy_remaining.controller_energy_remaining += controller_surplus;
+        if(energy_remaining.controller_energy_remaining > MAX_CONTROLLER_ENERGY_REMAINING) {
+            module_surplus += (int)((energy_remaining.controller_energy_remaining - MAX_CONTROLLER_ENERGY_REMAINING)/6.0);
+            energy_remaining.controller_energy_remaining = MAX_CONTROLLER_ENERGY_REMAINING;
         }
 
         //this is a two pass algorithm which can be games. Really it would take n passes to do it right
@@ -234,12 +227,12 @@ void signpost_energy_policy_update_energy (void) {
             for(uint8_t i = 0; i < 8; i++) {
                 if(i == 3 || i == 4 || spill_elgible[i] == 0)  continue;
 
-                if(module_energy_remaining[i] + module_surplus > MAX_MODULE_ENERGY_REMAINING) {
-                    spill_over += (module_energy_remaining[i] + module_surplus) - MAX_MODULE_ENERGY_REMAINING;
-                    module_energy_remaining[i] = MAX_MODULE_ENERGY_REMAINING;
+                if(energy_remaining.module_energy_remaining[i] + module_surplus > MAX_MODULE_ENERGY_REMAINING) {
+                    spill_over += (energy_remaining.module_energy_remaining[i] + module_surplus) - MAX_MODULE_ENERGY_REMAINING;
+                    energy_remaining.module_energy_remaining[i] = MAX_MODULE_ENERGY_REMAINING;
                     spill_elgible[i] = 0;
                 } else {
-                    module_energy_remaining[i] += module_surplus;
+                    energy_remaining.module_energy_remaining[i] += module_surplus;
                     spill_elgible_count++;
                     spill_elgible[i] = 1;
                 }
@@ -248,7 +241,7 @@ void signpost_energy_policy_update_energy (void) {
             //if everything is full give to controller, else distribute again
             if(spill_elgible_count == 0) {
                 module_surplus = 0;
-                controller_energy_remaining += spill_over;
+                energy_remaining.controller_energy_remaining += spill_over;
             } else {
                 module_surplus = spill_over/spill_elgible_count;
             }
@@ -256,7 +249,7 @@ void signpost_energy_policy_update_energy (void) {
 
     } else {
         //efficiency losses - we should probably also distribute those losses (or charge them to the controller?)
-        controller_energy_remaining -= ((battery_last_energy_remaining - total_energy_used_since_update) - battery_energy_remaining);
+        energy_remaining.controller_energy_remaining -= ((battery_last_energy_remaining - total_energy_used_since_update) - battery_energy_remaining);
     }
 
     total_energy_used_since_update = 0;
@@ -264,39 +257,22 @@ void signpost_energy_policy_update_energy (void) {
 }
 
 void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot, signpost_energy_report_t* report) {
-    //read the source module's energy
-    int used_since_update = signpost_energy_get_module_energy_uwh(source_module_slot);
-
-    //add it to that used since update
-    total_energy_used_since_update += used_since_update;
-
-    //reset that slot
-    signpost_energy_reset_module_energy(source_module_slot);
-
-    //add the energy to the total energy used since last report
-    module_energy_used_since_report[source_module_slot] += used_since_update;
-
-    //also add it to the total energy used by the module since the last update
-    module_energy_used_since_update[source_module_slot] += used_since_update;
-
-    //copy to local variable because it's easier
-    int energy = module_energy_used_since_report[source_module_slot];
-
     uint8_t num_reports = report->num_reports;
     for(uint8_t j = 0; j < num_reports; j++) {
+        uint8_t mod_num = signpost_api_appid_to_mod_num(report->reports[j].application_id);
         //take the energy since last report, add/subtract it from all the totals
-        if(report->reports[j].module_address == 3) {
-            controller_energy_used_since_update += (int)(energy*report->reports[j].module_percent/100.0);
+        if(mod_num == 3) {
+            energy_remaining.controller_energy_remaining -= (int)(report->reports[j].energy_used_mWh*1000);
+            energy_used.controller_energy_used += (int)(report->reports[j].energy_used_mWh*1000);
 
-            module_energy_used_since_update[source_module_slot] -= (int)(energy*(report->reports[j].module_percent/100.0));
+            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_mWh*1000);
+            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_mWh*1000);
         } else {
-            module_energy_used_since_report[report->reports[j].module_address] += (int)(energy*report->reports[j].module_percent/100.0);
-            module_energy_used_since_update[report->reports[j].module_address] += (int)(energy*report->reports[j].module_percent/100.0);
+            energy_remaining.module_energy_remaining[mod_num] -= (int)(report->reports[j].energy_used_mWh*1000);
+            energy_used.module_energy_used[mod_num] += (int)(report->reports[j].energy_used_mWh*1000);
 
-            module_energy_used_since_update[source_module_slot] -= (int)(energy*(report->reports[j].module_percent/100.0));
-
+            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_mWh*1000);
+            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_mWh*1000);
         }
     }
-
-    module_energy_used_since_report[source_module_slot] = 0;
 }
