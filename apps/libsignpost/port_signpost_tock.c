@@ -44,7 +44,7 @@ static void port_signpost_gpio_interrupt_callback(
         __attribute__ ((unused)) int state,
         __attribute__ ((unused)) int unused,
         __attribute__ ((unused)) void* callback_args) {
-    global_gpio_interrupt_cb(SUCCESS);
+    global_gpio_interrupt_cb(TOCK_SUCCESS);
 }
 
 static uint8_t master_write_buf[I2C_MAX_LEN];

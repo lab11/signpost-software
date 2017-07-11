@@ -93,8 +93,7 @@ int main (void) {
   sample_and_send();
 
   // Setup a timer for sampling the sensors
-  timer_subscribe(timer_callback, NULL);
-  timer_start_repeating(6000);
+  timer_every(6000, timer_callback, NULL);
 
   // Setup watchdog
   app_watchdog_set_kernel_timeout(10000);

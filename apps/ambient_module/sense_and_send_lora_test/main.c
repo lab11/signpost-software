@@ -51,18 +51,18 @@ static void sample_sensors (void) {
   // get light
   int light = 0;
   int err_code = isl29035_read_light_intensity();
-  if (err_code < SUCCESS) {
+  if (err_code < TOCK_SUCCESS) {
     printf("Error reading from light sensor: %d\n", light);
   } else {
     light = err_code;
-    err_code = SUCCESS;
+    err_code = TOCK_SUCCESS;
   }
 
   // get temperature and humidity
   int temperature = 0;
   unsigned humidity = 0;
   int err = si7021_get_temperature_humidity_sync(&temperature, &humidity);
-  if (err < SUCCESS) {
+  if (err < TOCK_SUCCESS) {
     printf("Error reading from temperature/humidity sensor: %d\n", err);
     err_code = err;
   }
@@ -93,7 +93,7 @@ static void sample_sensors (void) {
   message_buf[10] = (uint8_t) (pressure & 0xFF);
 
   // track success
-  if (err_code != SUCCESS) {
+  if (err_code != TOCK_SUCCESS) {
     sample_sensors_successful = false;
   }
 }
@@ -106,7 +106,7 @@ static void post_to_radio (void) {
   printf("--Sendinging data--\n");
   int response = signpost_networking_send_bytes(ModuleAddressRadio, message_buf, 11);
   message_buf[1]++;
-  if (response < SUCCESS) {
+  if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
     post_to_radio_successful = false;
   } else {

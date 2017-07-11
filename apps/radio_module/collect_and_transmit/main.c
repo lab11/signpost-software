@@ -341,6 +341,5 @@ int main (void) {
     //app_watchdog_start();
 
     //setup timer
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(2000);
+    timer_every(2000, timer_callback, NULL);
 }

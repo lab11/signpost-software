@@ -25,16 +25,16 @@ uint8_t master_write_buf[20];
 #define RED_LED 1
 
 int main (void) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
   printf("[TEST] Audio ADC\n");
 
   // initialize the signpost bus
   err = signpost_initialization_module_init(
     i2c_address,
     SIGNPOST_INITIALIZATION_NO_APIS);
-  if (err < SUCCESS) {
+  if (err < TOCK_SUCCESS) {
     printf("Signbus initialization failed\n");
-    return FAIL;
+    return TOCK_FAIL;
   }
 
   // setup GPIO pins
@@ -98,7 +98,7 @@ int main (void) {
     /*
     // read data from ADC
     err = adc_read_single_sample(3);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
     uint16_t sample = err & 0xFFFF;

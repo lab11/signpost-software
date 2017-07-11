@@ -24,7 +24,6 @@ int main (void) {
   controller_all_modules_enable_i2c();
 
   int i;
-
   while (1) {
 
     printf("\nChecking Energy\n");

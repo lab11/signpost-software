@@ -77,11 +77,13 @@ struct SignpostController {
     timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     bonus_timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     smbus_interrupt: &'static signpost_drivers::smbus_interrupt::SMBUSIntDriver<'static>,
-    gpio_async: &'static signpost_drivers::gpio_async::GPIOAsync<'static, signpost_drivers::mcp23008::MCP23008<'static>>,
-    coulomb_counter_i2c_selector: &'static signpost_drivers::i2c_selector::I2CSelector<'static, signpost_drivers::pca9544a::PCA9544A<'static>>,
+    gpio_async: &'static capsules::gpio_async::GPIOAsync<'static, capsules::mcp23008::MCP23008<'static>>,
+    coulomb_counter_i2c_mux_0: &'static capsules::pca9544a::PCA9544A<'static>,
+    coulomb_counter_i2c_mux_1: &'static capsules::pca9544a::PCA9544A<'static>,
+    coulomb_counter_i2c_mux_2: &'static capsules::pca9544a::PCA9544A<'static>,
     coulomb_counter_generic: &'static capsules::ltc294x::LTC294XDriver<'static>,
     battery_monitor: &'static signpost_drivers::max17205::MAX17205Driver<'static>,
-    fram: &'static capsules::fm25cl::FM25CLDriver<'static, capsules::virtual_spi::VirtualSpiMasterDevice<'static, usart::USART>>,
+    nonvolatile_storage: &'static capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
@@ -100,12 +102,14 @@ impl Platform for SignpostController {
             8 => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
+            18 => f(Some(self.coulomb_counter_generic)),
+            20 => f(Some(self.gpio_async)),
+            27 => f(Some(self.nonvolatile_storage)),
 
-            100 => f(Some(self.gpio_async)),
-            101 => f(Some(self.coulomb_counter_i2c_selector)),
-            102 => f(Some(self.coulomb_counter_generic)),
+            1001 => f(Some(self.coulomb_counter_i2c_mux_0)),
+            1002 => f(Some(self.coulomb_counter_i2c_mux_1)),
+            1003 => f(Some(self.coulomb_counter_i2c_mux_2)),
             110 => f(Some(self.battery_monitor)),
-            103 => f(Some(self.fram)),
             104 => f(Some(self.smbus_interrupt)),
             108 => f(Some(self.app_watchdog)),
             109 => f(Some(self.gps_console)),
@@ -303,8 +307,8 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x20));
     let mcp23008_0 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_0_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_0_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_0_i2c.set_client(mcp23008_0);
 
     // Configure the MCP23008_1. Device address 0x21
@@ -312,8 +316,8 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x21));
     let mcp23008_1 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_1_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_1_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_1_i2c.set_client(mcp23008_1);
 
     // Configure the MCP23008_2. Device address 0x22
@@ -321,8 +325,8 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x22));
     let mcp23008_2 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_2_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_2_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_2_i2c.set_client(mcp23008_2);
 
     // Configure the MCP23008_5. Device address 0x25
@@ -330,8 +334,8 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x25));
     let mcp23008_5 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_5_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_5_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_5_i2c.set_client(mcp23008_5);
 
     // Configure the MCP23008_6. Device address 0x26
@@ -339,8 +343,8 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x26));
     let mcp23008_6 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_6_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_6_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_6_i2c.set_client(mcp23008_6);
 
     // Configure the MCP23008_7. Device address 0x27
@@ -348,14 +352,14 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x27));
     let mcp23008_7 = static_init!(
-        signpost_drivers::mcp23008::MCP23008<'static>,
-        signpost_drivers::mcp23008::MCP23008::new(mcp23008_7_i2c, None, &mut signpost_drivers::mcp23008::BUFFER));
+        capsules::mcp23008::MCP23008<'static>,
+        capsules::mcp23008::MCP23008::new(mcp23008_7_i2c, None, &mut capsules::mcp23008::BUFFER));
     mcp23008_7_i2c.set_client(mcp23008_7);
 
     // Create an array of the GPIO extenders so we can pass them to an
     // administrative layer that provides a single interface to them all.
     let async_gpio_ports = static_init!(
-        [&'static signpost_drivers::mcp23008::MCP23008; 6],
+        [&'static capsules::mcp23008::MCP23008; 6],
         [mcp23008_0, // Port 0
          mcp23008_1, // Port 1
          mcp23008_2, // Port 2
@@ -366,10 +370,10 @@ pub unsafe fn reset_handler() {
 
     // `gpio_async` is the object that manages all of the extenders
     let gpio_async = static_init!(
-        signpost_drivers::gpio_async::GPIOAsync<'static, signpost_drivers::mcp23008::MCP23008<'static>>,
-        signpost_drivers::gpio_async::GPIOAsync::new(async_gpio_ports));
-    for (i, port) in async_gpio_ports.iter().enumerate() {
-        port.set_client(gpio_async, i);
+        capsules::gpio_async::GPIOAsync<'static, capsules::mcp23008::MCP23008<'static>>,
+        capsules::gpio_async::GPIOAsync::new(async_gpio_ports));
+    for port in async_gpio_ports.iter() {
+        port.set_client(gpio_async);
     }
 
     //
@@ -379,42 +383,26 @@ pub unsafe fn reset_handler() {
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x70));
     let pca9544a_0 = static_init!(
-        signpost_drivers::pca9544a::PCA9544A<'static>,
-        signpost_drivers::pca9544a::PCA9544A::new(pca9544a_0_i2c, &mut signpost_drivers::pca9544a::BUFFER));
+        capsules::pca9544a::PCA9544A<'static>,
+        capsules::pca9544a::PCA9544A::new(pca9544a_0_i2c, &mut capsules::pca9544a::BUFFER));
     pca9544a_0_i2c.set_client(pca9544a_0);
 
     let pca9544a_1_i2c = static_init!(
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x71));
     let pca9544a_1 = static_init!(
-        signpost_drivers::pca9544a::PCA9544A<'static>,
-        signpost_drivers::pca9544a::PCA9544A::new(pca9544a_1_i2c, &mut signpost_drivers::pca9544a::BUFFER));
+        capsules::pca9544a::PCA9544A<'static>,
+        capsules::pca9544a::PCA9544A::new(pca9544a_1_i2c, &mut capsules::pca9544a::BUFFER));
     pca9544a_1_i2c.set_client(pca9544a_1);
 
     let pca9544a_2_i2c = static_init!(
         capsules::virtual_i2c::I2CDevice,
         capsules::virtual_i2c::I2CDevice::new(i2c_mux_smbus, 0x72));
     let pca9544a_2 = static_init!(
-        signpost_drivers::pca9544a::PCA9544A<'static>,
-        signpost_drivers::pca9544a::PCA9544A::new(pca9544a_2_i2c, &mut signpost_drivers::pca9544a::BUFFER));
+        capsules::pca9544a::PCA9544A<'static>,
+        capsules::pca9544a::PCA9544A::new(pca9544a_2_i2c, &mut capsules::pca9544a::BUFFER));
     pca9544a_2_i2c.set_client(pca9544a_2);
 
-
-    // Create an array of the I2C selectors so we can give them a single interface
-    let i2c_selectors = static_init!(
-        [&'static signpost_drivers::pca9544a::PCA9544A; 3],
-        [pca9544a_0,
-         pca9544a_1,
-         pca9544a_2]
-    );
-
-    // This provides the common interface to the I2C selectors
-    let i2c_selector = static_init!(
-        signpost_drivers::i2c_selector::I2CSelector<'static, signpost_drivers::pca9544a::PCA9544A<'static>>,
-        signpost_drivers::i2c_selector::I2CSelector::new(i2c_selectors));
-    for (i, selector) in i2c_selectors.iter().enumerate() {
-        selector.set_client(i2c_selector, i);
-    }
 
     //
     // Coulomb counter
@@ -487,10 +475,16 @@ pub unsafe fn reset_handler() {
         capsules::fm25cl::FM25CL::new(fm25cl_spi, &mut capsules::fm25cl::TXBUFFER, &mut capsules::fm25cl::RXBUFFER));
     fm25cl_spi.set_client(fm25cl);
     // Interface for applications
-    let fm25cl_driver = static_init!(
-        capsules::fm25cl::FM25CLDriver<'static, capsules::virtual_spi::VirtualSpiMasterDevice<'static, usart::USART>>,
-        capsules::fm25cl::FM25CLDriver::new(fm25cl, &mut capsules::fm25cl::KERNEL_TXBUFFER, &mut capsules::fm25cl::KERNEL_RXBUFFER));
-    fm25cl.set_client(fm25cl_driver);
+    let nonvolatile_storage = static_init!(
+        capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
+        capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
+            fm25cl, kernel::Container::create(),
+            0,      // Start address for userspace accessible region
+            8*1024, // Length of userspace accessible region
+            8*1024, // Start address of kernel accessible region
+            0,      // Length of kernel accessible region
+            &mut capsules::nonvolatile_storage_driver::BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(fm25cl, nonvolatile_storage);
 
     //
     // App Watchdog
@@ -579,11 +573,13 @@ pub unsafe fn reset_handler() {
         timer: timer,
         bonus_timer: bonus_timer,
         gpio_async: gpio_async,
-        coulomb_counter_i2c_selector: i2c_selector,
+        coulomb_counter_i2c_mux_0: pca9544a_0,
+        coulomb_counter_i2c_mux_1: pca9544a_1,
+        coulomb_counter_i2c_mux_2: pca9544a_2,
         coulomb_counter_generic: ltc294x_driver,
         battery_monitor: max17205_driver,
         smbus_interrupt: smbusint_driver,
-        fram: fm25cl_driver,
+        nonvolatile_storage: nonvolatile_storage,
         i2c_master_slave: i2c_modules,
         app_watchdog: app_watchdog,
         rng: rng,

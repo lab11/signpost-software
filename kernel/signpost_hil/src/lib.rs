@@ -4,6 +4,3 @@
 #![no_std]
 
 extern crate kernel;
-
-pub mod gpio_async;
-pub mod i2c_selector;

@@ -2,8 +2,9 @@
 #include "tock.h"
 #include "i2c_selector.h"
 
-#define DRIVER_NUM_I2C_SELECTOR 101
-
+#define DRIVER_NUM_I2C_SELECTOR_0 1001
+#define DRIVER_NUM_I2C_SELECTOR_1 1002
+#define DRIVER_NUM_I2C_SELECTOR_2 1003
 
 struct i2c_selector_data {
   bool fired;
@@ -23,40 +24,98 @@ static void i2c_selector_cb(__attribute__ ((unused)) int value,
 }
 
 
-int i2c_selector_set_callback(subscribe_cb callback, void* callback_args) {
-    return subscribe(DRIVER_NUM_I2C_SELECTOR, 0, callback, callback_args);
+int i2c_selector_set_callback(int selector_num, subscribe_cb callback, void* callback_args) {
+    if(selector_num == 0) {
+        return subscribe(DRIVER_NUM_I2C_SELECTOR_0, 0, callback, callback_args);
+    } else if (selector_num == 1) {
+        return subscribe(DRIVER_NUM_I2C_SELECTOR_1, 0, callback, callback_args);
+    } else if (selector_num == 2) {
+        return subscribe(DRIVER_NUM_I2C_SELECTOR_2, 0, callback, callback_args);
+    } else {
+        return TOCK_ENODEVICE;
+    }
 }
 
-int i2c_selector_select_channels(uint32_t channels) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 0, channels);
+int i2c_selector_select_channels(int selector_num, uint32_t channels) {
+    if(selector_num == 0) {
+	    return command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0000000F);
+    } else if (selector_num == 1) {
+	    return command(DRIVER_NUM_I2C_SELECTOR_1, 1, channels & 0x0000000F);
+    } else if (selector_num == 2) {
+	    return command(DRIVER_NUM_I2C_SELECTOR_2, 1, channels & 0x0000000F);
+    } else {
+        return TOCK_ENODEVICE;
+    }
 }
 
-int i2c_selector_disable_all_channels(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 1, 0);
+int i2c_selector_disable_all_channels(int selector_num) {
+    if(selector_num == 0) {
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 2, 0);
+    } else if (selector_num == 1) {
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 2, 0);
+    } else if (selector_num == 2) {
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 2, 0);
+    } else {
+        return TOCK_ENODEVICE;
+    }
 }
 
-int i2c_selector_read_interrupts(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 2, 0);
+int i2c_selector_read_interrupts(int selector_num) {
+    if(selector_num == 0) {
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0);
+    } else if (selector_num == 1) {
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0);
+    } else if (selector_num == 2) {
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0);
+    } else {
+        return TOCK_ENODEVICE;
+    }
 }
 
-int i2c_selector_read_selected(void) {
-	return command(DRIVER_NUM_I2C_SELECTOR, 3, 0);
+int i2c_selector_read_selected(int selector_num) {
+    if(selector_num == 0) {
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0);
+    } else if (selector_num == 1) {
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0);
+    } else if (selector_num == 2) {
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0);
+    } else {
+        return TOCK_ENODEVICE;
+    }
 }
-
 
 
 int i2c_selector_select_channels_sync(uint32_t channels) {
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
-    err = i2c_selector_select_channels(channels);
+    err = i2c_selector_select_channels(0,channels);
     if (err < 0) return err;
 
     // Wait for the callback.
     yield_for(&result.fired);
+
+    result.fired = false;
+    err = i2c_selector_select_channels(1,channels>>4);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    result.fired = false;
+    err = i2c_selector_select_channels(2,channels>>8);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
 
     return 0;
 }
@@ -65,10 +124,28 @@ int i2c_selector_disable_all_channels_sync(void) {
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
-    err = i2c_selector_disable_all_channels();
+    err = i2c_selector_disable_all_channels(0);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    result.fired = false;
+    err = i2c_selector_disable_all_channels(1);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    result.fired = false;
+    err = i2c_selector_disable_all_channels(2);
     if (err < 0) return err;
 
     // Wait for the callback.
@@ -81,30 +158,83 @@ int i2c_selector_read_interrupts_sync(void) {
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(i2c_selector_cb, (void*) &result);
+    int value;
+
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
-    err = i2c_selector_read_interrupts();
+    err = i2c_selector_read_interrupts(0);
     if (err < 0) return err;
 
     // Wait for the callback.
     yield_for(&result.fired);
 
-    return result.value;
+    value = result.value;
+
+    result.fired = false;
+    err = i2c_selector_read_interrupts(1);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    value |= result.value << 4;
+
+    result.fired = false;
+    err = i2c_selector_read_interrupts(2);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    value |= result.value << 8;
+
+    return value;
 }
 
 int i2c_selector_read_selected_sync(void) {
+
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(i2c_selector_cb, (void*) &result);
+    int value;
+
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
+    if (err < 0) return err;
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
-    err = i2c_selector_read_selected();
+    err = i2c_selector_read_selected(0);
     if (err < 0) return err;
 
     // Wait for the callback.
     yield_for(&result.fired);
 
-    return result.value;
+    value = result.value;
+
+    result.fired = false;
+    err = i2c_selector_read_selected(1);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    value |= result.value << 4;
+
+    result.fired = false;
+    err = i2c_selector_read_selected(2);
+    if (err < 0) return err;
+
+    // Wait for the callback.
+    yield_for(&result.fired);
+
+    value |= result.value << 8;
+
+    return value;
 }

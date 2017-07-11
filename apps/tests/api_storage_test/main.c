@@ -37,7 +37,7 @@ int main (void) {
     printf("Writing buffer [%X]*%d\n", record.value[4], DATA_SIZE);
 
     err = signpost_storage_write(data, DATA_SIZE, &record);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("Error writing to storage: %d\n", err);
     } else {
 #pragma GCC diagnostic push
