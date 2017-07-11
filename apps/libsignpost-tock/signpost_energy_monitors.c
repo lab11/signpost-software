@@ -103,6 +103,9 @@ uint32_t signpost_energy_get_controller_energy_uwh (void) {
 uint32_t signpost_energy_get_linux_energy_uwh (void) {
 	return get_ltc_energy_uah(0x2,POWER_MODULE_RSENSE_MOHM)*LINUX_VOLTAGE;
 }
+uint32_t signpost_energy_get_solar_energy_uwh (void) {
+	return get_ltc_energy_uah(0x100,POWER_MODULE_SOLAR_RSENSE_MOHM)*SOLAR_VOLTAGE;
+}
 uint32_t signpost_energy_get_module_energy_uwh (int module_num) {
 	return get_ltc_energy_uah(module_num_to_selector_mask[module_num],POWER_MODULE_RSENSE_MOHM)*MODULE_VOLTAGE;
 }
