@@ -89,11 +89,11 @@ int i2c_selector_select_channels_sync(uint32_t channels) {
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(0,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(1,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(2,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
     err = i2c_selector_select_channels(0,channels);
@@ -124,11 +124,11 @@ int i2c_selector_disable_all_channels_sync(void) {
     int err;
     result.fired = false;
 
-    err = i2c_selector_set_callback(0,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(1,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(2,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
     err = i2c_selector_disable_all_channels(0);
@@ -160,11 +160,11 @@ int i2c_selector_read_interrupts_sync(void) {
 
     int value;
 
-    err = i2c_selector_set_callback(0,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(1,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(2,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
     err = i2c_selector_read_interrupts(0);
@@ -203,11 +203,11 @@ int i2c_selector_read_selected_sync(void) {
 
     int value;
 
-    err = i2c_selector_set_callback(0,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(0, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(1,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(1, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
-    err = i2c_selector_set_callback(2,i2c_selector_cb, (void*) &result);
+    err = i2c_selector_set_callback(2, i2c_selector_cb, (void*) &result);
     if (err < 0) return err;
 
     err = i2c_selector_read_selected(0);
