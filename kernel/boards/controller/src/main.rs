@@ -103,9 +103,9 @@ impl Platform for SignpostController {
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
             18 => f(Some(self.coulomb_counter_generic)),
+            20 => f(Some(self.gpio_async)),
             27 => f(Some(self.nonvolatile_storage)),
 
-            100 => f(Some(self.gpio_async)),
             1001 => f(Some(self.coulomb_counter_i2c_mux_0)),
             1002 => f(Some(self.coulomb_counter_i2c_mux_1)),
             1003 => f(Some(self.coulomb_counter_i2c_mux_2)),
