@@ -23,9 +23,9 @@ void controller_init_module_switches (void) {
     int i;
 
     for (i=0; i<6; i++) {
-        gpio_async_enable_output_sync(i, PIN_IDX_ISOLATE_POWER);
-        gpio_async_enable_output_sync(i, PIN_IDX_ISOLATE_I2C);
-        gpio_async_enable_output_sync(i, PIN_IDX_ISOLATE_USB);
+        gpio_async_make_output_sync(i, PIN_IDX_ISOLATE_POWER);
+        gpio_async_make_output_sync(i, PIN_IDX_ISOLATE_I2C);
+        gpio_async_make_output_sync(i, PIN_IDX_ISOLATE_USB);
     }
 }
 
