@@ -38,7 +38,8 @@ int main (void) {
     } else {
       printf("Energy Query Result:\n");
       printf("       energy limit: %-4lu mWh\n", info.energy_limit_mWh);
-      printf("      average power: %-4hu mW\n", info.average_power_mW);
+      printf("        energy used: %-4lu mWh\n", info.energy_used_since_reset_mWh);
+      printf("   time since reset: %-4lu s\n",   info.time_since_reset_s);
       printf("         limit warn: %-4u %%\n",  info.energy_limit_warning_threshold);
       printf("         limit crit: %-4u %%\n",  info.energy_limit_critical_threshold);
       printf("\n");
