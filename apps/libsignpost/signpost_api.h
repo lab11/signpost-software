@@ -56,9 +56,10 @@ int signpost_api_send(uint8_t destination_address,
 #endif
 
 typedef enum initialization_state {
-    Start = 0,
+    Wait = 0,
     Isolated,
     KeyExchange,
+    FinishExchange,
     Done,
 } initialization_state_t;
 
@@ -95,6 +96,10 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
 // A special initialization routine for the storage master module only.
 __attribute__((warn_unused_result))
 int signpost_initialization_storage_master_init(api_handler_t** api_handlers);
+
+// Request isolation with the controller
+// TODO add parameter for which modules to isolate
+int signpost_initialization_request_isolation(void);
 
 // Send a key exchange request to another module
 // Assumes controller has already isolated source and target
