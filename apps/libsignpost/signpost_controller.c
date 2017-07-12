@@ -257,6 +257,13 @@ static void energy_api_callback(uint8_t source_address,
 
         //reply to the report
         signpost_energy_report_reply(source_address, 1);
+    } else if (message_type == EnergyResetMessage) {
+        printf("CALLBACK_ENERGY: Received energy reset message from 0x%.2x\n", source_address);
+        
+        signpost_energy_policy_reset_module_energy_used(signpost_api_addr_to_mod_num(source_address));
+
+        //reply
+        signpost_energy_reset_reply(source_address, 1);
     } else {
       signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     }
