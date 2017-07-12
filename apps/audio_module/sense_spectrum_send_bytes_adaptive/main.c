@@ -156,8 +156,10 @@ static void timer_callback (
 
     if(count*TIMER_INTERVAL > time_on) {
         while(1) {
+            rc = signpost_energy_reset();
+            printf("Received reset return code %d\n",rc);
             rc = signpost_energy_duty_cycle(time_off);
-            printf("Received return code %d\n",rc);
+            printf("Received duty cycle return code %d\n",rc);
             delay_ms(1000);
         }
     } else {
@@ -197,8 +199,8 @@ int main (void) {
     //now use this to calculate the time we should be on and off
     float on_percent = (e.energy_limit_mWh/9900.0);
     float adjustment = 0;
-    if(e.average_power_mW > 1) {
-        adjustment = (e.energy_limit_mWh/(float)e.average_power_mW) - 48;
+    if(((e.energy_used_since_reset_mWh/3600.0)/e.time_since_reset_s) > 1) {
+        adjustment = (e.energy_limit_mWh/(float)((e.energy_used_since_reset_mWh/3600.0)/e.time_since_reset_s)) - 48;
     }
 
     if(adjustment > 20) adjustment = 20;
@@ -241,10 +243,9 @@ int main (void) {
 
     //start timer
     duty_cycle = false;
-    timer_subscribe(timer_callback, NULL);
 
     printf("Starting timer\n");
-    timer_start_repeating(TIMER_INTERVAL);
+    timer_every(TIMER_INTERVAL, timer_callback, NULL);
 
     while (1) {
         sample_done = false;
