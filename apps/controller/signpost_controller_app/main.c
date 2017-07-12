@@ -254,7 +254,6 @@ static void energy_api_callback(uint8_t source_address,
     if (message_type == EnergyQueryMessage) {
       signpost_energy_information_t info;
       info.energy_limit_mWh = 1000;
-      info.average_power_mW = 60;
       info.energy_limit_warning_threshold = 0;
       info.energy_limit_critical_threshold = 0;
 
@@ -263,12 +262,6 @@ static void energy_api_callback(uint8_t source_address,
         printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
       }
-    } else if (message_type == EnergyLevelWarning24hMessage) {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
-    } else if (message_type == EnergyLevelCritical24hMessage) {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
-    } else if (message_type == EnergyCurrentWarning60sMessage) {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     } else {
       signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
     }
