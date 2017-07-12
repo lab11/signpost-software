@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "crc.h"
 
 //nordic includes
 #include "nrf.h"
@@ -260,7 +261,7 @@ static void timer_callback (
         for(; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
                 status_send_buf[3+ i*2] = module_num_map[i];
-                energy_report.reports[i].module_address = module_num_map[i];
+                energy_report.reports[i].application_id = module_num_map[i];
                 status_send_buf[3+ i*2 + 1] = module_packet_count[i];
                 packets_total += module_packet_count[i];
             } else {
@@ -268,15 +269,22 @@ static void timer_callback (
             }
         }
 
+        signpost_energy_information_t info;
+        int rc = signpost_energy_query(&info);
+        if(rc < 0) printf("ERROR: Energy query failed\n");
+
         //now figure out the percentages for each module
         for(i = 0; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
-                energy_report.reports[i].module_percent =
-                        (uint8_t)((module_packet_count[i]/(float)packets_total)*100);
+                energy_report.reports[i].energy_used_mWh =
+                        (uint8_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_mWh);
             } else {
                 break;
             }
         }
+
+        rc = signpost_energy_reset();
+        if(rc < 0) printf("ERROR: Energy reset failed\n");
 
         //now pack it into an energy report structure
         energy_report.num_reports = number_of_modules;
