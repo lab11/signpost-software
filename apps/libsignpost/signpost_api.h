@@ -343,6 +343,10 @@ int signpost_energy_query_reply(uint8_t destination_address, signpost_energy_inf
 // returns a signpost error define.
 int signpost_energy_report_reply(uint8_t destination_address, int return_code);
 
+// Response from controller to requesting module
+// returns a signpost error define.
+int signpost_energy_reset_reply(uint8_t destination_address, int return_code);
+
 /**************************************************************************/
 /* TIME & LOCATION API                                                    */
 /**************************************************************************/

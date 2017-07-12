@@ -841,6 +841,9 @@ static signpost_energy_information_t* energy_cb_data = NULL;
 static bool energy_report_received;
 static int energy_report_result;
 
+static bool energy_reset_received;
+static int energy_reset_result;
+
 static void energy_query_sync_callback(int result) {
     SIGNBUS_DEBUG("result %d\n", result);
     energy_query_ready = true;
@@ -850,6 +853,11 @@ static void energy_query_sync_callback(int result) {
 static void signpost_energy_report_callback(int result) {
     energy_report_result = result;
     energy_report_received = true;
+}
+
+static void signpost_energy_reset_callback(int result) {
+    energy_reset_result = result;
+    energy_reset_received = true;
 }
 
 int signpost_energy_query(signpost_energy_information_t* energy) {
@@ -961,6 +969,27 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     }
 }
 
+int signpost_energy_reset(void) {
+
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyResetMessage,
+            0, NULL);
+    if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_reset_callback;
+    energy_reset_received = false;
+    yield_for(&energy_reset_received);
+
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_reset_result < 0) {
+        return TOCK_FAIL;
+    } else {
+        return *incoming_message;
+    }
+}
+
 int signpost_energy_query_reply(uint8_t destination_address,
         signpost_energy_information_t* info) {
     return signpost_api_send(destination_address,
@@ -969,10 +998,17 @@ int signpost_energy_query_reply(uint8_t destination_address,
 }
 
 int signpost_energy_report_reply(uint8_t destination_address,
-        int return_code) {
+                                             int return_code) {
 
     return signpost_api_send(destination_address,
             ResponseFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            sizeof(int), (uint8_t*)&return_code);
+}
+
+int signpost_energy_reset_reply(uint8_t destination_address, int return_code) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyResetMessage,
             sizeof(int), (uint8_t*)&return_code);
 }
 
