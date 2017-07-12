@@ -343,3 +343,13 @@ void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot
         }
     }
 }
+
+
+void signpost_energy_policy_copy_internal_state(signpost_energy_remaining_t* remaining, 
+                                         signpost_energy_used_t* used, 
+                                         signpost_energy_time_since_reset_t* time) {
+    memcpy(remaining,&energy_remaining,sizeof(signpost_energy_remaining_t));
+    memcpy(used,&energy_used,sizeof(signpost_energy_used_t));
+    memcpy(time,&time_since_reset,sizeof(signpost_energy_time_since_reset_t));
+}
+

@@ -63,6 +63,10 @@ void signpost_energy_policy_update_energy (void);
 //to other modules - primarily for the radio right now
 void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot, signpost_energy_report_t* report);
 
+void signpost_energy_policy_copy_internal_state(signpost_energy_remaining_t*, 
+                                         signpost_energy_used_t*, 
+                                         signpost_energy_time_since_reset_t*);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,469 @@
+#include "signpost_controller.h"
+#include "signpost_energy_policy.h"
+#include "signpost_api.h"
+#include "controller.h"
+#include "timer.h"
+#include "gps.h"
+#include "fm25cl.h"
+#include <stdio.h>
+#include <string.h>
+
+static signpost_timelocation_time_t current_time;
+static signpost_timelocation_location_t current_location;
+
+int mod_isolated_out = -1;
+int mod_isolated_in = -1;
+int last_mod_isolated_out = -1;
+size_t isolated_count = 0;
+
+uint8_t currently_initializing;
+uint8_t module_init_failures[8] = {0};
+uint8_t num_inited = 0;
+uint8_t module_disabled[8] = {0};
+
+static uint8_t module_addresses[8];
+
+typedef struct {
+  uint32_t magic;
+  signpost_energy_remaining_t remaining;
+  signpost_energy_used_t used;
+  signpost_energy_time_since_reset_t time;
+} controller_fram_t;
+
+uint8_t fm25cl_read_buf[256];
+uint8_t fm25cl_write_buf[256];
+
+controller_fram_t fram;
+
+static void enable_all_enabled_i2c(void) {
+    for(uint8_t i = 0; i < 8; i++) {
+        if(module_disabled[i] == 0) {
+            controller_module_enable_i2c(i);
+        }
+    }
+}
+
+static void initialization_api_callback(uint8_t source_address,
+    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+    uint8_t message_type, __attribute__ ((unused)) size_t message_length,
+    uint8_t* message) {
+    if (api_type != InitializationApiType) {
+      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+      return;
+    }
+    int module_number;
+    int rc;
+    switch (frame_type) {
+        case NotificationFrame:
+            // XXX unexpected, drop
+            break;
+        case CommandFrame:
+            switch (message_type) {
+                case InitializationDeclare:
+                    // only if we have a module isolated or from storage master
+                    if (mod_isolated_out < 0 && source_address != ModuleAddressStorage) {
+                        return;
+                    }
+                    if (source_address == ModuleAddressStorage)  {
+                        module_number = 4;
+                    }
+                    else {
+                        module_number = MODOUT_pin_to_mod_name(mod_isolated_out);
+                    }
+
+                    module_addresses[module_number] = source_address;
+                    rc = signpost_initialization_declare_respond(source_address, module_number);
+
+                    if (rc < 0) {
+                      printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
+                          __LINE__, module_number, source_address);
+                    }
+                    break;
+                case InitializationKeyExchange:
+                    // Prepare and reply ECDH key exchange
+                    rc = signpost_initialization_key_exchange_respond(source_address,
+                            message, message_length);
+                    num_inited++;
+                    if (rc < 0) {
+                      printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
+                          __LINE__, source_address);
+                    }
+                    break;
+                //exchange module
+                //get mods
+                default:
+                   break;
+            }
+        case ResponseFrame:
+            // XXX unexpected, drop
+            break;
+        case ErrorFrame:
+            // XXX unexpected, drop
+            break;
+        default:
+            break;
+    }
+}
+
+static void check_module_init_cb( __attribute__ ((unused)) int now,
+                            __attribute__ ((unused)) int expiration,
+                            __attribute__ ((unused)) int unused,
+                            __attribute__ ((unused)) void* ud) {
+
+    if (mod_isolated_out < 0) {
+        for (size_t i = 0; i < NUM_MOD_IO; i++) {
+            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i]) {
+
+                printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
+                currently_initializing = 1;
+                // module requesting isolation
+                mod_isolated_out = MOD_OUTS[i];
+                mod_isolated_in = MOD_INS[i];
+                last_mod_isolated_out = MOD_OUTS[i];
+                isolated_count = 0;
+
+                // create private channel for this module
+                //XXX warn modules of i2c disable
+                controller_all_modules_disable_i2c();
+                controller_module_enable_i2c(MODOUT_pin_to_mod_name(mod_isolated_out));
+                // signal to module that it has a private channel
+                // XXX this should be a controller function operating on the
+                // module number, not index
+                gpio_clear(mod_isolated_in);
+                delay_ms(1000);
+                break;
+            }
+            // didn't isolate anyone, reset last_mod_isolated_out
+            last_mod_isolated_out = -1;
+        }
+    } else {
+        if (gpio_read(mod_isolated_out) == 1) {
+            printf("ISOLATION: Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+            currently_initializing = 0;
+            gpio_set(mod_isolated_in);
+            mod_isolated_out = -1;
+            mod_isolated_in  = -1;
+            enable_all_enabled_i2c();
+            module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)] = 0;
+        }
+        // this module took too long to talk to controller
+        // XXX need more to police bad modules (repeat offenders)
+        else if (isolated_count > 5) {
+            printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+            currently_initializing = 0;
+            gpio_set(mod_isolated_in);
+            module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)]++;
+            if(module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)] > 4) {
+                //power cycle the module
+                controller_module_disable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
+                delay_ms(1000);
+                controller_module_enable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
+                module_init_failures[MODOUT_pin_to_mod_name(mod_isolated_out)] = 0;
+            }
+            mod_isolated_out = -1;
+            mod_isolated_in  = -1;
+            enable_all_enabled_i2c();
+        } else {
+          isolated_count++;
+        }
+    }
+}
+
+static uint8_t duty_cycling[8] = {0};
+
+static void duty_cycle_timer_cb( __attribute__ ((unused)) int now,
+                            __attribute__ ((unused)) int expiration,
+                            __attribute__ ((unused)) int unused,
+                            void* ud) {
+    duty_cycling[(int)ud] = 0;
+    module_disabled[(int)ud] = 0;
+    if(signpost_energy_policy_get_module_energy_remaining_uwh((int)ud) > 0) {
+        controller_module_enable_power((int)ud);
+        controller_module_enable_i2c((int)ud);
+    }
+}
+
+static void energy_api_callback(uint8_t source_address,
+    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+    uint8_t message_type, size_t message_length, uint8_t* message) {
+
+  printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
+
+  if (api_type != EnergyApiType) {
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    return;
+  }
+
+  int rc;
+
+  if (frame_type == NotificationFrame) {
+      if(message_type == EnergyDutyCycleMessage) {
+        printf("CALLBACK_ENERGY: received duty cycle request\n");
+        //this is a duty cycle message
+        //
+        //how long does the module want to be duty cycled?
+        uint32_t time;
+        memcpy(&time, message, 4);
+
+        //what module slot wants to be duty cycled?
+        uint8_t mod = signpost_api_addr_to_mod_num(source_address);
+
+        //create a timer with the module number to be turned back
+        //on as the user data
+        timer_in(time, duty_cycle_timer_cb, (void*)((uint32_t)mod));
+        duty_cycling[mod] = 1;
+        module_disabled[mod] = 1;
+
+        //turn it off
+        printf("CALLBACK_ENERGY: Turning off module %d\n", mod);
+        controller_module_disable_power(mod);
+        controller_module_disable_i2c(mod);
+      }
+  } else if (frame_type == CommandFrame) {
+    if (message_type == EnergyQueryMessage) {
+
+      signpost_energy_information_t info;
+
+      int mod_num = signpost_api_addr_to_mod_num(source_address);
+
+      info.energy_limit_mWh = (int)(signpost_energy_policy_get_module_energy_remaining_uwh(mod_num)/1000.0);
+      info.energy_used_since_reset_mWh = (int)(signpost_energy_policy_get_module_energy_used_uwh(mod_num)/1000.0);
+      info.time_since_reset_s = (int)(signpost_energy_policy_get_time_since_module_reset_ms(mod_num)/1000.0);
+      info.energy_limit_warning_threshold = (info.energy_limit_mWh < 1000);
+      info.energy_limit_critical_threshold = (info.energy_limit_mWh < 200);
+
+      rc = signpost_energy_query_reply(source_address, &info);
+      if (rc < 0) {
+        printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+      }
+
+    } else if (message_type == EnergyReportModuleConsumptionMessage) {
+        //this is for the radio to report other module's energy usage
+        printf("CALLBACK_ENERGY: Received energy report from 0x%.2x\n", source_address);
+
+        //first we should get the message and unpack it
+        signpost_energy_report_t report;
+        memcpy(&report, message, message_length);
+
+        //now send the report to the energy
+        signpost_energy_policy_update_energy_from_report(signpost_api_addr_to_mod_num(source_address), &report);
+
+        //reply to the report
+        signpost_energy_report_reply(source_address, 1);
+    } else {
+      signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    }
+  } else if (frame_type == ResponseFrame) {
+    // XXX unexpected, drop
+  } else if (frame_type == ErrorFrame) {
+    // XXX unexpected, drop
+  }
+}
+
+// Callback for when a different module requests time or location information.
+static void timelocation_api_callback(uint8_t source_address,
+    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+    uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
+  int rc;
+
+  if (api_type != TimeLocationApiType) {
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    return;
+  }
+
+  if (frame_type == NotificationFrame) {
+    // XXX unexpected, drop
+  } else if (frame_type == CommandFrame) {
+    if (message_type == TimeLocationGetTimeMessage) {
+      // Copy in time data from the most recent time we got an update
+      // from the GPS.
+      signpost_timelocation_time_t time;
+      memcpy(&time,&current_time,sizeof(signpost_timelocation_time_t));
+      rc = signpost_timelocation_get_time_reply(source_address, &time);
+      if (rc < 0) {
+        printf(" - %d: Error sending TimeLocationGetTimeMessage reply (code: %d).\n", __LINE__, rc);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+      }
+
+    } else if (message_type == TimeLocationGetLocationMessage) {
+      signpost_timelocation_location_t location;
+      memcpy(&location,&current_location,sizeof(signpost_timelocation_location_t));
+      rc = signpost_timelocation_get_location_reply(source_address, &location);
+      if (rc < 0) {
+        printf(" - %d: Error sending TimeLocationGetLocationMessage reply (code: %d).\n", __LINE__, rc);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+      }
+    }
+  } else if (frame_type == ResponseFrame) {
+    // XXX unexpected, drop
+  } else if (frame_type == ErrorFrame) {
+    // XXX unexpected, drop
+  }
+}
+
+static uint8_t watchdog_tickled[8] = {0};
+static uint8_t watchdog_subscribed[8] = {0};
+
+static void watchdog_api_callback(uint8_t source_address,
+    __attribute__ ((unused)) signbus_frame_type_t frame_type, __attribute__ ((unused)) signbus_api_type_t api_type,
+    uint8_t message_type, __attribute__ ((unused)) size_t message_length, __attribute__ ((unused)) uint8_t* message) {
+
+    printf("Got watchdog API call\n");
+
+    if(message_type == WatchdogStartMessage) {
+        int rc = signpost_watchdog_reply(source_address);
+        if(rc >= 0) {
+            for(uint8_t j = 0; j < 8; j++) {
+                if(watchdog_subscribed[j] == 0 || watchdog_subscribed[j] == source_address) {
+                    printf("Subscribed Watchdog %d\n",source_address);
+                    watchdog_subscribed[j] = source_address;
+
+                    //give them one tickle
+                    watchdog_tickled[j] = 1;
+                    break;
+                }
+            }
+        }
+    } else if(message_type == WatchdogTickleMessage)  {
+        int rc = signpost_watchdog_reply(source_address);
+        if(rc >= 0) {
+            for(uint8_t j = 0; j < 8; j++) {
+                if(watchdog_subscribed[j] == source_address) {
+                    printf("Tickled Watchdog %d\n",source_address);
+                    watchdog_tickled[j] = 1;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static void gps_callback (gps_data_t* gps_data) {
+  // Save most recent GPS reading for anyone that wants location and time.
+  // This isn't a great method for proving the TimeLocation API, but it's
+  // pretty easy to do. We eventually need to reduce the sleep current of
+  // the controller, which will mean better handling of GPS.
+  current_time.year = gps_data->year + 2000;
+  current_time.month = gps_data->month;
+  current_time.day = gps_data->day;
+  current_time.hours = gps_data->hours;
+  current_time.minutes = gps_data->minutes;
+  current_time.seconds = gps_data->seconds;
+  current_time.satellite_count = gps_data->satellite_count;
+  current_location.latitude = gps_data->latitude;
+  current_location.longitude = gps_data->longitude;
+  current_location.satellite_count = gps_data->satellite_count;
+
+  // start sampling again to catch the next second
+  gps_sample(gps_callback);
+}
+
+static void check_watchdogs_cb( __attribute__ ((unused)) int now,
+                            __attribute__ ((unused)) int expiration,
+                            __attribute__ ((unused)) int unused,
+                            __attribute__ ((unused)) void* ud) {
+    for(uint8_t j = 0; j < 8; j++) {
+        if(watchdog_subscribed[j] != 0) {
+            if(watchdog_tickled[j] == 0) {
+                for(uint8_t i = 0; i < 8; j++) {
+                    if(module_addresses[i] == watchdog_subscribed[j]) {
+                        printf("Watchdog Timeout %d\n",watchdog_subscribed[j]);
+                        controller_module_disable_power(i);
+                        delay_ms(300);
+                        controller_module_enable_power(i);
+                    }
+                    break;
+                }
+            } else {
+                printf("Watchdog good %d\n",watchdog_subscribed[j]);
+                watchdog_tickled[j] = 0;
+            }
+        }
+    }
+}
+
+static void update_energy_policy_cb( __attribute__ ((unused)) int now,
+                            __attribute__ ((unused)) int expiration,
+                            __attribute__ ((unused)) int unused,
+                            __attribute__ ((unused)) void* ud) {
+    signpost_energy_policy_update_energy();
+
+    for(uint8_t i = 0; i < 8; i++) {
+        if(signpost_energy_policy_get_module_energy_remaining_uwh(i) <= 0) {
+            module_disabled[i] = 1;
+            controller_module_disable_power(i);
+            controller_module_disable_i2c(i);
+        } else if (duty_cycling[i] == 0) {
+            module_disabled[i] = 0;
+            controller_module_enable_power(i);
+            controller_module_enable_i2c(i);
+        }
+    }
+}
+
+int signpost_controller_init (void) {
+    //configure FRAM
+    printf("Configuring FRAM\n");
+    fm25cl_set_read_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
+    fm25cl_set_write_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
+  
+    // Read FRAM to see if anything is stored there
+    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
+    fm25cl_read_sync(0, sizeof(controller_fram_t));
+
+    if (fram.magic == FRAM_MAGIC_VALUE) {
+      // Great. We have saved data.
+      // Initialize the energy algorithm with those values
+      signpost_energy_policy_init(&fram.remaining, &fram.used, &fram.time);
+  
+    } else {
+      // Initialize this
+      fram.magic = FRAM_MAGIC_VALUE;
+
+      //let the energy algorithm figure out how to initialize all the energies
+      signpost_energy_policy_init(NULL, NULL, NULL);
+
+      signpost_energy_policy_copy_internal_state(&fram.remaining, &fram.used, &fram.time);
+  
+      fm25cl_write_sync(0, sizeof(controller_fram_t));
+    }
+
+
+    //initialize gps
+    gps_init();
+    gps_sample(gps_callback);
+
+    //setup the signpost api
+    static api_handler_t init_handler   = {InitializationApiType, initialization_api_callback};
+    static api_handler_t energy_handler = {EnergyApiType, energy_api_callback};
+    static api_handler_t timelocation_handler = {TimeLocationApiType, timelocation_api_callback};
+    static api_handler_t watchdog_handler = {WatchdogApiType, watchdog_api_callback};
+    static api_handler_t* handlers[] = {&init_handler, &energy_handler, &timelocation_handler, &watchdog_handler, NULL};
+
+    int rc;
+    do {
+      rc = signpost_initialization_controller_module_init(handlers);
+      if (rc < 0) {
+        printf(" - Error initializing as controller module with signpost library (code: %d)\n", rc);
+        printf("   Sleeping 5s\n");
+        delay_ms(5000);
+      }
+    } while (rc < 0);
+
+    // Setup backplane by enabling the modules
+    controller_init_module_switches();
+    controller_all_modules_enable_power();
+    controller_all_modules_enable_i2c();
+    controller_all_modules_disable_usb();
+    controller_gpio_enable_all_MODINs();
+    controller_gpio_enable_all_MODOUTs(PullUp);
+    controller_gpio_set_all();
+
+    //setup timer callbacks to service the various signpost components
+    timer_every(10000,update_energy_policy_cb,NULL);
+    timer_every(1000,check_module_init_cb,NULL);
+    timer_every(60000,check_watchdogs_cb,NULL);
+
+    return 0;
+}
