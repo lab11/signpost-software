@@ -26,6 +26,15 @@ for each platform*/
 #define PORT_SIGNPOST_ERROR -1
 #define PORT_SIGNPOST_I2C_WRITE_ERROR -2
 
+//Error code definitions
+#define SB_PORT_SUCCESS       0
+#define SB_PORT_FAIL         -1
+#define SB_PORT_EBUSY        -2
+#define SB_PORT_EINVAL       -6
+#define SB_PORT_ESIZE        -7
+#define SB_PORT_ENOMEM       -9
+#define SB_PORT_ENOACK       -13
+
 //These are the callback definitions
 
 //This is the typedef of the callback you should call when you get an i2c slave write
