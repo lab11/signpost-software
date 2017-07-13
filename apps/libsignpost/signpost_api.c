@@ -189,7 +189,6 @@ static initialization_state_t init_state;
 static bool request_isolation_complete;
 static bool declare_controller_complete;
 static bool key_send_complete;
-static bool key_exchange_complete;
 
 // mbedtls stuff
 #define ECDH_BUF_LEN 72
@@ -211,7 +210,7 @@ static void signpost_initialization_declare_callback(int len_or_rc) {
     init_state = KeyExchange;
 }
 static void signpost_initialization_key_exchange_callback(int len_or_rc) {
-    key_exchange_complete = true;
+    key_send_complete= true;
     if (len_or_rc < TOCK_SUCCESS) return;
     if (incoming_api_type != InitializationApiType || incoming_message_type !=
             InitializationKeyExchange) return;
@@ -298,6 +297,7 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     }
     incoming_active_callback = signpost_initialization_key_exchange_callback;
 
+
     // Prepare for ECDH key exchange
     mbedtls_ecdh_init(&ecdh);
     rc = mbedtls_ecp_group_load(&ecdh.grp,MBEDTLS_ECP_DP_SECP256R1);
@@ -308,8 +308,11 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
 
     // Now have a private channel with the controller
     // Key exchange with module, send ecdh params
-    return signpost_api_send(destination_address, CommandFrame, InitializationApiType,
-            InitializationKeyExchange, ecdh_param_len, ecdh_buf);
+    if (signpost_api_send(destination_address, CommandFrame, InitializationApiType,
+            InitializationKeyExchange, ecdh_param_len, ecdh_buf) > 0) {
+      return TOCK_SUCCESS;
+    }
+    else return TOCK_FAIL;
 }
 
 int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number) {
@@ -483,7 +486,6 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             }
             break;
           case FinishExchange:
-            key_exchange_complete = false;
             rc = signpost_initialization_key_exchange_finish();
             if (rc == TOCK_SUCCESS) {
               init_state = Done;
