@@ -3,6 +3,7 @@
 #![feature(const_fn)]
 #![no_std]
 
+#[macro_use(debug)]
 extern crate kernel;
 extern crate signpost_hil;
 
@@ -17,3 +18,5 @@ pub mod watchdog_kernel;
 pub mod gps_console;
 pub mod sara_u260;
 pub mod xdot;
+
+pub mod signpost_tock_firmware_update;
