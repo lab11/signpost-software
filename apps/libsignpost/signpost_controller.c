@@ -382,6 +382,8 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) int expiration,
                             __attribute__ ((unused)) int unused,
                             __attribute__ ((unused)) void* ud) {
+
+    printf("Updating energy policy\n");
     //run the update function
     signpost_energy_policy_update_energy();
 
@@ -392,6 +394,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
     //cut off any modules that have used too much
     for(uint8_t i = 0; i < 8; i++) {
         if(signpost_energy_policy_get_module_energy_remaining_uwh(i) <= 0) {
+            printf("Module %d used to much energy - disabling\n", i);
             module_state[i].isolation_state = ModuleDisabledEnergy;
             controller_module_disable_power(i);
             controller_module_disable_i2c(i);
@@ -407,14 +410,17 @@ static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
     const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
-
+    
+    printf("Initializing energy\n");
     if (fram.magic == FRAM_MAGIC_VALUE) {
       // Great. We have saved data.
       // Initialize the energy algorithm with those values
+      printf("Found saved energy data\n");
       signpost_energy_policy_init(&fram.remaining, &fram.used, &fram.time);
   
     } else {
       // Initialize this
+      printf("No saved energy data. Equally distributing\n");
       fram.magic = FRAM_MAGIC_VALUE;
 
       //let the energy algorithm figure out how to initialize all the energies
@@ -466,7 +472,7 @@ int signpost_controller_init (void) {
     controller_gpio_set_all();
 
     //setup timer callbacks to service the various signpost components
-    timer_every(10000,update_energy_policy_cb,NULL);
+    timer_every(600000,update_energy_policy_cb,NULL);
     timer_every(1000,check_module_init_cb,NULL);
     timer_every(60000,check_watchdogs_cb,NULL);
 
