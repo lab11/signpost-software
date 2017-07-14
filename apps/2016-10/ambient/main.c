@@ -93,7 +93,8 @@ int main (void) {
   sample_and_send();
 
   // Setup a timer for sampling the sensors
-  timer_every(6000, timer_callback, NULL);
+  static tock_timer_t timer;
+  timer_every(6000, timer_callback, NULL, &timer);
 
   // Setup watchdog
   app_watchdog_set_kernel_timeout(10000);

@@ -197,7 +197,8 @@ int main (void) {
     adc_set_callback(adc_callback, NULL);
 
     //start timer
-    timer_every(10000, timer_callback, NULL);
+    static tock_timer_t timer;
+    timer_every(10000, timer_callback, NULL, &timer);
 
 
     while (1) {

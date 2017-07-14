@@ -271,7 +271,8 @@ int main (void) {
     // setup timer
     // set to about two seconds, but a larger prime number so that hopefully we
     //  can avoid continually conflicting with other modules
-    timer_every(20000, timer_callback, NULL);
+    static tock_timer_t timer;
+    timer_every(20000, timer_callback, NULL, &timer);
 
     // initialize adc
     adc_set_callback(adc_callback, NULL);
