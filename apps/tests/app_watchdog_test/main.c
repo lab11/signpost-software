@@ -32,7 +32,8 @@ int main (void) {
   printf("[Watchdog - app] Test\n");
 
   // Need a timer
-  timer_every(750, timer_callback, NULL);
+  static tock_timer_t timer;
+  timer_every(750, timer_callback, NULL, &timer);
 
   app_watchdog_set_app_timeout(1200);
   app_watchdog_start();

@@ -137,7 +137,8 @@ int main (void) {
 
   ////////////////////////////////////////////////
   // Setup watchdog
-  timer_every(160, watchdog_timer_cb, NULL);
+  static tock_timer_t timer;
+  timer_every(160, watchdog_timer_cb, NULL, &timer);
   app_watchdog_set_kernel_timeout(500);
   app_watchdog_start();
 

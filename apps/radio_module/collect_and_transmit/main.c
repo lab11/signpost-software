@@ -341,5 +341,6 @@ int main (void) {
     //app_watchdog_start();
 
     //setup timer
-    timer_every(2000, timer_callback, NULL);
+    static tock_timer_t timer;
+    timer_every(2000, timer_callback, NULL, &timer);
 }

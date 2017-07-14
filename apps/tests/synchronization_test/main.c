@@ -91,7 +91,8 @@ int main (void) {
 
   printf("Starting Timer\n");
   //this is just to make sure the timer is running
-  timer_every(2000, timer_callback, NULL);
+  static tock_timer_t timer;
+  timer_every(2000, timer_callback, NULL, &timer);
 
   last_pps_time = alarm_read();
 

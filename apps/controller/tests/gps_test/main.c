@@ -52,7 +52,8 @@ int main(void) {
 
     // option 1:
     // use GPS with a timer
-    timer_every(7000, timer_callback, NULL);
+    static tock_timer_t timer;
+    timer_every(7000, timer_callback, NULL, &timer);
     printf("Setup complete\n");
 
     // other option:
