@@ -36,7 +36,7 @@ int main (void) {
     if (read_buf[i] != write_buf[i]) {
       printf("ERROR: mismatched bytes\n");
       print_buf();
-      return;
+      return 1;
     }
   }
 

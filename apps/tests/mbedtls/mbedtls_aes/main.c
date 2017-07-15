@@ -77,7 +77,7 @@ int main(void) {
       mbedtls_aes_setkey_enc(&aes_context, key, 256);
       for(int i = 0; i < 16384/(BLOCK_SIZE/16); i++)
       {
-        mbedtls_aes_crypt_cbc(&aes_context, MBEDTLS_AES_ENCRYPT, BLOCK_SIZE, key, "iv", output);
+        mbedtls_aes_crypt_cbc(&aes_context, MBEDTLS_AES_ENCRYPT, BLOCK_SIZE, key, (uint8_t*)"iv", output);
       }
       delay_ms(500);
 

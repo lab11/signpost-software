@@ -59,7 +59,7 @@ uint32_t max_speed_since_last_transmit = 0;
 bool got_sample = false;
 
 static bool detect_motion (uint32_t sample) {
-    printf("%d\n",sample);
+    printf("%lu\n",sample);
     static uint8_t num_motion = 1;
     if ((sample > UPPER_BOUND) || (sample < LOWER_BOUND)) {
         num_motion++;

@@ -15,9 +15,9 @@
 
 #define PIN 4
 
-const unsigned char * message = "hello!";
+const char * message = "hello!";
 
-const unsigned char * priv_key = "-----BEGIN PRIVATE KEY-----\n"
+const char * priv_key = "-----BEGIN PRIVATE KEY-----\n"
 "MIIEwAIBADANBgkqhkiG9w0BAQEFAASCBKowggSmAgEAAoIBAQDuhe2pnbgahszc\n"
 "k5vEUWP6hVXdTGprfyDJ/juY55ba5+1N0QqZV29FuocyO/WidznkF/qvpz13xVUy\n"
 "daCqaqyqOQfP1MMxeHaSfN58ifgUK8LZZaGEWGDCN/+Glxx60j7igC6vOuqFLO1s\n"
@@ -86,12 +86,12 @@ int main(void) {
     srand(55);
 
     mbedtls_pk_init(&pk);
-    mbedtls_pk_parse_key(&pk, priv_key, strlen(priv_key)+1, NULL, 0);
+    mbedtls_pk_parse_key(&pk,(uint8_t*)priv_key, strlen(priv_key)+1, NULL, 0);
 
     gpio_enable_output(PIN);
     gpio_clear(PIN);
 
-    sha256(message, strlen(message), hash);
+    sha256((uint8_t*)message, strlen(message), hash);
 
     while(1) {
       delay_ms(250);

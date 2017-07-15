@@ -63,7 +63,7 @@ static void pps_callback (int pin_num,
         } else {
             seconds = 1 + time.seconds + (pin_time - last_pps_time)/16000.0;
         }
-        printf("Interrupt occurred at %d:%d\n",time.minutes,(uint32_t)(seconds*1000000));
+        printf("Interrupt occurred at %d:%lu\n",time.minutes,(uint32_t)(seconds*1000000));
     }
 }
 
