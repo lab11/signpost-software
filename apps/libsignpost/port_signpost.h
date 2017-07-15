@@ -107,3 +107,9 @@ int port_rng_init(void);
  */
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
+//This write to microcontroller flash
+int port_signpost_flash_write(uint32_t address, uint8_t* data, uint32_t data_len);
+
+//This is used to perform an update
+//it should, check the crc, copy the flash to the destination, then reset
+int port_signpost_apply_update(uint32_t dest_address, uint32_t source_address, uint32_t update_length, uint16_t crc);

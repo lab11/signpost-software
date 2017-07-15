@@ -408,6 +408,69 @@ typedef struct json_field {
 //  value               - integer value of the field
 int signpost_json_send(uint8_t destination_address, size_t field_count, ... );
 
+
+/*************************************************************************/
+/* Signpost Update API                                                   */
+/*************************************************************************/
+
+typedef enum {
+    UpdateRequestMessage = 0,
+    UpdateResponseMessage = 1,
+    UpdateTransferMessage = 2,
+} signpost_update_message_type_e;
+
+typedef enum {
+    UpdateUpToDate = 0,
+    UpdateFetched = 1,
+    UpdateApplied = 2,
+    UpdateFetchFailure = 3,
+    UpdateFlashFailure = 4,
+    UpdateApplyFailure = 5,
+} signpost_update_response_e;
+
+typedef struct signpost_update_done {
+    uint32_t response_code;
+    uint32_t total_length;
+    uint16_t crc;
+} signpost_update_done_t;
+
+
+// Params:
+// URL: This URL should point to the location of the binary the description file
+// These should conform to the specification found in the API docs
+// Start address: The place to put the binary in flash
+// Max length: the maximum length of this flash section
+// current version: the current version to compare the descriptor against
+// version string should be formatted *.*.*... compared section by section MAX 16 chars
+
+//this will fetch the update and perform it
+int signpost_update(char* url, 
+                    char* version_string, 
+                    uint32_t flash_scratch_start, 
+                    uint32_t flash_scratch_length, 
+                    uint32_t flash_dest_address);
+
+//this gives the user a bit more control to fetch, then decide when to apply
+int signpost_fetch_update(char* url, 
+                            char* version_string, 
+                            uint32_t flash_scratch_start, 
+                            uint32_t flash_scratch_length, 
+                            uint32_t* update_length,
+                            uint16_t* crc);
+
+//this is the apply function for the fetch counterpart
+int signpost_apply_update(uint32_t flash_dest_address, 
+                            uint32_t flash_scratch_start, 
+                            uint32_t update_length,
+                            uint16_t crc);
+
+int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, 
+                                    uint32_t offset, uint32_t len);
+
+int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, 
+                                uint16_t crc);
+
 #ifdef __cplusplus
 }
+
 #endif
