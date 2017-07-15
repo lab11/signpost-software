@@ -62,7 +62,8 @@ int main(void) {
         master_write_buf[6] = 0x58;
         master_write_buf[7] = 0x59;
 
-        i2c_master_slave_write_sync(0x20, 8);
+        
+		i2c_master_slave_write_sync(0x20, 8);
 
         gpio_toggle(8);
         delay_ms(500);
