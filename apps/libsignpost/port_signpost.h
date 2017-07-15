@@ -56,6 +56,7 @@ int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len);
 int port_signpost_mod_out_set(void);
 int port_signpost_mod_out_clear(void);
 int port_signpost_mod_in_read(void);
+int port_signpost_pps_read(void);
 
 //This function is used to setup a gpio interrupt
 //interrupt assumes pulled up, falling edge

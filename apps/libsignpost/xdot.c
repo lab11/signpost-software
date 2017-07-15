@@ -17,10 +17,6 @@
 
 #define LORA_WAKE_PIN 10
 
-#define RESPONSE_BUF_SIZE 200
-
-
-
 int xdot_init(void) {
     gpio_enable_output(LORA_WAKE_PIN);
 

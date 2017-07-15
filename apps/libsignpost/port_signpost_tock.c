@@ -111,6 +111,11 @@ int port_signpost_mod_in_read(void) {
     return gpio_read(MOD_IN);
 }
 
+int port_signpost_pps_read(void) {
+    gpio_enable_input(PPS, PullNone);
+    return gpio_read(PPS);
+}
+
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
 int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb) {
