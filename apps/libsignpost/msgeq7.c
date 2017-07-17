@@ -38,7 +38,6 @@ void msgeq7_initialize(uint8_t strobe_pin,
 	gpio_clear(reset);
 
 	adc_set_callback(adc_callback, NULL);
-	adc_initialize();
 }
 
 void msgeq7_get_values(uint16_t* samples) {

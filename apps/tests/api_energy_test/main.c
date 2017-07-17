@@ -33,7 +33,7 @@ int main (void) {
     printf("\nQuery Energy\n");
     printf(  "============\n\n");
     rc = signpost_energy_query(&info);
-    if (rc < SUCCESS) {
+    if (rc < TOCK_SUCCESS) {
       printf("Error querying energy: %d\n\n", rc);
     } else {
       printf("Energy Query Result:\n");

@@ -10,32 +10,20 @@
 
 #include "controller.h"
 #include "i2c_selector.h"
-#include "signpost_energy.h"
-
-static void print_data (int module, int energy) {
-  int int_energy = signpost_ltc_to_uAh(energy, POWER_MODULE_RSENSE);
-  if (module == 3) {
-    printf("Controller energy: %i uAh\n", int_energy);
-  } else if (module == 4) {
-    printf("Linux energy: %i uAh\n", int_energy);
-  } else {
-    printf("Module %i energy: %i uAh\n", module, int_energy);
-  }
-}
+#include "signpost_energy_monitors.h"
 
 int main (void) {
-  int energy;
+  uint32_t energy;
 
-  signpost_energy_init();
+  signpost_energy_init_ltc2941();
 
-  signpost_energy_reset();
+  signpost_energy_reset_all_energy();
 
   controller_init_module_switches();
   controller_all_modules_enable_power();
   controller_all_modules_enable_i2c();
 
   int i;
-
   while (1) {
 
     printf("\nChecking Energy\n");
@@ -43,15 +31,15 @@ int main (void) {
     for (i=0; i<8; i++) {
       if (i == 3 || i == 4) continue;
 
-      energy = signpost_energy_get_module_energy(i);
-      print_data(i, energy);
+      energy = signpost_energy_get_module_energy_uwh(i);
+      printf("Module %d energy: %lu uWh\n", i, energy);
     }
 
-    energy = signpost_energy_get_controller_energy();
-    print_data(3, energy);
+    energy = signpost_energy_get_controller_energy_uwh();
+    printf("Controller energy: %lu uWh\n", energy);
 
-    energy = signpost_energy_get_linux_energy();
-    print_data(4, energy);
+    energy = signpost_energy_get_linux_energy_uwh();
+    printf("Linux energy: %lu uWh\n", energy);
 
     delay_ms(1000);
   }

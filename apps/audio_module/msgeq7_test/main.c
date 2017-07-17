@@ -25,16 +25,16 @@ uint8_t master_write_buf[20];
 #define RED_LED 1
 
 int main (void) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
   printf("[TEST] Audio ADC\n");
 
   // initialize the signpost bus
   err = signpost_initialization_module_init(
     i2c_address,
     SIGNPOST_INITIALIZATION_NO_APIS);
-  if (err < SUCCESS) {
+  if (err < TOCK_SUCCESS) {
     printf("Signbus initialization failed\n");
-    return FAIL;
+    return TOCK_FAIL;
   }
 
   // setup GPIO pins
@@ -42,12 +42,6 @@ int main (void) {
   gpio_enable_output(MSGEQ7_STROBE_PIN);
   gpio_clear(MSGEQ7_RESET_PIN);
   gpio_clear(MSGEQ7_STROBE_PIN);
-
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("Initialize errored: %d\n", err);
-  }
 
   printf("Sampling data\n");
   while (true) {
@@ -66,7 +60,11 @@ int main (void) {
       gpio_clear(MSGEQ7_STROBE_PIN);
 
       for(uint8_t i = 0; i < 6; i++) {
-        uint16_t data = (uint16_t)adc_read_single_sample(0);
+        uint16_t data;
+        int ret = adc_sample_sync(0,&data);
+        if(ret < 0) {
+            printf("ADC Sample Error");
+        }
         master_write_buf[2+i*2] = (uint8_t)((data >> 8) & 0xff);
         master_write_buf[2+i*2+1] = (uint8_t)(data & 0xff);
         delay_ms(1);
@@ -74,7 +72,11 @@ int main (void) {
         delay_ms(1);
         gpio_clear(MSGEQ7_STROBE_PIN);
       }
-      uint16_t data = (uint16_t)adc_read_single_sample(0);
+      uint16_t data;
+      int ret = adc_sample_sync(0,&data);
+      if(ret < 0) {
+          printf("ADC Sample Error");
+      }
       master_write_buf[14] = (uint8_t)((data >> 8) & 0xff);
       master_write_buf[15] = (uint8_t)(data & 0xff);
 
@@ -96,7 +98,7 @@ int main (void) {
     /*
     // read data from ADC
     err = adc_read_single_sample(3);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
     uint16_t sample = err & 0xFFFF;

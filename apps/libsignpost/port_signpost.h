@@ -56,11 +56,12 @@ int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len);
 int port_signpost_mod_out_set(void);
 int port_signpost_mod_out_clear(void);
 int port_signpost_mod_in_read(void);
+int port_signpost_pps_read(void);
 
 //This function is used to setup a gpio interrupt
 //interrupt assumes pulled up, falling edge
-int port_signpost_gpio_enable_interrupt(port_signpost_callback cb);
-int port_signpost_gpio_disable_interrupt(void);
+int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb);
+int port_signpost_mod_in_disable_interrupt(void);
 
 //This is a way to wait on a variable in a platform specific way
 void port_signpost_wait_for(void* wait_on_true);
@@ -70,8 +71,4 @@ void port_signpost_delay_ms(unsigned ms);
 //An optional debug led
 int port_signpost_debug_led_on(void);
 int port_signpost_debug_led_off(void);
-
-//An optional debug print statement
-extern char port_print_buf[PORT_PRINT_MAX_LEN];
-void port_signpost_debug_print(char * msg);
 

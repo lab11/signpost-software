@@ -59,6 +59,7 @@ static void networking_api_callback(uint8_t source_address,
 
 
   src = source_address;
+  int ret;
 
   if (frame_type == NotificationFrame || frame_type == CommandFrame) {
 
@@ -66,30 +67,38 @@ static void networking_api_callback(uint8_t source_address,
         static char d[2];
         d[0] = '$';
         message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        ret = allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
+        ret = subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
         yield_for(&message_sent);
 
 
         d[0] = message_length & 0xff;
         d[1] = ((message_length & 0xff00) >> 8);
         message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 2);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        ret = allow(DRIVER_NUM_GPS, 1, (void*)d, 2);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
+        ret = subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
         yield_for(&message_sent);
     } else {
         static char d[2];
         //d[0] = '&';
         message_sent = false;
-        allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
-        subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        ret = allow(DRIVER_NUM_GPS, 1, (void*)d, 1);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
+        ret = subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+        if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
         yield_for(&message_sent);
     }
 
 
     message_sent = false;
-    allow(DRIVER_NUM_GPS, 1, (void*)message, message_length);
-    subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+    ret = allow(DRIVER_NUM_GPS, 1, (void*)message, message_length);
+    if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
+    ret = subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+    if (ret < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",ret, __LINE__);
 
     if(frame_type == CommandFrame) {
         yield_for(&message_sent);
@@ -130,15 +139,17 @@ int main (void) {
   static char d1[3];
   d1[0] = '#';
   d1[1] = 'r';
-  allow(DRIVER_NUM_GPS, 1, (void*)d1, 2);
-  subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+  rc = allow(DRIVER_NUM_GPS, 1, (void*)d1, 2);
+  if (rc < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",rc, __LINE__);
+  rc = subscribe(DRIVER_NUM_GPS, 1, tx_callback, NULL);
+  if (rc < 0) printf("DEBUG RADIO ERROR return code %d on line %d\n",rc, __LINE__);
   yield_for(&message_sent);
   printf("#r");
 
   ////////////////////////////////////////////////
   // Setup watchdog
-  timer_subscribe(watchdog_timer_cb,NULL);
-  timer_start_repeating(160);
+  static tock_timer_t timer;
+  timer_every(160, watchdog_timer_cb, NULL, &timer);
   app_watchdog_set_kernel_timeout(500);
   app_watchdog_start();
 

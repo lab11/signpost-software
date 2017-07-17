@@ -195,11 +195,10 @@ int main (void) {
 
     //init adc
     adc_set_callback(adc_callback, NULL);
-    adc_initialize();
 
     //start timer
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(10000);
+    static tock_timer_t timer;
+    timer_every(10000, timer_callback, NULL, &timer);
 
 
     while (1) {

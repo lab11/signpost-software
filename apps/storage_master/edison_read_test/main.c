@@ -16,7 +16,6 @@
 #include "signbus_io_interface.h"
 #include "signpost_storage.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
 #include "storage_master.h"
 
 // buffer for holding i2c slave read data
@@ -157,7 +156,7 @@ static void processing_api_callback(uint8_t source_address,
 static void storage_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
     uint8_t message_type, size_t message_length, uint8_t* message) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
     signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
@@ -186,7 +185,7 @@ static void storage_api_callback(uint8_t source_address,
 
     // write data to storage
     err = storage_write_record(write_record, message, message_length, &write_record);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("Writing error: %d\n", err);
       //XXX: send error
     }
@@ -195,7 +194,7 @@ static void storage_api_callback(uint8_t source_address,
     storage_status.status_records[module_index].curr.block = write_record.block;
     storage_status.status_records[module_index].curr.offset = write_record.offset;
     err = storage_update_status();
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       printf("Updating status error: %d\n", err);
       //XXX: send error
     }
@@ -203,7 +202,7 @@ static void storage_api_callback(uint8_t source_address,
 
     // send response
     err = signpost_storage_write_reply(source_address, (uint8_t*)&write_record);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       //XXX: I guess just try to send an error...
     }
 
@@ -215,7 +214,7 @@ static void storage_api_callback(uint8_t source_address,
 }
 
 static void slave_read_callback (int err) {
-  if (err < SUCCESS) {
+  if (err < TOCK_SUCCESS) {
     printf("I2C slave read error: %d\n", err);
   } else {
     // slave read complete, provide a new buffer
@@ -236,7 +235,7 @@ int main (void) {
 
   // set up the SD card and storage system
   rc = storage_initialize();
-  if (rc != SUCCESS) {
+  if (rc != TOCK_SUCCESS) {
     printf(" - Storage initialization failed\n");
     return rc;
   }

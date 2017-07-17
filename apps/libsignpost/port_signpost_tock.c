@@ -44,7 +44,7 @@ static void port_signpost_gpio_interrupt_callback(
         __attribute__ ((unused)) int state,
         __attribute__ ((unused)) int unused,
         __attribute__ ((unused)) void* callback_args) {
-    global_gpio_interrupt_cb(SUCCESS);
+    global_gpio_interrupt_cb(TOCK_SUCCESS);
 }
 
 static uint8_t master_write_buf[I2C_MAX_LEN];
@@ -111,9 +111,14 @@ int port_signpost_mod_in_read(void) {
     return gpio_read(MOD_IN);
 }
 
+int port_signpost_pps_read(void) {
+    gpio_enable_input(PPS, PullNone);
+    return gpio_read(PPS);
+}
+
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
-int port_signpost_gpio_enable_interrupt(port_signpost_callback cb) {
+int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb) {
     int rc = 0;
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
@@ -121,7 +126,7 @@ int port_signpost_gpio_enable_interrupt(port_signpost_callback cb) {
     return gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
 }
 
-int port_signpost_gpio_disable_interrupt(void) {
+int port_signpost_mod_in_disable_interrupt(void) {
     return gpio_disable_interrupt(MOD_IN);
 }
 
@@ -140,6 +145,3 @@ int port_signpost_debug_led_off(void){
     return led_off(DEBUG_LED);
 }
 
-void port_signpost_debug_print(char * msg) {
-    putstr(msg);
-}

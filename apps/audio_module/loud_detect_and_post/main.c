@@ -33,7 +33,7 @@ static void post_over_http (void) {
   // http post data
   printf("--POSTing data--\n");
   int response = simple_octetstream_post(url, (uint8_t*)"LOUD", 5);
-  if (response < SUCCESS) {
+  if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
   } else {
     printf("\tResponse: %d\n", response);
@@ -44,7 +44,7 @@ static void post_over_http (void) {
 }
 
 int main (void) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
   printf("[Audio Module] Loudness Detector\n");
 
   // initialize the signpost bus
@@ -59,22 +59,16 @@ int main (void) {
     }
   } while (rc < 0);
 
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("ADC initialization errored: %d\n", err);
-  }
-
   printf("Sampling data\n");
   uint8_t sample_index = 0;
   while (true) {
 
     // read data from ADC
-    err = adc_read_single_sample(3);
-    if (err < SUCCESS) {
+    uint16_t sample;
+    err = adc_sample_sync(3,&sample);
+    if (err < TOCK_SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
-    uint16_t sample = err & 0xFFFF;
 
     // calculate amplitude of sample
     uint16_t amplitude = abs(sample-ZERO_MAGNITUDE);

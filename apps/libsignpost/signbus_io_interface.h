@@ -17,23 +17,18 @@ extern "C" {
 #define SIGNBUS_DEBUG(...)
 /*
 #define SIGNBUS_DEBUG(...) do {\
-    snprintf(port_print_buf,80, "SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
-    port_signpost_debug_print(port_print_buf);\
-    snprintf(port_print_buf,80, __VA_ARGS__);\
-    port_signpost_debug_print(port_print_buf);\
+    printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
+    printf(__VA_ARGS__);\
     } while (0)
 */
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen)
 /*
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen) do {\
-    snprintf(port_print_buf,80, "SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
-    port_signpost_debug_print(port_print_buf);\
+    printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
     for (size_t _i = 0; _i < _buflen; _i++) {\
-        snprintf(port_print_buf,80, "%02x", (unsigned)*(_buf+_i));\
-        port_signpost_debug_print(port_print_buf);\
+        printf("%02x", (unsigned)*(_buf+_i));\
     }\
-    snprintf(port_print_buf,80, "\n");\
-    port_signpost_debug_print(port_print_buf);\
+    printf("\n");\
 } while (0)
 */
 

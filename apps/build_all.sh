@@ -41,12 +41,12 @@ for makefile in $(find . | grep '/Makefile$'); do
 	fi
 
 	echo "${bold}${blue}Compiling${teal} $name${normal}"
-	make -j || { echo "${bold} ⤤ $name${normal}" ; echo "" ; failures+=("$name");}
+	make CPPFLAGS+=-Werror -j || { echo "${bold} ⤤ $name${normal}" ; echo "" ; failures+=("$name");}
 	popd > /dev/null
 done
 
 # https://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
-if [ ${failures[@]+"${failures[@]}"} ]; then
+if [[ ${failures[@]+"${failures[@]}"} ]]; then
 	echo ""
 	echo "${bold}${red}Build Failures:${normal}"
 	for fail in ${failures[@]}; do

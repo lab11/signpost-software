@@ -34,14 +34,14 @@
 
 #define UMICH_COMPANY_IDENTIFIER 0x02E0
 
-static simple_ble_config_t ble_config = {
+/*static simple_ble_config_t ble_config = {
     .platform_id        = 0x00,
     .device_id          = DEVICE_ID_DEFAULT,
     .adv_name           = (char *)DEVICE_NAME,
     .adv_interval       = MSEC_TO_UNITS(300, UNIT_0_625_MS),
     .min_conn_interval  = MSEC_TO_UNITS(500, UNIT_1_25_MS),
     .max_conn_interval  = MSEC_TO_UNITS(1250, UNIT_1_25_MS),
-};
+};*/
 
 //definitions for the i2c
 #define BUFFER_SIZE 20
@@ -85,7 +85,7 @@ static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
     }
 }
 
-static void adv_config_data(void) {
+/*static void adv_config_data(void) {
     static uint8_t i = 0;
 
     static ble_advdata_manuf_data_t mandata;
@@ -102,7 +102,7 @@ static void adv_config_data(void) {
     if(i >= NUMBER_OF_MODULES) {
         i = 0;
     }
-}
+}*/
 
 static void networking_api_callback(uint8_t source_address,
         signbus_frame_type_t frame_type, __attribute ((unused)) signbus_api_type_t api_type,
@@ -341,6 +341,6 @@ int main (void) {
     //app_watchdog_start();
 
     //setup timer
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(2000);
+    static tock_timer_t timer;
+    timer_every(2000, timer_callback, NULL, &timer);
 }

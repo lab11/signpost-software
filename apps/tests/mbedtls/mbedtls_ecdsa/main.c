@@ -60,7 +60,7 @@ int main(void) {
 
     srand(55);
 
-    sha256(message, strlen(message), hash);
+    sha256((uint8_t*)message, strlen(message), hash);
     printf("hash: 0x");
     for(int i = 0; i < 32; i++) {
       printf("%x", hash[i]);
@@ -70,8 +70,8 @@ int main(void) {
     while(1) {
       mbedtls_pk_free(&pk);
       mbedtls_pk_init(&pk);
-      mbedtls_pk_parse_key(&pk, priv_key, strlen(priv_key)+1, NULL, 0);
-      mbedtls_pk_parse_public_key(&pk, pub_key, strlen(pub_key)+1);
+      mbedtls_pk_parse_key(&pk, (uint8_t*)priv_key, strlen(priv_key)+1, NULL, 0);
+      mbedtls_pk_parse_public_key(&pk,(uint8_t*)pub_key, strlen(pub_key)+1);
       delay_ms(1000);
 
       for(int i = 0; i < 5; i++) {

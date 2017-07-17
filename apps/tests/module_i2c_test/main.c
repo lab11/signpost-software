@@ -32,8 +32,9 @@ static void i2c_master_slave_callback (
         ) {
     //static unsigned count = 0;
     //static int addend = 1;
+    printf("Test I2C\n");
 }
-
+/*
 int main(void) {
     printf("Test I2C\n");
 
@@ -41,18 +42,19 @@ int main(void) {
     gpio_toggle(8);
 
 
-    i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
-    i2c_master_slave_set_master_read_buffer(master_read_buf, 256);
+//    i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
+//    i2c_master_slave_set_master_read_buffer(master_read_buf, 256);
     i2c_master_slave_set_master_write_buffer(master_write_buf, 256);
-    i2c_master_slave_set_slave_read_buffer(slave_read_buf, 256);
-    i2c_master_slave_set_slave_write_buffer(slave_write_buf, 256);
+//    i2c_master_slave_set_slave_read_buffer(slave_read_buf, 256);
+//    i2c_master_slave_set_slave_write_buffer(slave_write_buf, 256);
 
     i2c_master_slave_set_slave_address(0x07);
 
-    i2c_master_slave_listen();
+    //i2c_master_slave_listen();
 
 
     while(1) {
+    	printf("Test I2C\n");
         master_write_buf[0] = 0x8;
         master_write_buf[1] = 0xb6;
         master_write_buf[2] = 0x91;
@@ -68,4 +70,26 @@ int main(void) {
         gpio_toggle(8);
         delay_ms(500);
     }
+}
+*/
+int main(void) {
+    printf("Test I2C\n");
+
+    gpio_enable_output(8);
+    gpio_toggle(8);
+
+
+    i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
+//    i2c_master_slave_set_master_read_buffer(master_read_buf, 256);
+    i2c_master_slave_set_master_write_buffer(master_write_buf, 256);
+    i2c_master_slave_set_slave_read_buffer(slave_read_buf, 256);
+//    i2c_master_slave_set_slave_write_buffer(slave_write_buf, 256);
+
+    i2c_master_slave_set_slave_address(0x21);
+
+    i2c_master_slave_listen();
+	
+    printf("Slave listening\n");
+
+	while(1) {}
 }

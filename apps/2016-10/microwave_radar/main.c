@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "alarm.h"
 #include "tock.h"
 #include "adc.h"
 #include "console.h"
@@ -65,7 +66,7 @@ static uint32_t calculate_sample_frequency (uint32_t curr_data) {
         sample_index = 0;
 
         // starting this period sample
-        t1 = timer_read();
+        t1 = alarm_read();
         if (INITIAL_VAL < curr_data) {
             sample_state = RISING;
             max_sample = curr_data;
@@ -105,7 +106,7 @@ static uint32_t calculate_sample_frequency (uint32_t curr_data) {
 
         // calculate time for that period
         if (sample_state == FINISH_RISING || sample_state == FINISH_FALLING) {
-            t2 = timer_read();
+            t2 = alarm_read();
             time_intervals[sample_index] = t2-t1;
             sample_index++;
 
@@ -237,12 +238,11 @@ int main (void) {
     // setup timer
     // set to about two seconds, but a larger prime number so that hopefully we
     //  can avoid continually conflicting with other modules
-    timer_subscribe(timer_callback, NULL);
-    timer_start_repeating(2*1039);
+    static tock_timer_t timer;
+    timer_every(2*1039, timer_callback, NULL, &timer);
 
     // initialize adc
     adc_set_callback(adc_callback, NULL);
-    adc_initialize();
 
     // Setup a watchdog
     app_watchdog_set_kernel_timeout(10000);

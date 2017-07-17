@@ -24,14 +24,8 @@ static uint16_t sample_buf[SAMPLE_COUNT] = {ZERO_MAGNITUDE};
 bool wrote = false;
 
 int main (void) {
-  int err = SUCCESS;
+  int err = TOCK_SUCCESS;
   printf("[Audio Module] Quiet Detector\n");
-
-  // initialize ADC
-  err = adc_initialize();
-  if (err < SUCCESS) {
-    printf("Initialize errored: %d\n", err);
-  }
 
   printf("Sampling data\n");
   uint8_t sample_index = 0;
@@ -39,11 +33,11 @@ int main (void) {
   while (true) {
 
     // read data from ADC
-    err = adc_read_single_sample(3);
-    if (err < SUCCESS) {
+    uint16_t sample;
+    err = adc_sample_sync(3,&sample);
+    if (err < TOCK_SUCCESS) {
       printf("ADC read error: %d\n", err);
     }
-    uint16_t sample = err & 0xFFFF;
 
     // calculate amplitude of sample
     uint16_t amplitude = abs(sample-ZERO_MAGNITUDE);

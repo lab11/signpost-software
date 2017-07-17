@@ -47,7 +47,7 @@ int max17205_read_coulomb (void);
 //
 int max17205_read_status_sync(uint16_t* state);
 int max17205_read_soc_sync(uint16_t* percent, uint16_t* soc_mah, uint16_t* soc_mah_full);
-int max17205_read_voltage_current_sync(uint16_t* voltage, uint16_t* current);
+int max17205_read_voltage_current_sync(uint16_t* voltage, int16_t* current);
 int max17205_read_coulomb_sync (uint16_t* coulomb);
 
 float max17205_get_voltage_mV(int vcount);

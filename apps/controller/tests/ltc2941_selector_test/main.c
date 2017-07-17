@@ -42,11 +42,11 @@ int main (void) {
 
   // Pass a callback function to the kernel
   smbus_interrupt_set_callback(callback, NULL);
-  i2c_selector_set_callback(callback, NULL);
+  i2c_selector_set_callback(0,callback, NULL);
   ltc294x_set_callback(callback, NULL);
 
   // Read from first selector, channel 3 (1000)
-  i2c_selector_select_channels(0x08);
+  i2c_selector_select_channels(0,0x08);
   yield();
 
   // Reset charge
@@ -68,7 +68,7 @@ int main (void) {
   // Open all channels so any gauge can interrupt and respond to SMBUS Alert Response
   // Even though all gauges share same address, and multiple may be interrupting
   // they will all respond with the same address
-  i2c_selector_select_channels(0xFF);
+  i2c_selector_select_channels(0,0xFF);
 
   // Wait for interrupt, then print address of who interrupted
   // Should be 0xc8 (gauge address with a 1 tacked on the end)
@@ -79,11 +79,11 @@ int main (void) {
   printf("Reading Interrupts\n");
 
   // Query the i2c_selector driver for who interrupted
-  i2c_selector_read_interrupts();
+  i2c_selector_read_interrupts(0);
   yield();
   print_data(0);
 
-  i2c_selector_select_channels(_data2);
+  i2c_selector_select_channels(0,_data2);
   yield();
 
   // Reset charge and handle interrupt

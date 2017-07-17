@@ -9,7 +9,6 @@
 #include <tock.h>
 
 #include "controller.h"
-#include "signpost_energy.h"
 
 
 

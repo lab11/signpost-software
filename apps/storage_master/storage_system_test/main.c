@@ -13,7 +13,6 @@
 
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "signpost_energy.h"
 #include "signpost_storage.h"
 #include "storage_master.h"
 
@@ -60,7 +59,7 @@ static void storage_api_callback(uint8_t source_address,
     };
 
     // store data to SD card and get updated record pointer
-    int err = SUCCESS;
+    int err = TOCK_SUCCESS;
     Storage_Record_Pointer_t new_record_pointer;
 
     // write the header
@@ -69,13 +68,13 @@ static void storage_api_callback(uint8_t source_address,
       .message_length = message_length,
     };
     err = storage_write_data(orig_record_pointer, (uint8_t*)&header, sizeof(Storage_Record_Header_t), &new_record_pointer);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       //XXX: respond with error
     }
 
     // write the message data
     err = storage_write_data(new_record_pointer, message, message_length, &new_record_pointer);
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       //XXX: respond with error
     }
 
@@ -83,7 +82,7 @@ static void storage_api_callback(uint8_t source_address,
     curr_record->curr.block = new_record_pointer.block;
     curr_record->curr.offset = new_record_pointer.offset;
     err = storage_update_status();
-    if (err < SUCCESS) {
+    if (err < TOCK_SUCCESS) {
       //XXX: respond with error
     }
     */
@@ -91,27 +90,6 @@ static void storage_api_callback(uint8_t source_address,
 
     //XXX send complete response with orig_record_pointer to app
 
-    /*
-       if (message_type == EnergyQueryMessage) {
-       signpost_energy_information_t info;
-       info.energy_limit_24h_mJ = 1;
-       info.energy_used_24h_mJ = 2;
-       info.current_limit_60s_mA = 3;
-       info.current_average_60s_mA = 4;
-       info.energy_limit_warning_threshold = 5;
-       info.energy_limit_critical_threshold = 6;
-
-       signpost_energy_query_reply(source_address, &info);
-       } else if (message_type == EnergyLevelWarning24hMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else if (message_type == EnergyLevelCritical24hMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else if (message_type == EnergyCurrentWarning60sMessage) {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       } else {
-       signpost_api_error_reply(source_address, api_type, message_type);
-       }
-       */
   } else if (frame_type == ResponseFrame) {
     // XXX unexpected, drop
   } else if (frame_type == ErrorFrame) {
@@ -126,7 +104,7 @@ int main (void) {
 
   // set up the SD card and storage system
   rc = storage_initialize();
-  if (rc != SUCCESS) {
+  if (rc != TOCK_SUCCESS) {
     printf(" - Error initializing storage (code: %d)\n", rc);
     return rc;
   }
@@ -155,7 +133,7 @@ int main (void) {
     for (int i=0; i<100; i++) {
       memset(buffer, i, i);
       rc = storage_write_record(write_record, buffer, i, &write_record);
-      if (rc < SUCCESS) {
+      if (rc < TOCK_SUCCESS) {
         printf("Writing error: %d\n", rc);
         break;
       }
@@ -163,7 +141,7 @@ int main (void) {
     storage_status.status_records[module_index].curr.block = write_record.block;
     storage_status.status_records[module_index].curr.offset = write_record.offset;
     rc = storage_update_status();
-    if (rc < SUCCESS) {
+    if (rc < TOCK_SUCCESS) {
       printf("Updating status rc: %d\n", rc);
     }
     printf("Complete. Final block: %lu offset: %lu\n", write_record.block, write_record.offset);
@@ -174,11 +152,11 @@ int main (void) {
       .block = 2,
       .offset = 0,
     };
-    rc = SUCCESS;
+    rc = TOCK_SUCCESS;
     size_t len = 0;
-    while (rc == SUCCESS) {
+    while (rc == TOCK_SUCCESS) {
       rc = storage_read_record(read_record, buffer, &len, &read_record);
-      if (rc == SUCCESS) {
+      if (rc == TOCK_SUCCESS) {
         /*
         for (int j=0; j<len; j++) {
           printf("%02X ", buffer[j]);

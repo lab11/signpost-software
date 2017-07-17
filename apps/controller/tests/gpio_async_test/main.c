@@ -14,8 +14,8 @@ int main (void) {
   printf("[GPIO Async] Test\n");
 
   // Enable some outputs
-  gpio_async_enable_output_sync(0, 0);
-  gpio_async_enable_output_sync(0, 1);
+  gpio_async_make_output_sync(0, 0);
+  gpio_async_make_output_sync(0, 1);
 
   // Set one high
   gpio_async_set_sync(0, 0);
