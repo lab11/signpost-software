@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "crc.h"
+#include "CRC16.h"
 #include "erpc_client_setup.h"
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "signpost_entropy.h"
 #include "port_signpost.h"
+#include "tock.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -513,7 +514,7 @@ int signpost_processing_init(const char* path) {
 
     //form the sending message
     uint16_t size = strlen(path);
-    uint16_t crc  = computeCRC16((uint8_t*)path,size);
+    uint16_t crc  = CRC16_Calc((uint8_t*)path,size,0xFFFF);
     uint8_t buf[size + 4];
     buf[0] = size & 0xff;
     buf[1] = ((size & 0xff00) > 8);
@@ -545,7 +546,7 @@ int signpost_processing_init(const char* path) {
 int signpost_processing_oneway_send(uint8_t* buf, uint16_t len) {
 
     //form the sending message
-    uint16_t crc  = computeCRC16(buf,len);
+    uint16_t crc  = CRC16_Calc(buf,len,0xFFFF);
     uint8_t b[len + 4];
     b[0] = len & 0xff;
     b[1] = ((len & 0xff00) > 8);
@@ -571,7 +572,7 @@ int signpost_processing_oneway_send(uint8_t* buf, uint16_t len) {
 
 int signpost_processing_twoway_send(uint8_t* buf, uint16_t len) {
     //form the sending message
-    uint16_t crc  = computeCRC16(buf,len);
+    uint16_t crc  = CRC16_Calc(buf,len,0xFFFF);
     uint8_t b[len + 4];
     b[0] = len & 0xff;
     b[1] = ((len & 0xff00) > 8);
@@ -607,7 +608,7 @@ int signpost_processing_twoway_receive(uint8_t* buf, uint16_t* len) {
         return ProcessingSizeError;
     }
 
-    if(crc != computeCRC16(incoming_message+4,size)) {
+    if(crc != CRC16_Calc(incoming_message+4,size,0xFFFF)) {
         return ProcessingCRCError;
     }
 

@@ -26,7 +26,7 @@
 #include "radio_module.h"
 #include "gpio.h"
 #include "RadioDefs.h"
-#include "crc.h"
+#include "CRC16.h"
 
 //definitions for the ble
 #define DEVICE_NAME "Signpost"
@@ -214,7 +214,7 @@ static void timer_callback (
         //send the packet
         memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
         memcpy(LoRa_send_buffer+ADDRESS_SIZE, data_queue[queue_head], BUFFER_SIZE);
-        uint16_t crc = computeCRC16((const uint8_t*)LoRa_send_buffer, ADDRESS_SIZE+BUFFER_SIZE);
+        uint16_t crc = CRC16_Calc(LoRa_send_buffer, ADDRESS_SIZE+BUFFER_SIZE, 0xFFFF);
         LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE] = (uint8_t)((crc & 0xFF00) >> 8);
         LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE+1] = (uint8_t)(crc & 0xFF);
         uint16_t status = iM880A_SendRadioTelegram(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE+2);
