@@ -16,7 +16,6 @@ int main (void) {
   printf("[Audio Module] Simple ADC test\n");
 
   printf("Sampling data\n");
-  uint8_t sample_index = 0;
   while (true) {
 
     // read data from ADC

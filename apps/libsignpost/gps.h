@@ -44,7 +44,7 @@ void gps_continuous (void (*callback)(gps_data_t*));
 void gps_sample (void (*callback)(gps_data_t*));
 
 // read from the gps console
-void getauto(char* str, size_t max_len, subscribe_cb cb, void* userdata);
+int getauto(char* str, size_t max_len, subscribe_cb cb, void* userdata);
 
 #ifdef __cplusplus
 }

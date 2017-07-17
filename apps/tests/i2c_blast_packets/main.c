@@ -39,7 +39,7 @@ int main(void) {
         }
     } while (rc < 0);
 
-    char send_buf[256];
+    uint8_t send_buf[256];
     memset(send_buf, MODULE_ID, 256);
 
     led_off(0);

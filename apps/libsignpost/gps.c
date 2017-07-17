@@ -25,15 +25,17 @@ const char* GPS_DATUM_US = "$PMTK330,142*";
 const char* GPS_DATUM_GLOBAL = "$PMTK330,0*";
 
 // internal prototypes
-static void gps_send_msg (const char* msg);
+static int gps_send_msg (const char* msg);
 static void gps_rx_callback (int len, int y, int z, void* userdata);
 static bool gps_parse_data (char* line);
 static int32_t to_decimal_degrees (struct minmea_float coor);
 
 // gps console functions
-void getauto(char* str, size_t max_len, subscribe_cb cb, void* userdata) {
-  allow(DRIVER_NUM_GPS, 0, (void*)str, max_len);
-  subscribe(DRIVER_NUM_GPS, 2, cb, userdata);
+int getauto(char* str, size_t max_len, subscribe_cb cb, void* userdata) {
+  int ret = allow(DRIVER_NUM_GPS, 0, (void*)str, max_len);
+  if(ret < 0) return ret;
+  ret = subscribe(DRIVER_NUM_GPS, 2, cb, userdata);
+  return ret;
 }
 
 
@@ -84,17 +86,21 @@ static void gps_tx_callback (
     message_sent = true;
 }
 
-static void gps_send_msg (const char* msg) {
+static int gps_send_msg (const char* msg) {
     static char msg_buffer[50] = {0};
 
     // create message buffer
     message_sent = false;
     sprintf(msg_buffer, "%s%02X\r\n", msg, minmea_checksum(msg));
 
-    allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strlen(msg_buffer));
-    subscribe(DRIVER_NUM_GPS, 1, gps_tx_callback, NULL);
+    int ret = allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strlen(msg_buffer));
+    if(ret < 0) return ret;
+    ret = subscribe(DRIVER_NUM_GPS, 1, gps_tx_callback, NULL);
+    if(ret < 0) return ret;
 
     yield_for(&message_sent);
+    
+    return TOCK_SUCCESS;
 }
 
 static void gps_rx_callback (
