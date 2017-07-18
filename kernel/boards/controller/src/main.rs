@@ -130,6 +130,7 @@ unsafe fn set_pin_primary_functions() {
     PA[04].configure(None); // MOD0_IN
     PA[05].configure(None); // MOD1_IN
     PA[06].configure(None); // MOD2_IN
+    PB[09].configure(None); // STORAGE_IN
     PA[07].configure(None); // MOD5_IN
     PA[08].configure(None); // MOD6_IN
     PA[09].configure(None); // MOD7_IN
@@ -138,6 +139,7 @@ unsafe fn set_pin_primary_functions() {
     PA[13].configure(None); // MOD0_OUT
     PA[14].configure(None); // MOD1_OUT
     PA[15].configure(None); // MOD2_OUT
+    PB[10].configure(None); // STORAGE_OUT
     PA[16].configure(None); // MOD5_OUT
     PA[17].configure(None); // MOD6_OUT
     PA[18].configure(None); // MOD7_OUT
@@ -523,16 +525,18 @@ pub unsafe fn reset_handler() {
     // Remaining GPIO pins
     //
     let gpio_pins = static_init!(
-        [&'static sam4l::gpio::GPIOPin; 13],
+        [&'static sam4l::gpio::GPIOPin; 15],
          [&sam4l::gpio::PA[04], // MOD0_IN
          &sam4l::gpio::PA[05],  // MOD1_IN
          &sam4l::gpio::PA[06],  // MOD2_IN
+         &sam4l::gpio::PB[09],  // STORAGE_IN
          &sam4l::gpio::PA[07],  // MOD5_IN
          &sam4l::gpio::PA[08],  // MOD6_IN
          &sam4l::gpio::PA[09],  // MOD7_IN
          &sam4l::gpio::PA[13],  // MOD0_OUT
          &sam4l::gpio::PA[14],  // MOD1_OUT
          &sam4l::gpio::PA[15],  // MOD2_OUT
+         &sam4l::gpio::PB[10],  // STORAGE_OUT
          &sam4l::gpio::PA[16],  // MOD5_OUT
          &sam4l::gpio::PA[17],  // MOD6_OUT
          &sam4l::gpio::PA[18],  // MOD7_OUT

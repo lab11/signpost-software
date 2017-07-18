@@ -21,6 +21,8 @@ typedef enum {
     MODULE0 = 0,
     MODULE1 = 1,
     MODULE2 = 2,
+    CONTROLLER = 3,
+    STORAGE = 4,
     MODULE5 = 5,
     MODULE6 = 6,
     MODULE7 = 7,
@@ -29,32 +31,36 @@ typedef enum {
 
 ////////
 // GPIOs
-#define MOD0_IN    PA04
-#define MOD1_IN    PA05
-#define MOD2_IN    PA06
-#define MOD5_IN    PA07
-#define MOD6_IN    PA08
-#define MOD7_IN    PA09
-#define MOD0_OUT   PA13
-#define MOD1_OUT   PA14
-#define MOD2_OUT   PA15
-#define MOD5_OUT   PA16
-#define MOD6_OUT   PA17
-#define MOD7_OUT   PA18
+#define MOD0_IN     PA04
+#define MOD1_IN     PA05
+#define MOD2_IN     PA06
+#define STORAGE_IN  PB09
+#define MOD5_IN     PA07
+#define MOD6_IN     PA08
+#define MOD7_IN     PA09
+#define MOD0_OUT    PA13
+#define MOD1_OUT    PA14
+#define MOD2_OUT    PA15
+#define STORAGE_OUT PB10
+#define MOD5_OUT    PA16
+#define MOD6_OUT    PA17
+#define MOD7_OUT    PA18
 
-#define NUM_MOD_IO 6
+#define NUM_MOD_IO 7
 
 // Enum indicies must match array in <tock>/kernel/boards/controller/src/main.rs
 typedef enum {
     PA04=0,
     PA05,
     PA06,
+    PB09,
     PA07,
     PA08,
     PA09,
     PA13,
     PA14,
     PA15,
+    PB10,
     PA16,
     PA17,
     PA18,
