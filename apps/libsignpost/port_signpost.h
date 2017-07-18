@@ -75,6 +75,10 @@ int port_signpost_mod_in_disable_interrupt(void);
 //This is a way to wait on a variable in a platform specific way
 void port_signpost_wait_for(void* wait_on_true);
 
+//This is a way to wait on a variable with a timeout.
+//Returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on timeout
+int port_signpost_wait_for_with_timeout(void* wait_on_true, uint32_t ms);
+
 void port_signpost_delay_ms(unsigned ms);
 
 //An optional debug led

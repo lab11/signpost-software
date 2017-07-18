@@ -255,8 +255,13 @@ static int signpost_initialization_declare_controller(void) {
 
     // XXX also report APIs supported
     // XXX dynamic i2c address allocation
-    return signpost_api_send(ModuleAddressController, CommandFrame, InitializationApiType,
-            InitializationDeclare, 1, &module_info.i2c_address);
+    if (signpost_api_send(ModuleAddressController, CommandFrame,
+          InitializationApiType, InitializationDeclare, 1,
+          &module_info.i2c_address) >= SB_PORT_SUCCESS) {
+        return SB_PORT_SUCCESS;
+    }
+
+    return SB_PORT_FAIL;
 }
 
 static int signpost_initialization_key_exchange_finish(void) {
@@ -454,9 +459,16 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
           case Wait:
             request_isolation_complete = false;
             rc = signpost_initialization_request_isolation();
-            if (rc == SB_PORT_SUCCESS) {
-              port_signpost_wait_for(&request_isolation_complete);
+            if (rc != SB_PORT_SUCCESS) {
+              break;
             }
+
+            rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
+            if (rc == SB_PORT_FAIL) {
+              printf("INIT: Timed out waiting for controller isolation\n");
+              init_state = Wait;
+            };
+
             break;
           case Isolated:
             // check that mod_in is still low after delay
@@ -469,21 +481,32 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             // Now declare self to controller
             declare_controller_complete = false;
             rc = signpost_initialization_declare_controller();
-            if (rc == SB_PORT_SUCCESS) {
-              port_signpost_wait_for(&declare_controller_complete);
+            if (rc != SB_PORT_SUCCESS) {
+              break;
             }
+
+            rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
+            if (rc == SB_PORT_FAIL) {
+              printf("INIT: Timed out waiting for controller declare response\n");
+              init_state = Wait;
+            };
+
             break;
           case KeyExchange:
             // Send key exchange request
             key_send_complete = false;
             rc = signpost_initialization_key_exchange_send(incoming_source_address);
-            if (rc == SB_PORT_SUCCESS) {
-              port_signpost_wait_for(&key_send_complete);
-            } else {
+            if (rc != SB_PORT_SUCCESS) {
               // if key exchange send failed for some reason, restart from the
               // beginning
               init_state = Wait;
             }
+
+            rc = port_signpost_wait_for_with_timeout(&key_send_complete, 5000);
+            if (rc == SB_PORT_FAIL) {
+              printf("INIT: Timed out waiting for controller key exchange response\n");
+              init_state = Wait;
+            };
             break;
           case FinishExchange:
             rc = signpost_initialization_key_exchange_finish();

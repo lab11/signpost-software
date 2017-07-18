@@ -121,11 +121,8 @@ int port_signpost_mod_out_clear(void) {
 }
 
 int port_signpost_mod_in_read(void) {
-    int rc;
     gpio_enable_input(MOD_IN, PullNone);
-    rc = gpio_read(MOD_IN);
-    if (rc < 0) return SB_PORT_FAIL;
-    return SB_PORT_SUCCESS;
+    return gpio_read(MOD_IN);
 }
 
 int port_signpost_pps_read(void) {
@@ -156,9 +153,12 @@ void port_signpost_wait_for(void* wait_on_true){
     yield_for(wait_on_true);
 }
 
-//void port_signpost_wait_for(void* wait_on_true, uint32_t ms){
-//    yield_for_with_timeout(wait_on_true, 8000);
-//}
+int port_signpost_wait_for_with_timeout(void* wait_on_true, uint32_t ms) {
+    if (yield_for_with_timeout(wait_on_true, ms) == TOCK_SUCCESS) {
+      return SB_PORT_SUCCESS;
+    }
+    return SB_PORT_FAIL;
+}
 
 void port_signpost_delay_ms(unsigned ms) {
     delay_ms(ms);
