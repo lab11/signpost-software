@@ -6,6 +6,7 @@
 #include "i2c_master_slave.h"
 #include "led.h"
 #include "port_signpost.h"
+#include "signpost_entropy.h"
 #include "timer.h"
 #include "tock.h"
 
@@ -170,6 +171,7 @@ int port_signpost_debug_led_on(void) {
     if (rc < 0) return SB_PORT_FAIL;
     return SB_PORT_SUCCESS;
 }
+
 int port_signpost_debug_led_off(void){
     int rc;
     rc = led_off(DEBUG_LED);
@@ -177,3 +179,17 @@ int port_signpost_debug_led_off(void){
     return SB_PORT_SUCCESS;
 }
 
+int port_rng_init(void) {
+    if (signpost_entropy_init() < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
+}
+
+int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
+    int rc;
+    size_t bytes_to_request;
+    if (len < num) bytes_to_request = len;
+    else bytes_to_request = num;
+    rc = signpost_entropy_rand(buf, bytes_to_request);
+    if (rc < 0) return SB_PORT_FAIL;
+    return rc;
+}

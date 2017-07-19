@@ -7,7 +7,6 @@
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
-#include "signpost_entropy.h"
 #include "port_signpost.h"
 #include "tock.h"
 
@@ -376,7 +375,7 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
 
     // Initialize the lower layers
     signbus_io_init(i2c_address);
-    rc = signpost_entropy_init();
+    rc = port_rng_init();
     if (rc < 0) return rc;
 
     // See comment in protocol_layer.h

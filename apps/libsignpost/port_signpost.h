@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mbedtls/ctr_drbg.h"
+
 /* This is a port interface for the signpost API and networking stack!
 The goal is to export the minimal interface such that platforms
 can integrate with the signpost.
@@ -34,6 +36,9 @@ for each platform*/
 #define SB_PORT_ESIZE        -7
 #define SB_PORT_ENOMEM       -9
 #define SB_PORT_ENOACK       -13
+
+// a context for the mbedtls prng
+extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 //These are the callback definitions
 
@@ -84,4 +89,20 @@ void port_signpost_delay_ms(unsigned ms);
 //An optional debug led
 int port_signpost_debug_led_on(void);
 int port_signpost_debug_led_off(void);
+
+
+/*  port_rng_init
+ *  Sets up rng
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ */
+int port_rng_init(void);
+
+/*  port_rng_sync
+ *  Synchronous RNG request.
+ *    buf: user defined buffer.
+ *    len: length of buffer.
+ *    num: number of random bytes requested.
+ *  returns number of random bytes acquired on success, SB_PORT_FAIL on failure.
+ */
+int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 

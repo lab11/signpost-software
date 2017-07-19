@@ -4,6 +4,7 @@
 
 #include "rng.h"
 #include "signpost_entropy.h"
+#include "port_signpost.h"
 
 mbedtls_ctr_drbg_context ctr_drbg_context;
 static mbedtls_entropy_context entropy_context;
