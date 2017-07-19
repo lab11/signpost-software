@@ -711,7 +711,7 @@ int signpost_networking_post(const char* url, http_request request, http_respons
         memcpy(send+send_index,(uint8_t*)"content-length",clen);
         send_index += clen;
         char cbuf[5];
-        sprintf(cbuf,"%d",len);
+        snprintf(cbuf,5,"%d",len);
         clen = strlen(cbuf);
         send[send_index] = clen;
         send_index++;
@@ -1096,7 +1096,7 @@ int signpost_json_send(uint8_t destination_address, size_t field_count, ... ) {
         json_blob[size++] = ':';
         // value:
         // TODO assumes integer value right now
-        sprintf(json_blob+size, "%d", field.value);
+        snprintf(json_blob+size, MAX_JSON_BLOB_SIZE-size, "%d", field.value);
         size+=strlen(json_blob+size);
     }
     json_blob[size++] = '}';
