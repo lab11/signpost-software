@@ -33,7 +33,7 @@ int mod_isolated_in = -1;
 int last_mod_isolated_out = -1;
 size_t isolated_count = 0;
 
-//time and location local 
+//time and location local
 static signpost_timelocation_time_t current_time;
 static signpost_timelocation_location_t current_location;
 
@@ -177,17 +177,27 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
     }
 }
 
+typedef struct duty_cycle_struct {
+    int mod_num;
+    tock_timer_t timer;
+} duty_cycle_struct_t;
+
+
 static void duty_cycle_timer_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) int expiration,
                             __attribute__ ((unused)) int unused,
                             void* ud) {
-    if(signpost_energy_policy_get_module_energy_remaining_uwh((int)ud) > 0) {
-        module_state[(int)ud].isolation_state = ModuleEnabled;
-        controller_module_enable_power((int)ud);
-        controller_module_enable_i2c((int)ud);
+    duty_cycle_struct_t* dc = ud;
+
+    if(signpost_energy_policy_get_module_energy_remaining_uwh(dc->mod_num) > 0) {
+        module_state[dc->mod_num].isolation_state = ModuleEnabled;
+        controller_module_enable_power(dc->mod_num);
+        controller_module_enable_i2c(dc->mod_num);
     } else {
-        module_state[(int)ud].isolation_state = ModuleDisabledEnergy;
+        module_state[dc->mod_num].isolation_state = ModuleDisabledEnergy;
     }
+
+    free(dc);
 }
 
 static void energy_api_callback(uint8_t source_address,
@@ -217,7 +227,10 @@ static void energy_api_callback(uint8_t source_address,
 
         //create a timer with the module number to be turned back
         //on as the user data
-        timer_in(time, duty_cycle_timer_cb, (void*)((uint32_t)mod));
+        duty_cycle_struct_t* dc = malloc(sizeof(duty_cycle_struct_t));
+        dc->mod_num = mod;
+
+        timer_in(time, duty_cycle_timer_cb, (void*)dc, &(dc->timer));
         module_state[mod].isolation_state = ModuleDisabledDutyCycle;
 
         //turn it off
@@ -259,7 +272,7 @@ static void energy_api_callback(uint8_t source_address,
         signpost_energy_report_reply(source_address, 1);
     } else if (message_type == EnergyResetMessage) {
         printf("CALLBACK_ENERGY: Received energy reset message from 0x%.2x\n", source_address);
-        
+
         signpost_energy_policy_reset_module_energy_used(signpost_api_addr_to_mod_num(source_address));
 
         //reply
@@ -324,7 +337,7 @@ static void watchdog_api_callback(uint8_t source_address,
     if(message_type == WatchdogStartMessage) {
         int rc = signpost_watchdog_reply(source_address);
         if(rc >= 0) {
-            int mod_num = signpost_api_addr_to_mod_num(source_address); 
+            int mod_num = signpost_api_addr_to_mod_num(source_address);
             module_state[mod_num].watchdog_subscribed = 1;
 
             //give them one tickle
@@ -333,7 +346,7 @@ static void watchdog_api_callback(uint8_t source_address,
     } else if(message_type == WatchdogTickleMessage)  {
         int rc = signpost_watchdog_reply(source_address);
         if(rc >= 0) {
-            int mod_num = signpost_api_addr_to_mod_num(source_address); 
+            int mod_num = signpost_api_addr_to_mod_num(source_address);
 
             //give them one tickle
             module_state[mod_num].watchdog_tickled = 1;
@@ -410,14 +423,14 @@ static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
     const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
-    
+
     printf("Initializing energy\n");
     if (fram.magic == FRAM_MAGIC_VALUE) {
       // Great. We have saved data.
       // Initialize the energy algorithm with those values
       printf("Found saved energy data\n");
       signpost_energy_policy_init(&fram.remaining, &fram.used, &fram.time);
-  
+
     } else {
       // Initialize this
       printf("No saved energy data. Equally distributing\n");
@@ -427,7 +440,7 @@ static void signpost_controller_initialize_energy (void) {
       signpost_energy_policy_init(NULL, NULL, NULL);
 
       signpost_energy_policy_copy_internal_state(&fram.remaining, &fram.used, &fram.time);
-  
+
       fm25cl_write_sync(0, sizeof(controller_fram_t));
     }
 }
@@ -437,7 +450,7 @@ int signpost_controller_init (void) {
     printf("Configuring FRAM\n");
     fm25cl_set_read_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
     fm25cl_set_write_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
-    
+
     //initialize energy from FRAM
     signpost_controller_initialize_energy();
 
@@ -472,9 +485,14 @@ int signpost_controller_init (void) {
     controller_gpio_set_all();
 
     //setup timer callbacks to service the various signpost components
-    timer_every(600000,update_energy_policy_cb,NULL);
-    timer_every(1000,check_module_init_cb,NULL);
-    timer_every(60000,check_watchdogs_cb,NULL);
+    static tock_timer_t energy_update_timer;
+    timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
+
+    static tock_timer_t check_init_timer;
+    timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
+
+    static tock_timer_t check_watchdogs_timer;
+    timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
 
     return 0;
 }
