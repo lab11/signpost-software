@@ -18,6 +18,7 @@
 #include "minmea.h"
 #include "signpost_api.h"
 #include "signpost_energy_monitors.h"
+#include "signpost_controller.h"
 
 int main (void) {
   printf("[Controller] ** Main App **\n");
