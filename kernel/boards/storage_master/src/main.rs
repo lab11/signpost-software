@@ -177,7 +177,7 @@ unsafe fn set_pin_primary_functions() {
     PA[05].enable_output();
     PA[06].configure(None); // LINUX_ENABLE_POWER
     PA[06].enable();
-    PA[06].set();
+    PA[06].clear();
     PA[06].enable_output();
 
     // I2C: Modules - TWIMS0
@@ -192,6 +192,12 @@ unsafe fn set_pin_primary_functions() {
     PA[07].configure(None); // !STORAGE_LED
     PB[04].configure(None); // STORAGE_DEBUG_GPIO1
     PB[05].configure(None); // STORAGE_DEBUG_GPIO2
+
+    // Backplane RESET
+    PB[15].configure(None);
+    PB[15].enable();
+    PB[15].set();
+    PB[15].enable_output();
 }
 
 /*******************************************************************************
