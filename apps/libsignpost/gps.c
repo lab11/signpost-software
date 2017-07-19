@@ -94,7 +94,7 @@ static int gps_send_msg (const char* msg) {
     message_sent = false;
     snprintf(msg_buffer, 60, "%s%02X\r\n", msg, minmea_checksum(msg));
 
-    int ret = allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strlen(msg_buffer));
+    int ret = allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strnlen(msg_buffer,60));
     if(ret < 0) return ret;
     ret = subscribe(DRIVER_NUM_GPS, 1, gps_tx_callback, NULL);
     if(ret < 0) return ret;

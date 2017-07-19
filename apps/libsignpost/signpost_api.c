@@ -712,7 +712,7 @@ int signpost_networking_post(const char* url, http_request request, http_respons
         send_index += clen;
         char cbuf[5];
         snprintf(cbuf,5,"%d",len);
-        clen = strlen(cbuf);
+        clen = strnlen(cbuf,5);
         send[send_index] = clen;
         send_index++;
         memcpy(send+send_index,cbuf,clen);
