@@ -173,6 +173,9 @@ unsafe fn set_pin_primary_functions() {
     PB[15].enable();
     PB[15].set();
     PB[15].enable_output();
+
+    PB[01].configure(None); //STORAGE_OUT
+    PB[03].configure(None); //STORAGE_IN
 }
 
 /*******************************************************************************
@@ -291,8 +294,8 @@ pub unsafe fn reset_handler() {
     //
     let gpio_pins = static_init!(
         [&'static sam4l::gpio::GPIOPin; 5],
-        [&sam4l::gpio::PB[03], // Fake MOD_IN for init
-         &sam4l::gpio::PB[01], // Fake MOD_OUT for init
+        [&sam4l::gpio::PB[01], // MOD_OUT for init
+         &sam4l::gpio::PB[03], // MOD_IN for init
          &sam4l::gpio::PA[05], // EDISON_PWRBTN
          &sam4l::gpio::PA[06], // LINUX_ENABLE_POWER
          &sam4l::gpio::PA[21]] // SD_ENABLE

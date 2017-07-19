@@ -419,28 +419,6 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     return SB_PORT_SUCCESS;
 }
 
-int signpost_initialization_storage_master_init(api_handler_t** api_handlers) {
-    int rc = signpost_initialization_common(ModuleAddressStorage, api_handlers);
-    if (rc < 0) return rc;
-
-    // Begin listening for replies
-    signpost_api_start_new_async_recv();
-
-    // XXX turn this off for now
-    //done = 0;
-    //// spin until done exchanging with storage master
-    //while(!done) {
-    //    printf("Waiting for initialization with controller\n");
-    //    // exchange keys with controller
-    //    while(signpost_initialization_key_exchange_send(ModuleAddressController) < SB_PORT_SUCCESS) {port_signpost_delay_ms(50);}
-    //    port_signpost_delay_ms(5000);
-    //}
-
-
-    SIGNBUS_DEBUG("complete\n");
-    return SB_PORT_SUCCESS;
-}
-
 int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
     int rc;
     rc = signpost_initialization_common(i2c_address, api_handlers);
