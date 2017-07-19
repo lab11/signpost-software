@@ -245,7 +245,8 @@ int main (void) {
     duty_cycle = false;
 
     printf("Starting timer\n");
-    timer_every(TIMER_INTERVAL, timer_callback, NULL);
+    static tock_timer_t timer;
+    timer_every(TIMER_INTERVAL, timer_callback, NULL, &timer);
 
     while (1) {
         sample_done = false;

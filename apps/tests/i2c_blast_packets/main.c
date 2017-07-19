@@ -22,9 +22,6 @@
 #define MODULE_ID 0x42
 #endif
 
-// This is a bit of a hack
-uint8_t* signpost_api_addr_to_key(uint8_t addr);
-
 int main(void) {
     printf("\n###\n\n\ni2c blast\n");
 
