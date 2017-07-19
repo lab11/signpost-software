@@ -116,16 +116,6 @@ static void post_to_radio (void) {
   }
 }
 
-static void tickle_watchdog (void) {
-  // keep the watchdog from resetting us if everything is successful
-
-  if (sample_sensors_successful && post_to_radio_successful) {
-    app_watchdog_tickle_kernel();
-    led_toggle(AMBIENT_LED1);
-  }
-}
-
-
 int main (void) {
   printf("\n[Ambient Module] Sample and Post\n");
 
