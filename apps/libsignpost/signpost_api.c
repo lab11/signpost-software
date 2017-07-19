@@ -1097,7 +1097,7 @@ int signpost_json_send(uint8_t destination_address, size_t field_count, ... ) {
         // value:
         // TODO assumes integer value right now
         snprintf(json_blob+size, MAX_JSON_BLOB_SIZE-size, "%d", field.value);
-        size+=strlen(json_blob+size);
+        size+=strnlen(json_blob+size,MAX_JSON_BLOB_SIZE-size);
     }
     json_blob[size++] = '}';
     json_blob[size++] = '\0';
