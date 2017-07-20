@@ -24,7 +24,7 @@ static int battery_energy_remaining;
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
 #define MAX_MODULE_ENERGY_REMAINING BATTERY_CAPACITY*0.1
 
-void signpost_energy_policy_init (signpost_energy_remaining_t* remaining, 
+void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
                                     signpost_energy_used_t* used,
                                     signpost_energy_time_since_reset_t* time) {
 
@@ -62,6 +62,9 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
         memcpy(&time_since_reset,time,sizeof(signpost_energy_time_since_reset_t));
     }
 
+    //configure the coulomb counters
+    signpost_energy_init_ltc2943();
+
     //reset all of the coulomb counters for the algorithm to work
     signpost_energy_reset_all_energy();
 
@@ -83,7 +86,7 @@ int signpost_energy_policy_get_module_energy_remaining_uwh (int module_num) {
     return (energy_remaining.module_energy_remaining[module_num] - signpost_energy_get_module_energy_uwh(module_num));
 }
 
-int signpost_energy_policy_get_battery_energy_remaining_uwh (void) { 
+int signpost_energy_policy_get_battery_energy_remaining_uwh (void) {
     return battery_energy_remaining;
 }
 
@@ -220,7 +223,7 @@ void signpost_energy_policy_update_energy (void) {
         if(i == 3 || i == 4) {
 
         } else {
-            module_energy[i] += signpost_energy_get_module_energy_uwh(i);
+            module_energy[i] = signpost_energy_get_module_energy_uwh(i);
             total_energy += module_energy[i];
         }
     }
@@ -253,7 +256,7 @@ void signpost_energy_policy_update_energy (void) {
             energy_remaining.module_energy_remaining[i] -= module_energy[i];
         }
     }
-    
+
     ////////////////////////////////////////////////////////////////////
     // Update the timers
     ////////////////////////////////////////////////////////////////////
@@ -286,7 +289,7 @@ void signpost_energy_policy_update_energy (void) {
             module_surplus += (int)((energy_remaining.controller_energy_remaining - MAX_CONTROLLER_ENERGY_REMAINING)/6.0);
             energy_remaining.controller_energy_remaining = MAX_CONTROLLER_ENERGY_REMAINING;
         }
-        
+
         //this algorithm distributes energy while redistributing full modules
         uint8_t spill_elgible[8] = {1};
         while(module_surplus > 0) {
@@ -345,8 +348,8 @@ void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot
 }
 
 
-void signpost_energy_policy_copy_internal_state(signpost_energy_remaining_t* remaining, 
-                                         signpost_energy_used_t* used, 
+void signpost_energy_policy_copy_internal_state(signpost_energy_remaining_t* remaining,
+                                         signpost_energy_used_t* used,
                                          signpost_energy_time_since_reset_t* time) {
     memcpy(remaining,&energy_remaining,sizeof(signpost_energy_remaining_t));
     memcpy(used,&energy_used,sizeof(signpost_energy_used_t));
