@@ -187,7 +187,7 @@ static void mod_in_callback_helper() {
 }
 //TODO: Add condition for overflow of g_slave_receive_buf
 static void slave_listen_callback_helper(int num_bytes) {
-	digitalWrite(ARDUINO_DEBUG_1, HIGH);
+	//digitalWrite(ARDUINO_DEBUG_1, HIGH);
 	// digitalWrite(ARDUINO_DEBUG_2, HIGH);
 	//If no callback is assigned, return
 	if (g_slave_listen_callback == NULL) {
@@ -204,7 +204,7 @@ static void slave_listen_callback_helper(int num_bytes) {
 	}
 	//SIGNBUS_DEBUG_DUMP_BUF(g_slave_receive_buf, g_slave_receive_buf_len);
 	(*(g_slave_listen_callback)) (num_bytes);
-	digitalWrite(ARDUINO_DEBUG_1, LOW);
+	//digitalWrite(ARDUINO_DEBUG_1, LOW);
 }
 //callback untested
 static void slave_read_callback_helper() {
