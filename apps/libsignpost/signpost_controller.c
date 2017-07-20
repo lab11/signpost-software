@@ -72,6 +72,13 @@ static void initialization_api_callback(uint8_t source_address,
             break;
         case CommandFrame:
             switch (message_type) {
+                case InitializationRegister:
+                    rc = signpost_initialization_register_respond(source_address);
+                    if (rc < 0) {
+                      printf(" - %d: Error responding to initialization register request for address 0x%02x. Dropping.\n",
+                          __LINE__, source_address);
+                    }
+
                 case InitializationDeclare:
                     // only if we have a module isolated or from storage master
                     if (mod_isolated_out < 0 && source_address != ModuleAddressStorage) {

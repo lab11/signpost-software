@@ -67,12 +67,16 @@ typedef enum initialization_state {
     KeyExchange,
     FinishExchange,
     Done,
+    CheckKeys,
+    RegisterWithKeys,
+    ConfirmChallenge,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
    InitializationDeclare = 0,
    InitializationKeyExchange,
    InitializationGetMods,
+   InitializationRegister,
 } initialization_message_type_t;
 
 typedef enum module_address {
@@ -110,6 +114,15 @@ int signpost_initialization_request_isolation(void);
 //  destination_address - The I2C address of the module to exchange keys with
 __attribute__((warn_unused_result))
 int signpost_initialization_key_exchange_send(uint8_t destination_address);
+
+// Send a response to a registration request if module key already stored
+//
+// params:
+//  source_address  - The I2C address of the module that sent a registration
+//  request
+//  TODO this should be replaced with appid eventually
+__attribute__((warn_unused_result))
+int signpost_initialization_register_respond(uint8_t source_address);
 
 // Send a response to a declare request
 // Assumes controller has already isolated source
