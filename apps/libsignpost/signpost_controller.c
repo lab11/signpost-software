@@ -404,8 +404,15 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
     signpost_energy_policy_copy_internal_state(&fram.remaining,&fram.used,&fram.time);
     fm25cl_write_sync(0, sizeof(controller_fram_t));
 
+    printf("Battery energy remainding: %d uWh\n",signpost_energy_policy_get_battery_energy_remaining_uwh());
+
     //cut off any modules that have used too much
     for(uint8_t i = 0; i < 8; i++) {
+
+        if(i == 3 || i == 4) continue;
+
+        int remaining = signpost_energy_policy_get_module_energy_remaining_uwh(i);
+        printf("Module %d has %d uWh remaining\n",i,remaining);
         if(signpost_energy_policy_get_module_energy_remaining_uwh(i) <= 0) {
             printf("Module %d used to much energy - disabling\n", i);
             module_state[i].isolation_state = ModuleDisabledEnergy;
@@ -421,7 +428,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A8000D;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
