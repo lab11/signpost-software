@@ -2,6 +2,7 @@
 #include <HardwareSerial.h>
 #include <Wire.h>
 #include <stdarg.h>
+#include "signbus_io_interface.h"
 #include "port_signpost.h"
 
 //TODO: Verify/test multi-master support
@@ -18,6 +19,7 @@
 #define ARDUINO_DEBUG_3 8
 #define ARDUINO_DEBUG_4 9
 
+//enable/disable printing debug messages over uart
 #define ENABLE_PORT_PRINTF
 
 //TODO: Add error handling and error codes
@@ -26,7 +28,7 @@ static void slave_listen_callback_helper(int num_bytes);
 static void slave_read_callback_helper();
 
 //TwoWire object used solely for Signpost i2c
-//TwoWire Wire = TwoWire();
+//TwoWire SignWire = TwoWire();
 
 static char g_port_printf_buf[_PRINTF_BUFFER_LENGTH_];
 
@@ -45,8 +47,7 @@ uint8_t* g_slave_transmit_buf = NULL;
 size_t g_slave_transmit_buf_len = 0;
 
 int port_signpost_init(uint8_t i2c_address) {
-	//Wire.begin(i2c_address);
-	Wire.setClock(SIGNPOST_I2C_SPEED);
+	Wire.begin(i2c_address);
 	g_arduino_i2c_address = i2c_address;
 	pinMode(ARDUINO_MOD_IN, INPUT);
 	pinMode(ARDUINO_MOD_OUT, OUTPUT);
@@ -78,7 +79,7 @@ int port_signpost_init(uint8_t i2c_address) {
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 	//DEBUG
-	digitalWrite(ARDUINO_DEBUG_4, HIGH);
+	//digitalWrite(ARDUINO_DEBUG_4, HIGH);
 	if (len == 0) {
 		return -1;
 	}
@@ -89,8 +90,9 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 	int rc = Wire.endTransmission();
 	//Puts Arduino back into i2c slave mode
 	Wire.begin(g_arduino_i2c_address);
+	SIGNBUS_DEBUG("Slave Addr: 0x%x\n", g_arduino_i2c_address);
 	//DEBUG
-	digitalWrite(ARDUINO_DEBUG_4, LOW);
+	//digitalWrite(ARDUINO_DEBUG_4, LOW);
 	// if (rc != 0) {
 	// 	return -1 * rc;
 	// }
@@ -99,7 +101,7 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
 	Wire.begin(g_arduino_i2c_address);
-	Wire.setClock(SIGNPOST_I2C_SPEED);
+	SIGNBUS_DEBUG("Slave Addr: 0x%x\n", g_arduino_i2c_address);
 	g_slave_listen_callback = cb;
 	g_slave_receive_buf = buf;
 	g_slave_receive_buf_max_len = max_len;
@@ -109,10 +111,10 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
 
 int port_signpost_i2c_slave_read_setup(uint8_t* buf, size_t len) {
 	Wire.begin(g_arduino_i2c_address);
+	SIGNBUS_DEBUG("Slave Addr: 0x%x\n", g_arduino_i2c_address);
 	//DEBUG
 	//digitalWrite(ARDUINO_DEBUG_1, LOW);
 	//digitalWrite(ARDUINO_DEBUG_2, HIGH);
-	Wire.setClock(SIGNPOST_I2C_SPEED);
 	//Set global i2c transmit buffer to input buffer
 	g_slave_transmit_buf = buf;
 	g_slave_transmit_buf_len = len;
@@ -201,7 +203,7 @@ static void mod_in_callback_helper() {
 }
 //TODO: Add condition for overflow of g_slave_receive_buf
 static void slave_listen_callback_helper(int num_bytes) {
-	digitalWrite(ARDUINO_DEBUG_1, HIGH);
+	//digitalWrite(ARDUINO_DEBUG_1, HIGH);
 	// digitalWrite(ARDUINO_DEBUG_2, HIGH);
 	//If no callback is assigned, return
 	if (g_slave_listen_callback == NULL) {
@@ -216,8 +218,9 @@ static void slave_listen_callback_helper(int num_bytes) {
 	for (uint32_t i = 0; i < num_bytes && i < g_slave_receive_buf_max_len; ++i, ++g_slave_receive_buf_len) {
 		g_slave_receive_buf[g_slave_receive_buf_len] = Wire.read();
 	}
+	SIGNBUS_DEBUG_DUMP_BUF(g_slave_receive_buf, g_slave_receive_buf_len);
 	(*(g_slave_listen_callback)) (num_bytes);
-	digitalWrite(ARDUINO_DEBUG_1, LOW);
+	//digitalWrite(ARDUINO_DEBUG_1, LOW);
 }
 
 static void slave_read_callback_helper() {
