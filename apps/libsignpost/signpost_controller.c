@@ -164,12 +164,13 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
         }
         // this module took too long to talk to controller
         // XXX need more to police bad modules (repeat offenders)
-        else if (isolated_count > 5) {
+        else if (isolated_count > 10) {
             printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
             gpio_set(mod_isolated_in);
             module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures++;
             if(module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures > 4) {
                 //power cycle the module
+                printf("Module %d has too many initialization failures - reseting\n",MODOUT_pin_to_mod_name(mod_isolated_out));
                 controller_module_disable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
                 delay_ms(1000);
                 controller_module_enable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
@@ -388,6 +389,7 @@ static void check_watchdogs_cb( __attribute__ ((unused)) int now,
     for(uint8_t j = 0; j < 8; j++) {
         if(module_state[j].watchdog_subscribed != 0) {
             if(module_state[j].watchdog_tickled == 0) {
+                printf("Watchdog service not tickled - reseting module %d\n",j);
                 controller_module_disable_power(j);
                 delay_ms(300);
                 controller_module_enable_power(j);
