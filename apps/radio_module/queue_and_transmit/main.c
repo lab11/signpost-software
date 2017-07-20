@@ -128,7 +128,7 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
         return -1;
     } else {
         data_queue[queue_tail][0] = addr;
-        if(len  <= BUFFER_SIZE -1) {
+        if(len <= BUFFER_SIZE -1) {
             memcpy(data_queue[queue_tail]+1, buffer, len);
         } else {
             memcpy(data_queue[queue_tail]+1, buffer, BUFFER_SIZE-1);
@@ -182,13 +182,17 @@ void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
 }
 
 static uint8_t sn = 0;
+static bool currently_sending = false;
+
 static void timer_callback (
     int callback_type __attribute__ ((unused)),
     int length __attribute__ ((unused)),
     int unused __attribute__ ((unused)),
     void * callback_args __attribute__ ((unused))) {
 
-    static uint8_t LoRa_send_buffer[ADDRESS_SIZE + BUFFER_SIZE];
+    if(currently_sending) return;
+
+    static uint8_t LoRa_send_buffer[(ADDRESS_SIZE + BUFFER_SIZE)];
     static uint8_t send_counter = 0;
 
     if(queue_head != queue_tail) {
@@ -209,15 +213,20 @@ static void timer_callback (
         //send the packet
         memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
         memcpy(LoRa_send_buffer+ADDRESS_SIZE, data_queue[queue_head], BUFFER_SIZE);
+
+        currently_sending = true;
+        xdot_wake();
         int status = xdot_send(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE);
+        currently_sending = false;
 
         //parse the HCI layer error codes
-        if(status != 0) {
+        if(status < 0) {
             printf("Xdot send failed\n");
         } else {
+            printf("Xdot send succeeded!\n");
             sn++;
+            increment_queue_pointer(&queue_head);
         }
-        increment_queue_pointer(&queue_head);
     }
 
     send_counter++;
@@ -285,7 +294,6 @@ static void timer_callback (
             module_packet_count[i] = 0;
         }
     }
-
 }
 
 #ifndef APP_KEY
@@ -337,12 +345,15 @@ int main (void) {
     //setup lora
     uint8_t appEUI[8] = {0};
     xdot_wake();
+    delay_ms(1000);
+
     rc = xdot_init();
     if(rc < 0) printf("xDot Init Error!\n");
 
     rc  = xdot_set_ack(1);
     rc |= xdot_set_txpwr(20);
-    rc |= xdot_set_adr(1);
+    rc |= xdot_set_txdr(3);
+    rc |= xdot_set_adr(0);
     if(rc < 0)  printf("XDot settings error!\n");
 
     do {
