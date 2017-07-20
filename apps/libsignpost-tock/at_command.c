@@ -46,22 +46,22 @@ int at_send_buf(int console_num, uint8_t* buf, size_t len) {
     else return ret;
 }
 
-int at_wait_for_response(int console_num, uint8_t max_tries) {
+int at_wait_for_response(int console_num, uint8_t max_tries, uint32_t timeout_ms) {
     static uint8_t buf[200];
-    return at_get_response(console_num, max_tries, buf, 200);
+    return at_get_response(console_num, max_tries, timeout_ms, buf, 200);
 }
 
-int at_wait_for_custom_response(int console_num, uint8_t max_tries, const char* rstring) {
+int at_wait_for_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, const char* rstring) {
     static uint8_t buf[200];
-    return at_get_custom_response(console_num, max_tries, buf, 200, rstring);
+    return at_get_custom_response(console_num, max_tries, timeout_ms, buf, 200, rstring);
 }
 
-int at_get_response(int console_num, uint8_t max_tries, uint8_t* buf, size_t max_len) {
+int at_get_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uint8_t* buf, size_t max_len) {
 
     int tlen = 0;
     for(uint8_t i = 0; i < max_tries; i++) {
 
-        int len = console_read(console_num, buf+tlen, max_len-tlen);
+        int len = console_read_with_timeout(console_num, buf+tlen, max_len-tlen, timeout_ms);
         if(len < 0) return AT_ERROR;
 
         tlen += len;
@@ -77,12 +77,12 @@ int at_get_response(int console_num, uint8_t max_tries, uint8_t* buf, size_t max
     return AT_NO_RESPONSE;
 }
 
-int at_get_custom_response(int console_num, uint8_t max_tries, uint8_t* buf, size_t max_len, const char* rstring) {
+int at_get_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uint8_t* buf, size_t max_len, const char* rstring) {
 
     int tlen = 0;
     for(uint8_t i = 0; i < max_tries; i++) {
 
-        int len = console_read(console_num, buf+tlen, max_len-tlen);
+        int len = console_read_with_timeout(console_num, buf+tlen, max_len-tlen, timeout_ms);
         if(len < 0) return AT_ERROR;
 
         tlen += len;
