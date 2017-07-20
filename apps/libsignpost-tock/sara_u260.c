@@ -18,7 +18,7 @@ int sara_u260_init(void) {
     ret = at_send(SARA_CONSOLE,"ATE0\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE,3);
+    ret = at_wait_for_response(SARA_CONSOLE,3,1000);
     if(ret >= AT_SUCCESS) {
         return SARA_U260_SUCCESS;
     } else {
@@ -33,7 +33,7 @@ static int sara_u260_check_connection(void) {
     //We just need to check how many bytes it will return
     //This tells us if the operator field is populated (has service)
     uint8_t buf[50];
-    int len = at_get_response(SARA_CONSOLE, 3, buf, 50);
+    int len = at_get_response(SARA_CONSOLE, 3, 2000, buf, 50);
 
     if(len <= 0) {
         return SARA_U260_ERROR;
@@ -55,7 +55,7 @@ static int sara_u260_setup_packet_switch(void) {
     ret = at_send(SARA_CONSOLE,"AT+UPSND=0,0\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 3000);
     if(ret == AT_ERROR) {
         //no we need to set one up
 
@@ -63,21 +63,21 @@ static int sara_u260_setup_packet_switch(void) {
         ret = at_send(SARA_CONSOLE, "AT+UPSD=0,1,\"\"\r");
         if (ret < 0) return SARA_U260_ERROR;
 
-        ret = at_wait_for_response(SARA_CONSOLE, 3);
+        ret = at_wait_for_response(SARA_CONSOLE, 3,3000);
         if (ret < 0) return SARA_U260_ERROR;
 
         //request to connect
         ret = at_send(SARA_CONSOLE, "AT+UPSDA=0,3\r");
         if (ret < 0) return SARA_U260_ERROR;
 
-        ret = at_wait_for_response(SARA_CONSOLE, 3);
+        ret = at_wait_for_response(SARA_CONSOLE, 3,3000);
         if (ret < 0) return SARA_U260_ERROR;
 
         //did it work
         ret = at_send(SARA_CONSOLE,"AT+UPSND=0,0\r");
         if (ret < 0) return SARA_U260_ERROR;
 
-        ret = at_wait_for_response(SARA_CONSOLE, 3);
+        ret = at_wait_for_response(SARA_CONSOLE, 3,3000);
 
         if(ret < 0) {
             //no it didn't - return error
@@ -134,7 +134,7 @@ static int sara_u260_del_file(const char* fname) {
     ret = at_send(SARA_CONSOLE, "\"\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE,3);
+    ret = at_wait_for_response(SARA_CONSOLE,3,5000);
     if(ret >= 0) {
         return SARA_U260_SUCCESS;
     } else {
@@ -165,7 +165,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     ret = at_send(SARA_CONSOLE, "\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_custom_response(SARA_CONSOLE,3,"\n>");
+    ret = at_wait_for_custom_response(SARA_CONSOLE,3,2000,"\n>");
     if (ret < 0) return SARA_U260_ERROR;
 
     //now send the buffer in chunks of 30
@@ -179,7 +179,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
         }
     }
 
-    ret = at_wait_for_response(SARA_CONSOLE,3);
+    ret = at_wait_for_response(SARA_CONSOLE,3,5000);
     if(ret >= AT_SUCCESS) {
         return SARA_U260_SUCCESS;
     } else {
@@ -221,7 +221,7 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     ret = at_send(SARA_CONSOLE,"\",\"postresult.txt\",\"postdata.bin\",2\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 30000);
 
     return ret;
 }
@@ -251,7 +251,7 @@ static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, s
         return SARA_U260_ERROR;
     }
 
-    ret = at_get_response(SARA_CONSOLE,3,tbuf,len);
+    ret = at_get_response(SARA_CONSOLE,3, 5000, tbuf,len);
     len = ret;
 
     if(ret < 0) {
