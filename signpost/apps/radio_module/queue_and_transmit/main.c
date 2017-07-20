@@ -21,7 +21,7 @@
 #include "tock.h"
 #include "console.h"
 #include "timer.h"
-#include "iM880A_RadioInterface.h"
+#include "xdot.h"
 #include "i2c_master_slave.h"
 #include "app_watchdog.h"
 #include "radio_module.h"
@@ -46,7 +46,7 @@
 };*/
 
 //definitions for the i2c
-#define BUFFER_SIZE 21
+#define BUFFER_SIZE 50
 #define ADDRESS_SIZE 6
 #define NUMBER_OF_MODULES 8
 
@@ -80,26 +80,6 @@ static void increment_queue_pointer(uint8_t* p) {
 #endif
 static uint8_t address[ADDRESS_SIZE] = { COMPILE_TIME_ADDRESS };
 
-
-//these are the lora callback functions for seeing if everything is okay
-
-static void lora_rx_callback(uint8_t* payload __attribute__ ((unused)),
-                        uint8_t len __attribute__ ((unused)),
-                        TRadioFlags flag __attribute__ ((unused))) {
-    //this should never happen because I'm not receiving
-//    printf("Lora received a message?\n");
-}
-
-static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
-                        uint8_t status) {
-    //right now the  radio library ONLY implements txdone messages
-    if(status == DEVMGMT_STATUS_OK) {
-        lora_packets_sent++;
-    } else {
-        printf("Lora error, resetting...");
-        //app_watchdog_reset_app();
-    }
-}
 
 /*static void adv_config_data(void) {
     static uint8_t i = 0;
@@ -208,7 +188,7 @@ static void timer_callback (
     int unused __attribute__ ((unused)),
     void * callback_args __attribute__ ((unused))) {
 
-    static uint8_t LoRa_send_buffer[ADDRESS_SIZE + BUFFER_SIZE + 2];
+    static uint8_t LoRa_send_buffer[ADDRESS_SIZE + BUFFER_SIZE];
     static uint8_t send_counter = 0;
 
     if(queue_head != queue_tail) {
@@ -229,16 +209,11 @@ static void timer_callback (
         //send the packet
         memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
         memcpy(LoRa_send_buffer+ADDRESS_SIZE, data_queue[queue_head], BUFFER_SIZE);
-        uint16_t crc = CRC16_Calc(LoRa_send_buffer, ADDRESS_SIZE+BUFFER_SIZE, 0xFFFF);
-        LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE] = (uint8_t)((crc & 0xFF00) >> 8);
-        LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE+1] = (uint8_t)(crc & 0xFF);
-        uint16_t status = iM880A_SendRadioTelegram(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE+2);
+        int status = xdot_send(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE);
 
         //parse the HCI layer error codes
         if(status != 0) {
-            //error
-            printf("lora error! Resetting...\n");
-            //app_watchdog_reset_app();
+            printf("Xdot send failed\n");
         } else {
             sn++;
         }
@@ -313,6 +288,11 @@ static void timer_callback (
 
 }
 
+#ifndef APP_KEY
+#error Missing required define APP_KEY of format: 0x00, 0x00,... (x32)
+#endif
+static uint8_t appKey[16] = { APP_KEY };
+
 int main (void) {
     printf("starting app!\n");
     //do module initialization
@@ -355,16 +335,26 @@ int main (void) {
     }
 
     //setup lora
-    //register radio callbacks
-    iM880A_Init();
-    iM880A_RegisterRadioCallbacks(lora_rx_callback, lora_tx_callback);
-    //configure
-    iM880A_Configure();
+    uint8_t appEUI[8] = {0};
+    xdot_wake();
+    rc = xdot_init();
+    if(rc < 0) printf("xDot Init Error!\n");
 
-    // Setup a watchdog
-    //app_watchdog_set_kernel_timeout(10000);
-    //app_watchdog_start();
+    rc  = xdot_set_ack(1);
+    rc |= xdot_set_txpwr(20);
+    rc |= xdot_set_adr(1);
+    if(rc < 0)  printf("XDot settings error!\n");
 
+    do {
+        printf("Joining Network...\n");
+        rc = xdot_join_network(appEUI, appKey);
+        if(rc < 0) {
+            printf("Failed to join network\n");
+            delay_ms(5000);
+        }
+    } while (rc < 0);
+
+    printf("Joined successfully! Starting packets\n");
     //setup timer
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
