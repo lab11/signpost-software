@@ -32,6 +32,7 @@ int mod_isolated_out = -1;
 int mod_isolated_in = -1;
 int last_mod_isolated_out = -1;
 size_t isolated_count = 0;
+size_t isolation_timeout_seconds = 10;
 
 //time and location local
 static signpost_timelocation_time_t current_time;
@@ -164,13 +165,13 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
         }
         // this module took too long to talk to controller
         // XXX need more to police bad modules (repeat offenders)
-        else if (isolated_count > 10) {
+        else if (isolated_count > isolation_timeout_seconds) {
             printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
             gpio_set(mod_isolated_in);
             module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures++;
             if(module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures > 4) {
                 //power cycle the module
-                printf("Module %d has too many initialization failures - reseting\n",MODOUT_pin_to_mod_name(mod_isolated_out));
+                printf("Module %d has too many initialization failures - resetting\n",MODOUT_pin_to_mod_name(mod_isolated_out));
                 controller_module_disable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
                 delay_ms(1000);
                 controller_module_enable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
