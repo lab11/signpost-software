@@ -226,17 +226,31 @@ int xdot_reset(void) {
     return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
+static void buf_to_hex_string(char* dest_buf, uint32_t dest_len, uint8_t* source_buf, uint32_t source_len) {
+    char* cpt = dest_buf;
+    for(uint32_t i = 0; i < source_len && i*2 < dest_len; i++) {
+        snprintf(cpt,3,"%02X",source_buf[i]);
+        cpt += 2;
+    }
+}
+
 int xdot_send(uint8_t* buf, uint8_t len) {
+
+    char* buf_str = malloc(len*2+1);
+    if(!buf_str) return XDOT_ERROR;
+
+    buf_to_hex_string(buf_str, len*2+1, buf, len);
 
     int ret = at_send(LORA_CONSOLE, "AT+send=");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_send_buf(LORA_CONSOLE,buf,len);
+    ret = at_send_buf(LORA_CONSOLE, (uint8_t*)buf_str,len*2);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE, "\n");
     if(ret < 0) return XDOT_ERROR;
 
+    free(buf_str);
     return at_wait_for_response(LORA_CONSOLE,3,5000);
 }
 
