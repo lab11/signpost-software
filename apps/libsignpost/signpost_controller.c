@@ -362,6 +362,13 @@ static void watchdog_api_callback(uint8_t source_address,
     }
 }
 
+
+void signpost_controller_get_gps(signpost_timelocation_time_t* time,
+                                signpost_timelocation_location_t* location) {
+    memcpy(time, &current_time, sizeof(signpost_timelocation_time_t));
+    memcpy(location, &current_location, sizeof(signpost_timelocation_location_t));
+}
+
 static void gps_callback (gps_data_t* gps_data) {
   // Save most recent GPS reading for anyone that wants location and time.
   // This isn't a great method for proving the TimeLocation API, but it's
