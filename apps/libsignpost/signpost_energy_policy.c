@@ -283,29 +283,38 @@ void signpost_energy_policy_update_energy (void) {
         int surplus = total_energy - battery_used;
         int controller_surplus = (int)(surplus * 0.4);
         int module_surplus = (int)(surplus * 0.1);
+        printf("Surplus energy of %d uwh\n",surplus);
 
         energy_remaining.controller_energy_remaining += controller_surplus;
+        printf("Controller surplus of %d uwh\n",controller_surplus);
         if(energy_remaining.controller_energy_remaining > MAX_CONTROLLER_ENERGY_REMAINING) {
             module_surplus += (int)((energy_remaining.controller_energy_remaining - MAX_CONTROLLER_ENERGY_REMAINING)/6.0);
             energy_remaining.controller_energy_remaining = MAX_CONTROLLER_ENERGY_REMAINING;
+            printf("Controller energy overflow, module surplus now %d\n",module_surplus);
         }
 
         //this algorithm distributes energy while redistributing full modules
-        uint8_t spill_elgible[8] = {1};
+        uint8_t spill_elgible[8] = {0};
+        for(uint8_t i = 0; i < 8; i++) spill_elgible[i] = 1;
+
         while(module_surplus > 0) {
             int spill_over = 0;
             uint8_t spill_elgible_count = 0;
 
             //try to distribute the energy
             for(uint8_t i = 0; i < 8; i++) {
-                if(i == 3 || i == 4 || spill_elgible[i] == 0)  continue;
+                if(i == 3 || i == 4 || spill_elgible[i] == 0) {
+                    printf("Not adding energy to this module, spill elgible = %d\n",spill_elgible[i]);
+                }
 
                 if(energy_remaining.module_energy_remaining[i] + module_surplus > MAX_MODULE_ENERGY_REMAINING) {
                     spill_over += (energy_remaining.module_energy_remaining[i] + module_surplus) - MAX_MODULE_ENERGY_REMAINING;
                     energy_remaining.module_energy_remaining[i] = MAX_MODULE_ENERGY_REMAINING;
                     spill_elgible[i] = 0;
+                    printf("Module %d energy overflow. spill over now %d\n",i,spill_over);
                 } else {
                     energy_remaining.module_energy_remaining[i] += module_surplus;
+                    printf("Module %d got %d uwh of energy from surplus\n",i,module_surplus);
                     spill_elgible_count++;
                     spill_elgible[i] = 1;
                 }
@@ -316,6 +325,7 @@ void signpost_energy_policy_update_energy (void) {
                 module_surplus = 0;
                 energy_remaining.controller_energy_remaining += spill_over;
             } else {
+                printf("splitting %d spill between %d modules\n",spill_over,spill_elgible_count);
                 module_surplus = spill_over/spill_elgible_count;
             }
         }
@@ -323,6 +333,7 @@ void signpost_energy_policy_update_energy (void) {
     } else {
         //efficiency losses - we should probably also distribute those losses (or charge them to the controller?)
         energy_remaining.controller_energy_remaining -= battery_used - total_energy;
+        printf("No energy surplus\n");
     }
 }
 
