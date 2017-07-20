@@ -242,13 +242,22 @@ int xdot_send(uint8_t* buf, uint8_t len) {
     buf_to_hex_string(buf_str, len*2+1, buf, len);
 
     int ret = at_send(LORA_CONSOLE, "AT+send=");
-    if(ret < 0) return XDOT_ERROR;
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
 
     ret = at_send_buf(LORA_CONSOLE, (uint8_t*)buf_str,len*2);
-    if(ret < 0) return XDOT_ERROR;
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
 
     ret = at_send(LORA_CONSOLE, "\n");
-    if(ret < 0) return XDOT_ERROR;
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
 
     free(buf_str);
     return at_wait_for_response(LORA_CONSOLE,3,5000);
