@@ -61,7 +61,7 @@ uint32_t lora_last_packets_sent = 0;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
-uint8_t status_send_buf[20] = {0};
+uint8_t status_send_buf[50] = {0};
 
 //these structures for reporting energy to the controller
 signpost_energy_report_t energy_report;
@@ -233,7 +233,7 @@ static void timer_callback (
 
     //every minute put a status packet on the queue
     //also send an energy report to the controller
-    if(send_counter == 30) {
+    /*if(send_counter == 30) {
         //increment the sequence number
         status_send_buf[1]++;
         status_send_buf[2] = number_of_modules;
@@ -293,7 +293,7 @@ static void timer_callback (
         for(i = 0; i < NUMBER_OF_MODULES; i++) {
             module_packet_count[i] = 0;
         }
-    }
+    }*/
 }
 
 #ifndef APP_KEY
