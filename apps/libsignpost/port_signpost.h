@@ -74,7 +74,8 @@ int port_signpost_pps_read(void);
 
 //This function is used to setup a gpio interrupt
 //interrupt assumes pulled up, falling edge
-int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb);
+int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb);
+int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb);
 int port_signpost_mod_in_disable_interrupt(void);
 
 //This is a way to wait on a variable in a platform specific way

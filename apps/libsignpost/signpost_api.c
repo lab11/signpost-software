@@ -224,13 +224,18 @@ static void signpost_initialization_isolation_callback(int unused __attribute__ 
     request_isolation_complete = true;
 }
 
+static void signpost_initialization_lost_isolation_callback(int unused __attribute__ ((unused))) {
+    // reset state to request isolation if no longer isolated
+    init_state = RequestIsolation;
+}
+
 /**************************************/
 /* Initialization Helper Functions    */
 /**************************************/
 
 int signpost_initialization_request_isolation(void) {
     int rc;
-    rc = port_signpost_mod_in_enable_interrupt(signpost_initialization_isolation_callback);
+    rc = port_signpost_mod_in_enable_interrupt_falling(signpost_initialization_isolation_callback);
     if (rc != SB_PORT_SUCCESS) return rc;
 
     // Pull Mod_Out Low to signal controller
@@ -334,7 +339,7 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
     int ret = SB_PORT_SUCCESS;
 
-    printf("INIT: Initializing with module %d\n", signpost_api_addr_to_mod_num(source_address));
+    printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
     // init ecdh struct for key exchange
     mbedtls_ecdh_free(&ecdh);
     mbedtls_ecdh_init(&ecdh);
@@ -455,6 +460,10 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
               break;
             }
             // Now isolated with controller
+            // setup interrupt for change in isolated state
+            rc = port_signpost_mod_in_enable_interrupt_rising(signpost_initialization_lost_isolation_callback);
+            if (rc != SB_PORT_SUCCESS) return rc;
+
             // Now declare self to controller
             declare_controller_complete = false;
             rc = signpost_initialization_declare_controller();
@@ -486,6 +495,8 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             };
             break;
           case FinishExchange:
+            // Disable any existing interrupts, we have our key
+            port_signpost_mod_in_disable_interrupt();
             rc = signpost_initialization_key_exchange_finish();
             if (rc == SB_PORT_SUCCESS) {
               init_state = Done;
@@ -500,8 +511,9 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             port_signpost_mod_in_disable_interrupt();
             port_signpost_mod_out_set();
             port_signpost_debug_led_off();
-            SIGNBUS_DEBUG("complete\n");
-            return 0;
+
+            SIGNBUS_DEBUG("INIT: complete\n");
+            return SB_PORT_SUCCESS;
 
           default:
             break;
