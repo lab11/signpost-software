@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "CRC16.h"
@@ -26,9 +27,6 @@ static struct module_struct {
 } module_info = {.i2c_address_mods = {ModuleAddressController, ModuleAddressStorage, ModuleAddressRadio}};
 
 
-uint8_t* signpost_api_addr_to_key(uint8_t addr);
-int      signpost_api_addr_to_mod_num(uint8_t addr);
-
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
     for (size_t i = 0; i < NUM_MODULES; i++) {
@@ -52,6 +50,10 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
     }
     printf("WARN: Do not have module registered to address 0x%x\n", addr);
     return TOCK_FAIL;
+}
+
+uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
+    return appid & 0x00ff;
 }
 
 int signpost_api_error_reply(uint8_t destination_address,
@@ -835,11 +837,26 @@ static bool energy_query_ready;
 static int  energy_query_result;
 static signbus_app_callback_t* energy_cb = NULL;
 static signpost_energy_information_t* energy_cb_data = NULL;
+static bool energy_report_received;
+static int energy_report_result;
+
+static bool energy_reset_received;
+static int energy_reset_result;
 
 static void energy_query_sync_callback(int result) {
     SIGNBUS_DEBUG("result %d\n", result);
     energy_query_ready = true;
     energy_query_result = result;
+}
+
+static void signpost_energy_report_callback(int result) {
+    energy_report_result = result;
+    energy_report_received = true;
+}
+
+static void signpost_energy_reset_callback(int result) {
+    energy_reset_result = result;
+    energy_reset_received = true;
 }
 
 int signpost_energy_query(signpost_energy_information_t* energy) {
@@ -884,10 +901,12 @@ int signpost_energy_query_async(
         ) {
     if (incoming_active_callback != NULL) {
         // XXX: Consider multiplexing based on API
-        return -TOCK_EBUSY;
+        printf("ERROR: Energy query callback busy!\n");
+        return TOCK_EBUSY;
     }
     if (energy_cb != NULL) {
-        return -TOCK_EBUSY;
+        printf("ERROR: Energy query callback busy!\n");
+        return TOCK_EBUSY;
     }
     incoming_active_callback = energy_query_async_callback;
     energy_cb_data = energy;
@@ -897,9 +916,77 @@ int signpost_energy_query_async(
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
-    if (rc < 0) return rc;
+
+    // This properly catches the error if the send fails
+    // and allows for subsequent calls to query async to succeed
+    if (rc < 0) {
+        //abort the transaction
+        energy_cb_data = NULL;
+        incoming_active_callback = NULL;
+        energy_cb = NULL;
+        return rc;
+    };
 
     return TOCK_SUCCESS;
+}
+
+int signpost_energy_duty_cycle(uint32_t time_ms) {
+    return signpost_api_send(ModuleAddressController,
+            NotificationFrame, EnergyApiType, EnergyDutyCycleMessage,
+            sizeof(uint32_t), (uint8_t*)&time_ms);
+}
+
+int signpost_energy_report(signpost_energy_report_t* report) {
+    // Since we can take in a variable number of reports we
+    // should make a message buffer and pack the reports into it.
+    uint8_t reports_size = report->num_reports*sizeof(signpost_energy_report_module_t);
+    uint8_t report_buf_size = reports_size + 1;
+    uint8_t* report_buf = malloc(report_buf_size);
+    if(!report_buf) {
+        return TOCK_ENOMEM;
+    }
+
+    report_buf[0] = report->num_reports;
+    memcpy(report_buf,report->reports,reports_size);
+
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            report_buf_size, report_buf);
+    if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_report_callback;
+    energy_report_received = false;
+    yield_for(&energy_report_received);
+
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_report_result < 0) {
+        return TOCK_FAIL;
+    } else {
+        return *incoming_message;
+    }
+}
+
+int signpost_energy_reset(void) {
+
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyResetMessage,
+            0, NULL);
+    if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_reset_callback;
+    energy_reset_received = false;
+    yield_for(&energy_reset_received);
+
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_reset_result < 0) {
+        return TOCK_FAIL;
+    } else {
+        return *incoming_message;
+    }
 }
 
 int signpost_energy_query_reply(uint8_t destination_address,
@@ -907,6 +994,21 @@ int signpost_energy_query_reply(uint8_t destination_address,
     return signpost_api_send(destination_address,
             ResponseFrame, EnergyApiType, EnergyQueryMessage,
             sizeof(signpost_energy_information_t), (uint8_t*) info);
+}
+
+int signpost_energy_report_reply(uint8_t destination_address,
+                                             int return_code) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            sizeof(int), (uint8_t*)&return_code);
+}
+
+int signpost_energy_reset_reply(uint8_t destination_address, int return_code) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyResetMessage,
+            sizeof(int), (uint8_t*)&return_code);
 }
 
 /**************************************************************************/

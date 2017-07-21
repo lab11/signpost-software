@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "signbus_app_layer.h"
 #include "signbus_protocol_layer.h"
@@ -44,6 +45,10 @@ int signpost_api_send(uint8_t destination_address,
                       uint8_t message_type,
                       size_t message_length,
                       uint8_t* message);
+
+uint8_t* signpost_api_addr_to_key(uint8_t addr);
+int signpost_api_addr_to_mod_num(uint8_t addr);
+uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 
 /**************************************************************************/
 /* INITIALIZATION API                                                     */
@@ -263,21 +268,35 @@ int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t* r
 
 enum energy_message_type {
     EnergyQueryMessage = 0,
-    EnergyLevelWarning24hMessage = 1,
-    EnergyLevelCritical24hMessage = 2,
-    EnergyCurrentWarning60sMessage = 3,
+    EnergyResetMessage = 1,
+    EnergyReportModuleConsumptionMessage = 2,
+    EnergyDutyCycleMessage = 3,
 };
 
+//information sent to a module from the controller
 typedef struct __attribute__((packed)) energy_information {
-    uint32_t    energy_limit_24h_mJ;
-    uint32_t    energy_used_24h_mJ;
-    uint16_t    current_limit_60s_mA;
-    uint16_t    current_average_60s_mA;
+    uint32_t    energy_used_since_reset_mWh;
+    uint32_t    energy_limit_mWh;
+    uint32_t    time_since_reset_s;
     uint8_t     energy_limit_warning_threshold;
     uint8_t     energy_limit_critical_threshold;
 } signpost_energy_information_t;
 
 _Static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure size");
+
+//a mechanism for modules to report energy usage from other modules
+//For instance this allows the radio to tell the controller some
+//of its energy was used when providing a service to other modules
+typedef struct __attribute__((packed)) energy_report_module {
+    uint16_t application_id; //the application identifier that used the energy
+    uint32_t energy_used_mWh; //an integer number of the energy used in mWh
+} signpost_energy_report_module_t;
+
+//we make an array of them to report full usage
+typedef struct __attribute__((packed)) energy_report {
+    uint8_t num_reports;
+    signpost_energy_report_module_t* reports;
+} signpost_energy_report_t;
 
 // Query the controller for energy information
 //
@@ -285,6 +304,24 @@ _Static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure s
 //  energy  - an energy_information_t struct to fill
 __attribute__((warn_unused_result))
 int signpost_energy_query(signpost_energy_information_t* energy);
+
+// Reset the energy book-keeping for your module
+//
+// params: none
+__attribute__((warn_unused_result))
+int signpost_energy_reset(void);
+
+// Tell the controller to turn me off then on again in X time
+// params:
+//  time - time in milliseconds to turn on again
+int signpost_energy_duty_cycle(uint32_t time_ms);
+
+
+// Tell the controller about modules who have used energy
+// params: a struct of module addresses and energy percents of yours they have used
+// This will distribute energy since the last report to the modules that have used
+// that energy.
+int signpost_energy_report(signpost_energy_report_t* report);
 
 // Query the controller for energy information, asynchronously
 //
@@ -301,6 +338,14 @@ int signpost_energy_query_async(signpost_energy_information_t* energy, signbus_a
 //  info                -   energy information
 __attribute__((warn_unused_result))
 int signpost_energy_query_reply(uint8_t destination_address, signpost_energy_information_t* info);
+
+// Response from controller to requesting module
+// returns a signpost error define.
+int signpost_energy_report_reply(uint8_t destination_address, int return_code);
+
+// Response from controller to requesting module
+// returns a signpost error define.
+int signpost_energy_reset_reply(uint8_t destination_address, int return_code);
 
 /**************************************************************************/
 /* TIME & LOCATION API                                                    */
