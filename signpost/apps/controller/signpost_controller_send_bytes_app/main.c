@@ -10,7 +10,6 @@
 #include <timer.h>
 #include <tock.h>
 
-#include "app_watchdog.h"
 #include "controller.h"
 #include "fm25cl.h"
 #include "gpio_async.h"
@@ -23,24 +22,6 @@
 
 uint8_t gps_buf[20];
 uint8_t energy_buf[40];
-
-static void watchdog_tickler (int which) {
-  static bool gps_tickle = false;
-  static bool energy_tickle = false;
-
-  if (which == 1) {
-    gps_tickle = true;
-  } else {
-    energy_tickle = true;
-  }
-
-  if (gps_tickle && energy_tickle) {
-    app_watchdog_tickle_kernel();
-
-    gps_tickle = false;
-    energy_tickle = false;
-  }
-}
 
 static void send_gps_update (__attribute__((unused)) int now,
                                 __attribute__((unused)) int experation,
@@ -75,6 +56,7 @@ static void send_gps_update (__attribute__((unused)) int now,
   gps_buf[17] = time.satellite_count;
   int rc = signpost_networking_send_bytes(ModuleAddressRadio,gps_buf,18);
   if(rc < 0) printf("Error sending GPS packet\n");
+  else app_watchdog_tickler(WATCH_GPS);
   gps_buf[1]++;
 }
 
@@ -142,11 +124,9 @@ static void send_energy_update (__attribute__((unused)) int now,
   rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_buf,35);
   energy_buf[1]++;
 
-  if(rc >= 0) {
-    // Tickle the watchdog because something good happened.
-  }
+  if(rc < 0) printf("Error sending energy packet\n");
+  else app_watchdog_tickler(WATCH_ENERGY);
 
-  watchdog_tickler(2);
 }
 
 
@@ -168,11 +148,6 @@ int main (void) {
 
   gps_buf[0] = 0x02;
   gps_buf[1] = 0x00;
-
-  ////////////////////////////////////////////////
-  // Setup watchdog
-  app_watchdog_set_kernel_timeout(180000);
-  app_watchdog_start();
 
   printf("Everything intialized\n");
 

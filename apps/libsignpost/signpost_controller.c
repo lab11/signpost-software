@@ -1,3 +1,4 @@
+#include "app_watchdog.h"
 #include "signpost_controller.h"
 #include "signpost_energy_policy.h"
 #include "signpost_api.h"
@@ -48,6 +49,25 @@ typedef struct {
 uint8_t fm25cl_read_buf[256];
 uint8_t fm25cl_write_buf[256];
 controller_fram_t fram;
+
+
+void app_watchdog_tickler (watchdog_tickler_t which) {
+  static bool gps_tickle = false;
+  static bool energy_tickle = false;
+
+  if (which == WATCH_GPS) {
+    gps_tickle = true;
+  } else if (which == WATCH_ENERGY) {
+    energy_tickle = true;
+  }
+
+  if (gps_tickle && energy_tickle) {
+    app_watchdog_tickle_kernel();
+
+    gps_tickle = false;
+    energy_tickle = false;
+  }
+}
 
 static void enable_all_enabled_i2c(void) {
     for(uint8_t i = 0; i < 8; i++) {
@@ -471,6 +491,10 @@ static void signpost_controller_initialize_energy (void) {
 }
 
 int signpost_controller_init (void) {
+    // setup app watchdog
+    app_watchdog_set_kernel_timeout(180000);
+    app_watchdog_start();
+
     //configure FRAM
     printf("Configuring FRAM\n");
     fm25cl_set_read_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
