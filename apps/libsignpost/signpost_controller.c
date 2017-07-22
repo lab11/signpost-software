@@ -9,6 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 
+//watchdog enum
+#define NUM_WATCH_STATES 4
+static bool watchdog_states[NUM_WATCH_STATES] = {false};
+typedef enum {
+  WATCH_APP_TICKLE = 0,
+  WATCH_LIB_GPS,
+  WATCH_LIB_ENERGY,
+  WATCH_LIB_INIT,
+} watchdog_tickler_t;
+
 //module state struct
 typedef enum {
     ModuleEnabled = 0,
@@ -50,22 +60,16 @@ uint8_t fm25cl_read_buf[256];
 uint8_t fm25cl_write_buf[256];
 controller_fram_t fram;
 
+static void app_watchdog_combine (watchdog_tickler_t which) {
+  watchdog_states[(size_t)which] = true;
 
-void app_watchdog_tickler (watchdog_tickler_t which) {
-  static bool gps_tickle = false;
-  static bool energy_tickle = false;
-
-  if (which == WATCH_GPS) {
-    gps_tickle = true;
-  } else if (which == WATCH_ENERGY) {
-    energy_tickle = true;
+  bool all = true;
+  for (int i = 0; i < NUM_WATCH_STATES; i++) {
+    all = all && watchdog_states[i];
   }
-
-  if (gps_tickle && energy_tickle) {
+  if (all) {
     app_watchdog_tickle_kernel();
-
-    gps_tickle = false;
-    energy_tickle = false;
+    memset(watchdog_states, 0, NUM_WATCH_STATES*sizeof(watchdog_states[0]));
   }
 }
 
@@ -148,6 +152,9 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) int expiration,
                             __attribute__ ((unused)) int unused,
                             __attribute__ ((unused)) void* ud) {
+
+    //tickle watchdog
+    app_watchdog_combine(WATCH_LIB_INIT);
 
     if (mod_isolated_out < 0) {
         for (size_t i = 0; i < NUM_MOD_IO; i++) {
@@ -391,6 +398,9 @@ void signpost_controller_get_gps(signpost_timelocation_time_t* time,
 }
 
 static void gps_callback (gps_data_t* gps_data) {
+  //tickle watchdog
+  app_watchdog_combine(WATCH_LIB_GPS);
+
   // Save most recent GPS reading for anyone that wants location and time.
   // This isn't a great method for proving the TimeLocation API, but it's
   // pretty easy to do. We eventually need to reduce the sleep current of
@@ -434,6 +444,9 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) void* ud) {
 
     printf("Updating energy policy\n");
+    //tickle watchdog
+    app_watchdog_combine(WATCH_LIB_ENERGY);
+
     //run the update function
     signpost_energy_policy_update_energy();
 
@@ -488,6 +501,10 @@ static void signpost_controller_initialize_energy (void) {
 
       fm25cl_write_sync(0, sizeof(controller_fram_t));
     }
+}
+
+void app_watchdog_tickler(void) {
+  app_watchdog_combine(WATCH_APP_TICKLE);
 }
 
 int signpost_controller_init (void) {
