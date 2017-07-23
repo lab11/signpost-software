@@ -17,6 +17,8 @@ extern "C" {
 #define PIN_IDX_ISOLATE_I2C     1
 #define PIN_IDX_ISOLATE_USB     2
 
+#define PIN_WATCHDOG 15
+
 typedef enum {
     MODULE0 = 0,
     MODULE1 = 1,
