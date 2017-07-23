@@ -553,6 +553,8 @@ int signpost_controller_init (void) {
 
     // Setup backplane by enabling the modules
     controller_init_module_switches();
+    controller_all_modules_disable_power();
+    delay_ms(500);
     controller_all_modules_enable_power();
     controller_all_modules_enable_i2c();
     controller_all_modules_disable_usb();
