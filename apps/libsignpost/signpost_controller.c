@@ -10,12 +10,12 @@
 #include <string.h>
 
 //watchdog enum
-#define NUM_WATCH_STATES 4
+#define NUM_WATCH_STATES 3
 static bool watchdog_states[NUM_WATCH_STATES] = {false};
 typedef enum {
   WATCH_APP_TICKLE = 0,
   WATCH_LIB_GPS,
-  WATCH_LIB_ENERGY,
+  //WATCH_LIB_ENERGY,
   WATCH_LIB_INIT,
 } watchdog_tickler_t;
 
@@ -445,7 +445,8 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
     printf("Updating energy policy\n");
     //tickle watchdog
-    app_watchdog_combine(WATCH_LIB_ENERGY);
+    //this policy updates less frequently than the watchdog does TODO fix that
+    //app_watchdog_combine(WATCH_LIB_ENERGY);
 
     //run the update function
     signpost_energy_policy_update_energy();
