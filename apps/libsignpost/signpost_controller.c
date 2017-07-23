@@ -504,14 +504,23 @@ static void signpost_controller_initialize_energy (void) {
     }
 }
 
-void app_watchdog_tickler(void) {
+void signpost_controller_app_watchdog_tickle (void) {
   app_watchdog_combine(WATCH_APP_TICKLE);
+}
+
+void signpost_controller_hardware_watchdog_tickle (void) {
+    gpio_clear(PIN_WATCHDOG);
+    delay_ms(50);
+    gpio_set(PIN_WATCHDOG);
 }
 
 int signpost_controller_init (void) {
     // setup app watchdog
     app_watchdog_set_kernel_timeout(180000);
     app_watchdog_start();
+    // setup hardware watchdog
+    gpio_enable_output(PIN_WATCHDOG);
+    gpio_set(PIN_WATCHDOG);
 
     //configure FRAM
     printf("Configuring FRAM\n");
