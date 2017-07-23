@@ -165,6 +165,9 @@ unsafe fn set_pin_primary_functions() {
     PB[11].configure(None); // !CONTROLLER_LED
     PB[14].configure(None); // CONTROLLER_DEBUG_GPIO1
     PB[15].configure(None); // CONTROLLER_DEBUG_GPIO2
+
+    // Hardware Watchdog
+    PB[06].configure(None); // !WATCHDOG
 }
 
 /*******************************************************************************
@@ -528,7 +531,7 @@ pub unsafe fn reset_handler() {
     // Remaining GPIO pins
     //
     let gpio_pins = static_init!(
-        [&'static sam4l::gpio::GPIOPin; 15],
+        [&'static sam4l::gpio::GPIOPin; 16],
          [&sam4l::gpio::PA[04], // MOD0_IN
          &sam4l::gpio::PA[05],  // MOD1_IN
          &sam4l::gpio::PA[06],  // MOD2_IN
@@ -543,7 +546,8 @@ pub unsafe fn reset_handler() {
          &sam4l::gpio::PA[16],  // MOD5_OUT
          &sam4l::gpio::PA[17],  // MOD6_OUT
          &sam4l::gpio::PA[18],  // MOD7_OUT
-         &sam4l::gpio::PA[26]]  // !SMBALERT
+         &sam4l::gpio::PA[26],  // !SMBALERT
+         &sam4l::gpio::PB[06]]  // !WATCHDOG
     );
     let gpio = static_init!(
         capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
