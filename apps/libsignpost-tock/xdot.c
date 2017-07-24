@@ -241,7 +241,7 @@ int xdot_send(uint8_t* buf, uint8_t len) {
 
     buf_to_hex_string(buf_str, len*2+1, buf, len);
 
-    int ret = at_send(LORA_CONSOLE, "AT+send=");
+    int ret = at_send(LORA_CONSOLE, "AT+sendb=");
     if(ret < 0)  {
         free(buf_str);
         return XDOT_ERROR;
