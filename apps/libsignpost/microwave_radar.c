@@ -133,6 +133,15 @@ int mr_init(void) {
     return ret;
 }
 
+//this functionality isn't present in hardware yet
+int mr_disable(void) {
+    return -1;
+}
+
+int mr_enable(void) {
+    return -1;
+}
+
 //boolean is motion or not. compares motion index to threshold
 bool mr_is_motion(void) {
     return (mr_index > MOTION_THRESHOLD);

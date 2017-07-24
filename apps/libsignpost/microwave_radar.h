@@ -9,6 +9,14 @@ typedef void (sample_cb)(uint16_t);
 //initializes microwave radar and start sampling
 int mr_init(void);
 
+// disables microwave radar
+// not implemented in this version of the hardware
+int mr_disable(void);
+
+// enables microwave radar
+// not implemented in this version of the hardware
+int mr_enable(void);
+
 //boolean is motion or not. compares motion index to threshold
 bool mr_is_motion(void);
 
