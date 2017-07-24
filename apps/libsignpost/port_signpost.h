@@ -24,9 +24,10 @@ for each platform*/
 
 #define I2C_MAX_LEN 255
 #define PORT_PRINT_MAX_LEN 80
-
-#define PORT_SIGNPOST_ERROR -1
-#define PORT_SIGNPOST_I2C_WRITE_ERROR -2
+#define SHA256_LEN 32
+#define ECDH_KEY_LENGTH 32
+#define NUM_MODULES 8
+#define MOD_STATE_MAGIC 0xDEADBEEF
 
 //Error code definitions
 #define SB_PORT_SUCCESS       0
@@ -36,6 +37,16 @@ for each platform*/
 #define SB_PORT_ESIZE        -7
 #define SB_PORT_ENOMEM       -9
 #define SB_PORT_ENOACK       -13
+#define SB_PORT_EI2C_WRITE   -100
+
+typedef struct module_struct {
+    uint32_t                magic;
+    uint8_t                 i2c_address;
+    uint8_t                 i2c_address_mods[NUM_MODULES];
+    uint16_t                nonces[NUM_MODULES];
+    bool                    haskey[NUM_MODULES];
+    uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
+} module_state_t;
 
 // a context for the mbedtls prng
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
@@ -115,6 +126,18 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
  * This is usually implemented using vprintf and stdarg.h
  */
 int port_printf(const char *fmt, ...) __attribute__ ((format (gnu_printf, 1, 2)));
+
+/* port_signpost_save_state
+ * Save a struct to a nonvolatile storage
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_save_state(module_state_t* state);
+
+/* port_signpost_load_state
+ * Load a struct from nonvolatile storage
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_load_state(module_state_t* state);
 
 #ifdef __cplusplus
 }
