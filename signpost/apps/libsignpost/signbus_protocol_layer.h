@@ -7,9 +7,6 @@
 extern "C" {
 #endif
 
-#define SHA256_LEN 32
-#define ECDH_KEY_LENGTH 32
-
 /// Send a buffer through the protocol layer.
 /// The protocol layer will encrypt the payload using the provided
 /// ECDH_KEY_LENGTH key with AES256-CTR and HMAC. If no key is provided,
