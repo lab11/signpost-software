@@ -11,6 +11,7 @@
 #include "signpost_entropy.h"
 #include "timer.h"
 #include "tock.h"
+#include "app_state.h"
 
 #define MOD_OUT 0
 #define MOD_IN  1
@@ -20,6 +21,8 @@
 
 //All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
+
+APP_STATE_DECLARE(module_state_t, port_tock_module_state);
 
 static bool master_write_yield_flag = false;
 static int  master_write_len_or_rc = 0;
@@ -57,6 +60,7 @@ static uint8_t slave_read_buf[I2C_MAX_LEN];
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
     int rc;
+
     rc = i2c_master_slave_set_master_write_buffer(master_write_buf, I2C_MAX_LEN);
     if (rc < 0) return SB_PORT_FAIL;
     rc = i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
@@ -209,4 +213,16 @@ int port_printf(const char *fmt, ...) {
     int rc = vprintf(fmt, args);
     va_end(args);
     return rc;
+}
+
+int port_signpost_save_state(module_state_t* state) {
+  memcpy(&port_tock_module_state, state, sizeof(module_state_t));
+  if (app_state_save_sync() != TOCK_SUCCESS) return SB_PORT_FAIL;
+  return SB_PORT_SUCCESS;
+}
+
+int port_signpost_load_state(module_state_t* state) {
+  if (app_state_load_sync() != TOCK_SUCCESS) return SB_PORT_FAIL;
+  memcpy(state, &port_tock_module_state, sizeof(module_state_t));
+  return SB_PORT_SUCCESS;
 }

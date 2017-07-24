@@ -14,16 +14,12 @@
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
-static struct module_struct {
-    uint8_t                 i2c_address;
+struct module_api_struct {
     api_handler_t**         api_handlers;
     int8_t                  api_type_to_module_address[HighestApiType+1];
-    uint8_t                 i2c_address_mods[NUM_MODULES];
-    uint16_t                nonces[NUM_MODULES];
-    bool                    haskey[NUM_MODULES];
-    uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
-} module_info = {.i2c_address_mods = {ModuleAddressController, ModuleAddressStorage, ModuleAddressRadio}};
+} module_api = {0};
 
+static module_state_t module_info;
 
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
@@ -146,7 +142,7 @@ static void signpost_api_recv_callback(int len_or_rc) {
         }
     }
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
-        api_handler_t** handler = module_info.api_handlers;
+        api_handler_t** handler = module_api.api_handlers;
         while (*handler != NULL) {
             if ((*handler)->api_type == incoming_api_type) {
                 (*handler)->callback(incoming_source_address,
@@ -450,16 +446,16 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
 
     // Save module configuration
     module_info.i2c_address = i2c_address;
-    module_info.api_handlers = api_handlers;
+    module_api.api_handlers = api_handlers;
 
     // Populate the well-known API types with fixed addresses
-    module_info.api_type_to_module_address[InitializationApiType] = ModuleAddressController;
-    module_info.api_type_to_module_address[WatchdogApiType] = ModuleAddressController;
-    module_info.api_type_to_module_address[StorageApiType] = ModuleAddressStorage;
-    module_info.api_type_to_module_address[NetworkingApiType] = -1; /* not supported */
-    module_info.api_type_to_module_address[ProcessingApiType] = -1; /* not supported */
-    module_info.api_type_to_module_address[EnergyApiType] = ModuleAddressController;
-    module_info.api_type_to_module_address[TimeLocationApiType] = ModuleAddressController;
+    module_api.api_type_to_module_address[InitializationApiType] = ModuleAddressController;
+    module_api.api_type_to_module_address[WatchdogApiType] = ModuleAddressController;
+    module_api.api_type_to_module_address[StorageApiType] = ModuleAddressStorage;
+    module_api.api_type_to_module_address[NetworkingApiType] = -1; /* not supported */
+    module_api.api_type_to_module_address[ProcessingApiType] = -1; /* not supported */
+    module_api.api_type_to_module_address[EnergyApiType] = ModuleAddressController;
+    module_api.api_type_to_module_address[TimeLocationApiType] = ModuleAddressController;
 
     module_info.i2c_address_mods[3] = ModuleAddressController;
     module_info.i2c_address_mods[4] = ModuleAddressStorage;
@@ -498,9 +494,9 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
     while(1) {
         switch(init_state) {
           case CheckKeys:
-            // TODO Check for known modules and keys in flash. Flash doesn't
-            // work so just set to false for now
-            keys_exist = false;
+            // Load state
+            port_signpost_load_state(&module_info);
+            keys_exist = module_info.magic == MOD_STATE_MAGIC;
             if (keys_exist)
               // TODO Load keys and fill out module_info struct
               init_state = RegisterWithKeys;
@@ -599,6 +595,9 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             break;
           case Done:
+            // Save module state
+            port_signpost_save_state(&module_info);
+            // Completed Init
             port_signpost_mod_in_disable_interrupt();
             port_signpost_mod_out_set();
             port_signpost_debug_led_off();

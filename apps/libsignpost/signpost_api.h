@@ -10,8 +10,6 @@ extern "C" {
 #include "signbus_app_layer.h"
 #include "signbus_protocol_layer.h"
 
-#define NUM_MODULES 8
-
 typedef void (*signpost_api_callback_t)(uint8_t source_address,
         signbus_frame_type_t frame_type, signbus_api_type_t api_type, uint8_t message_type,
         size_t message_length, uint8_t* message);
