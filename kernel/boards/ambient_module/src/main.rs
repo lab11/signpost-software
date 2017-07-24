@@ -27,43 +27,17 @@ use sam4l::usart;
 pub mod io;
 pub mod version;
 
-unsafe fn load_processes() -> &'static mut [Option<kernel::process::Process<'static>>] {
-    extern "C" {
-        /// Beginning of the ROM region containing app images.
-        static _sapps: u8;
-    }
+// Number of concurrent processes this platform supports.
+const NUM_PROCS: usize = 2;
 
-    const NUM_PROCS: usize = 2;
+// How should the kernel respond when a process faults.
+const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
-    // how should the kernel respond when a process faults
-    const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
-    #[link_section = ".app_memory"]
-    static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
+#[link_section = ".app_memory"]
+static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
 
-    static mut PROCESSES: [Option<kernel::process::Process<'static>>; NUM_PROCS] = [None, None];
-
-    let mut apps_in_flash_ptr = &_sapps as *const u8;
-    let mut app_memory_ptr = APP_MEMORY.as_mut_ptr();
-    let mut app_memory_size = APP_MEMORY.len();
-    for i in 0..NUM_PROCS {
-        let (process, flash_offset, memory_offset) =
-            kernel::process::Process::create(apps_in_flash_ptr,
-                                             app_memory_ptr,
-                                             app_memory_size,
-                                             FAULT_RESPONSE);
-
-        if process.is_none() {
-            break;
-        }
-
-        PROCESSES[i] = process;
-        apps_in_flash_ptr = apps_in_flash_ptr.offset(flash_offset as isize);
-        app_memory_ptr = app_memory_ptr.offset(memory_offset as isize);
-        app_memory_size -= memory_offset;
-    }
-
-    &mut PROCESSES
-}
+// Actual memory for holding the active process structures.
+static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None];
 
 /*******************************************************************************
  * Setup this platform
@@ -392,5 +366,15 @@ pub unsafe fn reset_handler() {
            env!("CARGO_PKG_VERSION"),
            version::GIT_VERSION,
            );
-    kernel::main(&ambient_module, &mut chip, load_processes(), &ambient_module.ipc);
+
+    extern "C" {
+        /// Beginning of the ROM region containing app images.
+        static _sapps: u8;
+    }
+    kernel::process::load_processes(&_sapps as *const u8,
+                                    &mut APP_MEMORY,
+                                    &mut PROCESSES,
+                                    FAULT_RESPONSE);
+ 
+    kernel::main(&ambient_module, &mut chip, &mut PROCESSES, &ambient_module.ipc);
 }

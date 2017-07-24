@@ -120,7 +120,6 @@ typedef signed long         INT32;
 #endif // Types
 
 
-#define EOF                 -1
 #define BV(x)               (1<<(x))
 #define st(x)               do{x}while(0)
 
