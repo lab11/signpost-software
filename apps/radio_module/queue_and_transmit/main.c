@@ -54,6 +54,7 @@
 //make a queue of 30 deep
 #define QUEUE_SIZE 30
 uint8_t data_queue[QUEUE_SIZE][BUFFER_SIZE];
+uint8_t data_length[QUEUE_SIZE];
 uint8_t queue_head = 0;
 uint8_t queue_tail = 0;
 uint32_t lora_packets_sent = 1;
@@ -129,8 +130,10 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
         data_queue[queue_tail][0] = addr;
         if(len <= BUFFER_SIZE -1) {
             memcpy(data_queue[queue_tail]+1, buffer, len);
+            data_length[queue_tail] = len+1;
         } else {
             memcpy(data_queue[queue_tail]+1, buffer, BUFFER_SIZE-1);
+            data_length[queue_tail] = BUFFER_SIZE;
         }
         increment_queue_pointer(&queue_tail);
         return 0;
@@ -252,7 +255,7 @@ static void timer_callback (
 
         currently_sending = true;
         xdot_wake();
-        int status = xdot_send(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE);
+        int status = xdot_send(LoRa_send_buffer,data_length[queue_head]+ADDRESS_SIZE);
 
         //parse the HCI layer error codes
         if(status < 0) {
@@ -337,13 +340,13 @@ static void timer_callback (
 
         //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
-            status_send_buf[3+i*2] = queue_tail-queue_head;
+            status_send_buf[3+number_of_modules*2] = queue_tail-queue_head;
         } else {
-            status_send_buf[3+i*2] = QUEUE_SIZE-(queue_head-queue_tail);
+            status_send_buf[3+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
         }
 
         //put it in the send buffer
-        add_buffer_to_queue(0x22, status_send_buf, BUFFER_SIZE);
+        add_buffer_to_queue(0x22, status_send_buf, 3+number_of_modules*2+1);
 
         //reset send_counter
         send_counter = 0;
