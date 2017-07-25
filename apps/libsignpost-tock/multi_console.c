@@ -42,7 +42,7 @@ int console_read_with_timeout(int console_num, uint8_t* buf, size_t max_len, uin
     int ret = allow(console_num, 0, (void*)buf, max_len);
     if(ret < 0) return ret;
 
-    console_callback_struct c;
+    static console_callback_struct c;
     c.fired = false;
     ret = subscribe(console_num, 2, console_callback, &c);
     if(ret < 0) return ret;
