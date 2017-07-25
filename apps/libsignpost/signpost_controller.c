@@ -299,10 +299,22 @@ static void energy_api_callback(uint8_t source_address,
 
         //first we should get the message and unpack it
         signpost_energy_report_t report;
-        memcpy(&report, message, message_length);
+        report.num_reports = message[0];
+
+        //allocate memory for the reports
+        signpost_energy_report_module_t* reps = malloc(report.num_reports*sizeof(signpost_energy_report_module_t));
+        if(!reps) {
+            printf("Error no memory for reports!\n");
+            signpost_energy_report_reply(source_address, 0);
+        }
+        memcpy(reps, message+1, report.num_reports*sizeof(signpost_energy_report_module_t));
+        report.reports = reps;
 
         //now send the report to the energy
+        printf("Sending energy report to energy policy handler\n");
         signpost_energy_policy_update_energy_from_report(signpost_api_addr_to_mod_num(source_address), &report);
+
+        free(reps);
 
         //reply to the report
         signpost_energy_report_reply(source_address, 1);
