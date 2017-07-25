@@ -1132,6 +1132,8 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     energy_report_received = false;
     yield_for(&energy_report_received);
 
+    free(report_buf);
+
     // There is an integer in the incoming message that should be
     // sent back as the return code.
     if(energy_report_result < 0) {
