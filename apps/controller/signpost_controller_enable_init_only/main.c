@@ -183,9 +183,9 @@ int main (void) {
     // always check for modules that need to be initialized
     check_module_initialization();
 
-    delay_ms(100);
-
     app_watchdog_tickle_kernel();
+
+    delay_ms(1000);
   }
 }
 

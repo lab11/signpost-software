@@ -20,22 +20,17 @@ uint8_t txbuf[32] = {0};
 #define _U __attribute__ ((unused))
 
 static void print_measurements (int temp, int humi, int pres, int ligh) {
-  char buf[256];
-  putstr("[Ambient] Got Measurements\n");
+  printf("[Ambient] Got Measurements\n");
 
   // Temperature and Humidity
-  sprintf(buf, "  Temp(%d 1/100 degrees C) [0x%X]\n", temp, temp);
-  putstr(buf);
-  sprintf(buf, "  Humi(%d 0.01%%) [0x%X]\n", humi, humi);
-  putstr(buf);
+  printf("  Temp(%d 1/100 degrees C) [0x%X]\n", temp, temp);
+  printf("  Humi(%d 0.01%%) [0x%X]\n", humi, humi);
 
   // Print the pressure value
-  sprintf(buf, "  Pressure(%d ubar) [0x%X]\n", pres, pres);
-  putstr(buf);
+  printf("  Pressure(%d ubar) [0x%X]\n", pres, pres);
 
   // Light
-  sprintf(buf, "  Light(%d) [0x%X]\n", ligh, ligh);
-  putstr(buf);
+  printf("  Light(%d) [0x%X]\n", ligh, ligh);
 }
 
 static void sample_and_send (void) {
@@ -66,9 +61,7 @@ static void sample_and_send (void) {
     app_watchdog_tickle_kernel();
     led_toggle(0);
   } else {
-    char buf[256];
-    sprintf(buf, "I2C Write: %i\n", result);
-    putstr(buf);
+    printf("I2C Write: %i\n", result);
   }
 }
 
@@ -77,7 +70,7 @@ static void timer_callback (int callback_type _U, int pin_value _U, int unused _
 }
 
 int main (void) {
-  putstr("[Ambient] Measure and Report\n");
+  printf("[Ambient] Measure and Report\n");
 
   // Setup I2C TX buffer
   txbuf[0] = 0x32; // My address

@@ -249,7 +249,7 @@ static void timer_callback (
 }
 
 int main (void) {
-    putstr("[Microwave Radar] Start\n");
+    printf("[Microwave Radar] Start\n");
 
     // initialize LED
     gpio_enable_output(LED_PIN);

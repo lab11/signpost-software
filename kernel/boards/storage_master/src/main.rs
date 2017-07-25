@@ -28,44 +28,17 @@ use sam4l::usart;
 pub mod io;
 pub mod version;
 
+// Number of concurrent processes this platform supports.
+const NUM_PROCS: usize = 2;
 
-unsafe fn load_processes() -> &'static mut [Option<kernel::process::Process<'static>>] {
-    extern "C" {
-        /// Beginning of the ROM region containing app images.
-        static _sapps: u8;
-    }
+// How should the kernel respond when a process faults.
+const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
-    const NUM_PROCS: usize = 2;
+#[link_section = ".app_memory"]
+static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
 
-    // how should the kernel respond when a process faults
-    const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
-    #[link_section = ".app_memory"]
-    static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
-
-    static mut PROCESSES: [Option<kernel::process::Process<'static>>; NUM_PROCS] = [None, None];
-
-    let mut apps_in_flash_ptr = &_sapps as *const u8;
-    let mut app_memory_ptr = APP_MEMORY.as_mut_ptr();
-    let mut app_memory_size = APP_MEMORY.len();
-    for i in 0..NUM_PROCS {
-        let (process, flash_offset, memory_offset) =
-            kernel::process::Process::create(apps_in_flash_ptr,
-                                             app_memory_ptr,
-                                             app_memory_size,
-                                             FAULT_RESPONSE);
-
-        if process.is_none() {
-            break;
-        }
-
-        PROCESSES[i] = process;
-        apps_in_flash_ptr = apps_in_flash_ptr.offset(flash_offset as isize);
-        app_memory_ptr = app_memory_ptr.offset(memory_offset as isize);
-        app_memory_size -= memory_offset;
-    }
-
-    &mut PROCESSES
-}
+// Actual memory for holding the active process structures.
+static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None];
 
 /*******************************************************************************
  * Setup this platform
@@ -79,6 +52,7 @@ struct SignpostStorageMaster {
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     sdcard: &'static capsules::sdcard::SDCardDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
+    app_flash: &'static capsules::app_flash_driver::AppFlash<'static>,
     ipc: kernel::ipc::IPC,
 }
 
@@ -95,6 +69,7 @@ impl Platform for SignpostStorageMaster {
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
             15 => f(Some(self.sdcard)),
+            30 => f(Some(self.app_flash)),
 
             0xff => f(Some(&self.ipc)),
             _ => f(None)
@@ -177,7 +152,7 @@ unsafe fn set_pin_primary_functions() {
     PA[05].enable_output();
     PA[06].configure(None); // LINUX_ENABLE_POWER
     PA[06].enable();
-    PA[06].set();
+    PA[06].clear();
     PA[06].enable_output();
 
     // I2C: Modules - TWIMS0
@@ -192,6 +167,12 @@ unsafe fn set_pin_primary_functions() {
     PA[07].configure(None); // !STORAGE_LED
     PB[04].configure(None); // STORAGE_DEBUG_GPIO1
     PB[05].configure(None); // STORAGE_DEBUG_GPIO2
+
+    // Backplane RESET
+    PB[15].configure(None);
+    PB[15].enable();
+    PB[15].set();
+    PB[15].enable_output();
 }
 
 /*******************************************************************************
@@ -203,8 +184,10 @@ pub unsafe fn reset_handler() {
     sam4l::init();
 
     // Setup clock
-    //sam4l::pm::setup_system_clock(sam4l::pm::SystemClockSource::ExternalOscillator, 16000000);
-    sam4l::pm::setup_system_clock(sam4l::pm::SystemClockSource::ExternalOscillatorPll, 48000000);
+    sam4l::pm::PM.setup_system_clock(sam4l::pm::SystemClockSource::PllExternalOscillatorAt48MHz {
+        frequency: sam4l::pm::OscillatorFrequency::Frequency16MHz,
+        startup_mode: sam4l::pm::OscillatorStartup::SlowStart,
+    });
 
     // Source 32Khz and 1Khz clocks from RC23K (SAM4L Datasheet 11.6.8)
     sam4l::bpm::set_ck32source(sam4l::bpm::CK32Source::RC32K);
@@ -242,6 +225,24 @@ pub unsafe fn reset_handler() {
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
             capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
     sam4l::trng::TRNG.set_client(rng);
+
+    // Nonvolatile Pages
+    pub static mut PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+    let nv_to_page = static_init!(
+        capsules::nonvolatile_to_pages::NonvolatileToPages<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
+            &mut sam4l::flashcalw::FLASH_CONTROLLER,
+            &mut PAGEBUFFER));
+    hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, nv_to_page);
+
+    // App Flash
+    pub static mut APP_FLASH_BUFFER: [u8; 512] = [0; 512];
+    let app_flash = static_init!(
+        capsules::app_flash_driver::AppFlash<'static>,
+        capsules::app_flash_driver::AppFlash::new(nv_to_page,
+            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(nv_to_page, app_flash);
+    sam4l::flashcalw::FLASH_CONTROLLER.configure();
 
     //
     // I2C Buses
@@ -288,13 +289,10 @@ pub unsafe fn reset_handler() {
     //
     // Remaining GPIO pins
     //
-    // Note: We're setting two fake GPIO pins to start off with. Currently,
-    // signpost_api_init does some GPIO toggling and assumes what these pins
-    // are, previously much to the dismay of the edison...
     let gpio_pins = static_init!(
         [&'static sam4l::gpio::GPIOPin; 5],
-        [&sam4l::gpio::PB[14], // Fake MOD_IN for init
-         &sam4l::gpio::PB[15], // Fake MOD_OUT for init
+        [&sam4l::gpio::PB[03], // Fake MOD_IN for init
+         &sam4l::gpio::PB[01], // Fake MOD_OUT for init
          &sam4l::gpio::PA[05], // EDISON_PWRBTN
          &sam4l::gpio::PA[06], // LINUX_ENABLE_POWER
          &sam4l::gpio::PA[21]] // SD_ENABLE
@@ -334,6 +332,7 @@ pub unsafe fn reset_handler() {
         i2c_master_slave: i2c_modules,
         sdcard: sdcard_driver,
         rng: rng,
+        app_flash: app_flash,
         ipc: kernel::ipc::IPC::new(),
     };
 
@@ -352,5 +351,15 @@ pub unsafe fn reset_handler() {
            env!("CARGO_PKG_VERSION"),
            version::GIT_VERSION,
            );
-    kernel::main(&signpost_storage_master, &mut chip, load_processes(), &signpost_storage_master.ipc);
+
+    extern "C" {
+        /// Beginning of the ROM region containing app images.
+        static _sapps: u8;
+    }
+    kernel::process::load_processes(&_sapps as *const u8,
+                                    &mut APP_MEMORY,
+                                    &mut PROCESSES,
+                                    FAULT_RESPONSE);
+
+    kernel::main(&signpost_storage_master, &mut chip, &mut PROCESSES, &signpost_storage_master.ipc);
 }

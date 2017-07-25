@@ -18,6 +18,7 @@ int main (void) {
     bool enc;
     int rc;
 
+   	printf("init");
     signbus_io_init(0x25);
     i2c_master_slave_listen();
 
@@ -28,7 +29,8 @@ int main (void) {
 
     //a short message
     delay_ms(1000);
-    rc = signbus_io_send(0x19, 0, data, 25);
+   	printf("sending short message..");
+    rc = signbus_io_send(0x21, 0, data, 25);
     if (rc < 0) {
         printf("%d: signbus_io_send error %d\n", __LINE__, rc);
     }
@@ -39,21 +41,24 @@ int main (void) {
 
     //a longer message
     delay_ms(1000);
-    rc = signbus_io_send(0x19, 0, data, 1024);
+   	printf("sending a longer message..");
+    rc = signbus_io_send(0x21, 0, data, 1024);
     if (rc < 0) {
         printf("%d: signbus_io_send error %d\n", __LINE__, rc);
     }
 
     //a message that hits a data limit (single packet)
     delay_ms(1000);
-    rc = signbus_io_send(0x19, 0, data, 247);
+   	printf("sending a longerer message..");
+    rc = signbus_io_send(0x21, 0, data, 247);
     if (rc < 0) {
         printf("%d: signbus_io_send error %d\n", __LINE__, rc);
     }
 
     //a message that hits a data limit (>1 packet)
     delay_ms(1000);
-    rc = signbus_io_send(0x19, 0, data, 494);
+   	printf("sending the longest message..");
+    rc = signbus_io_send(0x21, 0, data, 494);
     if (rc < 0) {
         printf("%d: signbus_io_send error %d\n", __LINE__, rc);
     }
