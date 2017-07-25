@@ -238,7 +238,7 @@ static void duty_cycle_timer_cb( __attribute__ ((unused)) int now,
 
 static void energy_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-    uint8_t message_type, size_t message_length, uint8_t* message) {
+    uint8_t message_type, __attribute__((unused)) size_t message_length, uint8_t* message) {
 
   printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
 
