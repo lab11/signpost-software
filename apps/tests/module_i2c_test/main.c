@@ -34,7 +34,6 @@ static void i2c_master_slave_callback (
     //static int addend = 1;
     printf("Test I2C\n");
 }
-/*
 int main(void) {
     printf("Test I2C\n");
 
@@ -48,13 +47,13 @@ int main(void) {
 //    i2c_master_slave_set_slave_read_buffer(slave_read_buf, 256);
 //    i2c_master_slave_set_slave_write_buffer(slave_write_buf, 256);
 
-    i2c_master_slave_set_slave_address(0x07);
+    i2c_master_slave_set_slave_address(0x21);
 
     //i2c_master_slave_listen();
 
 
     while(1) {
-    	printf("Test I2C\n");
+    	printf("Sending..\n");
         master_write_buf[0] = 0x8;
         master_write_buf[1] = 0xb6;
         master_write_buf[2] = 0x91;
@@ -71,7 +70,7 @@ int main(void) {
         delay_ms(500);
     }
 }
-*/
+/*
 int main(void) {
     printf("Test I2C\n");
 
@@ -93,3 +92,4 @@ int main(void) {
 
 	while(1) {}
 }
+*/
