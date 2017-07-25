@@ -232,6 +232,8 @@ pub unsafe fn reset_handler() {
         capsules::app_flash_driver::AppFlash<'static>,
         capsules::app_flash_driver::AppFlash::new(nv_to_page,
             kernel::Container::create(), &mut APP_FLASH_BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(nv_to_page, app_flash);
+    sam4l::flashcalw::FLASH_CONTROLLER.configure();
 
     //
     // App Watchdog
