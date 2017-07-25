@@ -1044,7 +1044,8 @@ int signpost_energy_query(signpost_energy_information_t* energy) {
         }
     }
 
-    port_signpost_wait_for(&energy_query_ready);
+    int ret = port_signpost_wait_for_with_timeout(&energy_query_ready, 10000);
+    if(ret < 0) return SB_PORT_FAIL;
 
     return energy_query_result;
 }
@@ -1130,9 +1131,12 @@ int signpost_energy_report(signpost_energy_report_t* report) {
 
     incoming_active_callback = signpost_energy_report_callback;
     energy_report_received = false;
-    yield_for(&energy_report_received);
-
+    rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
     free(report_buf);
+    if(rc < 0) {
+        return SB_PORT_FAIL;
+    }
+
 
     // There is an integer in the incoming message that should be
     // sent back as the return code.
@@ -1153,12 +1157,13 @@ int signpost_energy_reset(void) {
 
     incoming_active_callback = signpost_energy_reset_callback;
     energy_reset_received = false;
-    yield_for(&energy_reset_received);
+    rc = port_signpost_wait_for_with_timeout(&energy_reset_received,10000);
+    if(rc < 0) return SB_PORT_FAIL;
 
     // There is an integer in the incoming message that should be
     // sent back as the return code.
     if(energy_reset_result < 0) {
-        return TOCK_FAIL;
+        return SB_PORT_FAIL;
     } else {
         return *incoming_message;
     }
