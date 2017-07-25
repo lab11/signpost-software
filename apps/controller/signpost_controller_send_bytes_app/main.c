@@ -30,6 +30,8 @@ static void send_gps_update (__attribute__((unused)) int now,
 
   signpost_timelocation_time_t time;
   signpost_timelocation_location_t location;
+
+  printf("Getting time location\n");
   signpost_controller_get_gps(&time,&location);
 
   gps_buf[2] = time.day;
@@ -54,6 +56,7 @@ static void send_gps_update (__attribute__((unused)) int now,
     gps_buf[16] = 0x01;
   }
   gps_buf[17] = time.satellite_count;
+  printf("Sending GPS packet\n");
   int rc = signpost_networking_send_bytes(ModuleAddressRadio,gps_buf,18);
   if(rc < 0) printf("Error sending GPS packet\n");
   else {
@@ -124,6 +127,7 @@ static void send_energy_update (__attribute__((unused)) int now,
   energy_buf[34] = (((rem.module_energy_remaining[7]/1000) & 0xFF));
 
   int rc;
+  printf("Sending energy update packet\n");
   rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_buf,35);
   energy_buf[1]++;
 
