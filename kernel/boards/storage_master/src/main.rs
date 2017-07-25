@@ -52,6 +52,7 @@ struct SignpostStorageMaster {
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     sdcard: &'static capsules::sdcard::SDCardDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
+    app_flash: &'static capsules::app_flash_driver::AppFlash<'static>,
     ipc: kernel::ipc::IPC,
 }
 
@@ -68,6 +69,7 @@ impl Platform for SignpostStorageMaster {
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
             15 => f(Some(self.sdcard)),
+            30 => f(Some(self.app_flash)),
 
             0xff => f(Some(&self.ipc)),
             _ => f(None)
@@ -224,6 +226,22 @@ pub unsafe fn reset_handler() {
             capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
     sam4l::trng::TRNG.set_client(rng);
 
+    // Nonvolatile Pages
+    pub static mut PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+    let nv_to_page = static_init!(
+        capsules::nonvolatile_to_pages::NonvolatileToPages<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
+            &mut sam4l::flashcalw::FLASH_CONTROLLER,
+            &mut PAGEBUFFER));
+    hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, nv_to_page);
+
+    // App Flash
+    pub static mut APP_FLASH_BUFFER: [u8; 512] = [0; 512];
+    let app_flash = static_init!(
+        capsules::app_flash_driver::AppFlash<'static>,
+        capsules::app_flash_driver::AppFlash::new(nv_to_page,
+            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+
     //
     // I2C Buses
     //
@@ -312,6 +330,7 @@ pub unsafe fn reset_handler() {
         i2c_master_slave: i2c_modules,
         sdcard: sdcard_driver,
         rng: rng,
+        app_flash: app_flash,
         ipc: kernel::ipc::IPC::new(),
     };
 
@@ -339,6 +358,6 @@ pub unsafe fn reset_handler() {
                                     &mut APP_MEMORY,
                                     &mut PROCESSES,
                                     FAULT_RESPONSE);
- 
+
     kernel::main(&signpost_storage_master, &mut chip, &mut PROCESSES, &signpost_storage_master.ipc);
 }
