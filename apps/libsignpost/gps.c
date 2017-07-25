@@ -87,19 +87,20 @@ static void gps_tx_callback (
 }
 
 static int gps_send_msg (const char* msg) {
-    static char msg_buffer[50] = {0};
+
+    static char msg_buffer[60] = {0};
 
     // create message buffer
     message_sent = false;
-    sprintf(msg_buffer, "%s%02X\r\n", msg, minmea_checksum(msg));
+    snprintf(msg_buffer, 60, "%s%02X\r\n", msg, minmea_checksum(msg));
 
-    int ret = allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strlen(msg_buffer));
+    int ret = allow(DRIVER_NUM_GPS, 1, (void*)msg_buffer, strnlen(msg_buffer,60));
     if(ret < 0) return ret;
     ret = subscribe(DRIVER_NUM_GPS, 1, gps_tx_callback, NULL);
     if(ret < 0) return ret;
 
     yield_for(&message_sent);
-    
+
     return TOCK_SUCCESS;
 }
 

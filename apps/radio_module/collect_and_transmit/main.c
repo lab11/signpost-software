@@ -71,7 +71,7 @@ static void lora_rx_callback(uint8_t* payload __attribute__ ((unused)),
                         uint8_t len __attribute__ ((unused)),
                         TRadioFlags flag __attribute__ ((unused))) {
     //this should never happen because I'm not receiving
-//    putstr("Lora received a message?\n");
+//    printf("Lora received a message?\n");
 }
 
 static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
@@ -80,7 +80,7 @@ static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
     if(status == DEVMGMT_STATUS_OK) {
         lora_packets_sent++;
     } else {
-        putstr("Lora error, resetting...");
+        printf("Lora error, resetting...");
         //app_watchdog_reset_app();
     }
 }
@@ -216,7 +216,7 @@ void ble_address_set(void) {
 
 void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //this has to be here too
-    putstr("ble error, resetting...");
+    printf("ble error, resetting...");
     //app_watchdog_reset_app();
 }
 
@@ -246,7 +246,7 @@ static void timer_callback (
         //before we send this packet, make sure the last one completed
         if(lora_last_packets_sent == lora_packets_sent) {
             //error
-            putstr("lora error! Reseting..\n");
+            printf("lora error! Reseting..\n");
             //app_watchdog_reset_app();
         } else {
             lora_last_packets_sent = lora_packets_sent;
@@ -268,7 +268,7 @@ static void timer_callback (
         //parse the HCI layer error codes
         if(status != 0) {
             //error
-            putstr("lora error! Resetting...\n");
+            printf("lora error! Resetting...\n");
             //app_watchdog_reset_app();
         }
     }

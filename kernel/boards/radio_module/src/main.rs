@@ -30,44 +30,17 @@ use sam4l::usart;
 pub mod io;
 pub mod version;
 
+// Number of concurrent processes this platform supports.
+const NUM_PROCS: usize = 2;
 
-unsafe fn load_processes() -> &'static mut [Option<kernel::process::Process<'static>>] {
-    extern "C" {
-        /// Beginning of the ROM region containing app images.
-        static _sapps: u8;
-    }
+// How should the kernel respond when a process faults.
+const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
 
-    const NUM_PROCS: usize = 2;
+#[link_section = ".app_memory"]
+static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
 
-    // how should the kernel respond when a process faults
-    const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
-    #[link_section = ".app_memory"]
-    static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
-
-    static mut PROCESSES: [Option<kernel::process::Process<'static>>; NUM_PROCS] = [None, None];
-
-    let mut apps_in_flash_ptr = &_sapps as *const u8;
-    let mut app_memory_ptr = APP_MEMORY.as_mut_ptr();
-    let mut app_memory_size = APP_MEMORY.len();
-    for i in 0..NUM_PROCS {
-        let (process, flash_offset, memory_offset) =
-            kernel::process::Process::create(apps_in_flash_ptr,
-                                             app_memory_ptr,
-                                             app_memory_size,
-                                             FAULT_RESPONSE);
-
-        if process.is_none() {
-            break;
-        }
-
-        PROCESSES[i] = process;
-        apps_in_flash_ptr = apps_in_flash_ptr.offset(flash_offset as isize);
-        app_memory_ptr = app_memory_ptr.offset(memory_offset as isize);
-        app_memory_size -= memory_offset;
-    }
-
-    &mut PROCESSES
-}
+// Actual memory for holding the active process structures.
+static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None];
 
 /*******************************************************************************
  * Setup this platform
@@ -84,6 +57,7 @@ struct RadioModule {
     nrf51822: &'static Nrf51822Serialization<'static, usart::USART>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
+    app_flash: &'static capsules::app_flash_driver::AppFlash<'static>,
     ipc: kernel::ipc::IPC,
 }
 
@@ -100,6 +74,7 @@ impl Platform for RadioModule {
             8 => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
+            30 => f(Some(self.app_flash)),
 
             108 => f(Some(self.app_watchdog)),
             109 => f(Some(self.lora_console)),
@@ -133,7 +108,7 @@ unsafe fn set_pin_primary_functions() {
     PB[14].configure(Some(C));  //sda for smbus
     PB[15].configure(Some(C));  //scl for smbus
 
-    
+
     PA[04].configure(None);     //DBG GPIO1
     PA[05].configure(None);     //DBG GPIO2
     PA[06].configure(None);     //XDOT Power Gate
@@ -169,7 +144,10 @@ unsafe fn set_pin_primary_functions() {
 pub unsafe fn reset_handler() {
     sam4l::init();
 
-    sam4l::pm::setup_system_clock(sam4l::pm::SystemClockSource::ExternalOscillator, 16000000);
+    sam4l::pm::PM.setup_system_clock(sam4l::pm::SystemClockSource::ExternalOscillator {
+        frequency: sam4l::pm::OscillatorFrequency::Frequency16MHz,
+        startup_mode: sam4l::pm::OscillatorStartup::SlowStart,
+    });
 
     // Source 32Khz and 1Khz clocks from RC23K (SAM4L Datasheet 11.6.8)
     sam4l::bpm::set_ck32source(sam4l::bpm::CK32Source::RC32K);
@@ -211,7 +189,7 @@ pub unsafe fn reset_handler() {
                     kernel::Container::create()));
     hil::uart::UART::set_client(&usart::USART0, three_g_console);
 
-        
+
 
     let nrf_serialization = static_init!(
         Nrf51822Serialization<usart::USART>,
@@ -243,6 +221,24 @@ pub unsafe fn reset_handler() {
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
             capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
     sam4l::trng::TRNG.set_client(rng);
+
+    // Nonvolatile Pages
+    pub static mut PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+    let nv_to_page = static_init!(
+        capsules::nonvolatile_to_pages::NonvolatileToPages<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
+            &mut sam4l::flashcalw::FLASH_CONTROLLER,
+            &mut PAGEBUFFER));
+    hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, nv_to_page);
+
+    // App Flash
+    pub static mut APP_FLASH_BUFFER: [u8; 512] = [0; 512];
+    let app_flash = static_init!(
+        capsules::app_flash_driver::AppFlash<'static>,
+        capsules::app_flash_driver::AppFlash::new(nv_to_page,
+            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(nv_to_page, app_flash);
+    sam4l::flashcalw::FLASH_CONTROLLER.configure();
 
     //
     // I2C Buses
@@ -351,6 +347,7 @@ pub unsafe fn reset_handler() {
         nrf51822:nrf_serialization,
         app_watchdog: app_watchdog,
         rng: rng,
+        app_flash: app_flash,
         ipc: kernel::ipc::IPC::new(),
     };
 
@@ -399,5 +396,15 @@ pub unsafe fn reset_handler() {
            env!("CARGO_PKG_VERSION"),
            version::GIT_VERSION,
            );
-    kernel::main(&radio_module, &mut chip, load_processes(), &radio_module.ipc);
+
+    extern "C" {
+        /// Beginning of the ROM region containing app images.
+        static _sapps: u8;
+    }
+    kernel::process::load_processes(&_sapps as *const u8,
+                                    &mut APP_MEMORY,
+                                    &mut PROCESSES,
+                                    FAULT_RESPONSE);
+
+    kernel::main(&radio_module, &mut chip, &mut PROCESSES, &radio_module.ipc);
 }

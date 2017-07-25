@@ -5,6 +5,7 @@
 const uint8_t MOD_OUTS[NUM_MOD_IO] =  {MOD0_OUT,
                                        MOD1_OUT,
                                        MOD2_OUT,
+                                       STORAGE_OUT,
                                        MOD5_OUT,
                                        MOD6_OUT,
                                        MOD7_OUT};
@@ -12,6 +13,7 @@ const uint8_t MOD_OUTS[NUM_MOD_IO] =  {MOD0_OUT,
 const uint8_t MOD_INS[NUM_MOD_IO] =   {MOD0_IN,
                                        MOD1_IN,
                                        MOD2_IN,
+                                       STORAGE_IN,
                                        MOD5_IN,
                                        MOD6_IN,
                                        MOD7_IN};
@@ -49,6 +51,8 @@ module_num_t MODOUT_pin_to_mod_name (GPIO_Pin_enum pin) {
             return MODULE1;
         case MOD2_OUT:
             return MODULE2;
+        case STORAGE_OUT:
+            return STORAGE;
         case MOD5_OUT:
             return MODULE5;
         case MOD6_OUT:
@@ -69,6 +73,8 @@ module_num_t MODIN_pin_to_mod_name (GPIO_Pin_enum pin) {
             return MODULE1;
         case MOD2_IN:
             return MODULE2;
+        case STORAGE_IN:
+            return STORAGE;
         case MOD5_IN:
             return MODULE5;
         case MOD6_IN:
@@ -88,6 +94,8 @@ GPIO_Pin_enum mod_name_to_MODOUT_pin (module_num_t module) {
             return MOD1_OUT;
         case MODULE2:
             return MOD2_OUT;
+        case STORAGE:
+            return STORAGE_OUT;
         case MODULE5:
             return MOD5_OUT;
         case MODULE6:
@@ -108,6 +116,8 @@ GPIO_Pin_enum mod_name_to_MODIN_pin (module_num_t module) {
             return MOD1_IN;
         case MODULE2:
             return MOD2_IN;
+        case STORAGE:
+            return STORAGE_IN;
         case MODULE5:
             return MOD5_IN;
         case MODULE6:
@@ -124,6 +134,7 @@ void controller_gpio_set_all (void) {
     gpio_set(MOD0_IN);
     gpio_set(MOD1_IN);
     gpio_set(MOD2_IN);
+    gpio_set(STORAGE_IN);
     gpio_set(MOD5_IN);
     gpio_set(MOD6_IN);
     gpio_set(MOD7_IN);
@@ -133,6 +144,7 @@ void controller_gpio_clear_all (void) {
     gpio_clear(MOD0_IN);
     gpio_clear(MOD1_IN);
     gpio_clear(MOD2_IN);
+    gpio_set(STORAGE_IN);
     gpio_clear(MOD5_IN);
     gpio_clear(MOD6_IN);
     gpio_clear(MOD7_IN);
