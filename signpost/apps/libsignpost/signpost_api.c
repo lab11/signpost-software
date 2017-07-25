@@ -465,6 +465,8 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     module_info.i2c_address_mods[3] = ModuleAddressController;
     module_info.i2c_address_mods[4] = ModuleAddressStorage;
 
+    module_info.magic = MOD_STATE_MAGIC;
+
     return SB_PORT_SUCCESS;
 }
 
@@ -482,6 +484,7 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
 int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
     int rc;
     bool keys_exist;
+    module_state_t check_state;
 
     rc = signpost_initialization_common(i2c_address, api_handlers);
     if (rc < SB_PORT_SUCCESS) return rc;
@@ -500,12 +503,16 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
         switch(init_state) {
           case CheckKeys:
             // Load state
-            port_signpost_load_state(&module_info);
-            keys_exist = module_info.magic == MOD_STATE_MAGIC;
-            if (keys_exist)
+            //port_signpost_load_state(&check_state);
+            keys_exist = false;//check_state.magic == MOD_STATE_MAGIC;
+            if (keys_exist) {
               // TODO Load keys and fill out module_info struct
               init_state = RegisterWithKeys;
-            else init_state = RequestIsolation;
+              memcpy(&module_info, &check_state, sizeof(module_state_t));
+            }
+            else {
+              init_state = RequestIsolation;
+            }
             break;
           case RegisterWithKeys:
             for(int i = 0; i < NUM_MODULES; i++) {
@@ -531,6 +538,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             else init_state = Done;
             break;
           case RequestIsolation:
+            printf("INIT: Requested I2C isolation with controller\n");
             request_isolation_complete = false;
             rc = signpost_initialization_request_isolation();
             if (rc != SB_PORT_SUCCESS) {
@@ -601,7 +609,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             break;
           case Done:
             // Save module state
-            port_signpost_save_state(&module_info);
+            //port_signpost_save_state(&module_info);
             // Completed Init
             port_signpost_mod_in_disable_interrupt();
             port_signpost_mod_out_set();
