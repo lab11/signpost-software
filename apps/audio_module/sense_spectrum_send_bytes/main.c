@@ -103,7 +103,6 @@ static void adc_callback (
 
         i = 0;
         still_sampling = true;
-        printf("cycled\n");
 
     } else {
 
