@@ -14,23 +14,23 @@ extern "C" {
 // Get just the filename, no path
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-//#define SIGNBUS_DEBUG(...)
+#define SIGNBUS_DEBUG(...)
 
-#define SIGNBUS_DEBUG(...) do {\
-    port_printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
-    port_printf(__VA_ARGS__);\
-    } while (0)
+// #define SIGNBUS_DEBUG(...) do {\
+//     port_printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
+//     port_printf(__VA_ARGS__);\
+//    } while (0)
 
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen)
-/*
-#define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen) do {\
-    port_printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
-    for (size_t _i = 0; _i < _buflen; _i++) {\
-        port_printf("%02x", (unsigned)*(_buf+_i));\
-    }\
-    port_printf("\n");\
+
+// #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen) do {\
+//     port_printf("SBDBG %24s:%04d %s(%d,%x)=", __FILENAME__, __LINE__, #_buf, _buflen, _buflen);\
+//     for (size_t _i = 0; _i < _buflen; _i++) {\
+//         port_printf("%02x", (unsigned)*(_buf+_i));\
+//     }\
+//     port_printf("\n");\
 } while (0)
-*/
+
 
 
 //this is the first i2c messaging library!
