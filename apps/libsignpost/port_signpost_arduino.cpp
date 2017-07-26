@@ -48,28 +48,8 @@ int port_signpost_init(uint8_t i2c_address) {
 	pinMode(ARDUINO_MOD_IN, INPUT);
 	pinMode(ARDUINO_MOD_OUT, OUTPUT);
 	pinMode(DEBUG_LED, OUTPUT);
-	pinMode(ARDUINO_DEBUG_1, OUTPUT);
-	pinMode(ARDUINO_DEBUG_2, OUTPUT);
-	pinMode(ARDUINO_DEBUG_3, OUTPUT);
-	pinMode(ARDUINO_DEBUG_4, OUTPUT);
 	Wire.onReceive(slave_listen_callback_helper);
 	Wire.onRequest(slave_read_callback_helper);
-
-	//DEBUG
-	digitalWrite(ARDUINO_DEBUG_1, LOW);
-	digitalWrite(ARDUINO_DEBUG_2, LOW);
-	digitalWrite(ARDUINO_DEBUG_3, LOW);
-	digitalWrite(ARDUINO_DEBUG_4, LOW);
-	port_signpost_delay_ms(3);
-	digitalWrite(ARDUINO_DEBUG_1, HIGH);
-	digitalWrite(ARDUINO_DEBUG_2, HIGH);
-	digitalWrite(ARDUINO_DEBUG_3, HIGH);
-	digitalWrite(ARDUINO_DEBUG_4, HIGH);
-	port_signpost_delay_ms(3);
-	digitalWrite(ARDUINO_DEBUG_1, LOW);
-	digitalWrite(ARDUINO_DEBUG_2, LOW);
-	digitalWrite(ARDUINO_DEBUG_3, LOW);
-	digitalWrite(ARDUINO_DEBUG_4, LOW);
 	return 0;
 }
 
@@ -187,8 +167,6 @@ static void mod_in_callback_helper() {
 }
 //TODO: Add condition for overflow of g_slave_receive_buf
 static void slave_listen_callback_helper(int num_bytes) {
-	//digitalWrite(ARDUINO_DEBUG_1, HIGH);
-	// digitalWrite(ARDUINO_DEBUG_2, HIGH);
 	//If no callback is assigned, return
 	if (g_slave_listen_callback == NULL) {
 		return;
@@ -197,14 +175,12 @@ static void slave_listen_callback_helper(int num_bytes) {
 	if (g_slave_receive_buf == NULL) {
 		return;
 	}
-	// digitalWrite(ARDUINO_DEBUG_2, LOW);
 	//Transfer data from read buffer in Wire object to g_slave_receive_buf, then call custom callback
 	for (uint32_t i = 0; i < num_bytes && i < g_slave_receive_buf_max_len; ++i, ++g_slave_receive_buf_len) {
 		g_slave_receive_buf[g_slave_receive_buf_len] = Wire.read();
 	}
 	//SIGNBUS_DEBUG_DUMP_BUF(g_slave_receive_buf, g_slave_receive_buf_len);
 	(*(g_slave_listen_callback)) (num_bytes);
-	//digitalWrite(ARDUINO_DEBUG_1, LOW);
 }
 //callback untested
 static void slave_read_callback_helper() {
