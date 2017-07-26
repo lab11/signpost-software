@@ -133,7 +133,6 @@ static void signpost_api_start_new_async_recv(void) {
 
 static void signpost_api_recv_callback(int len_or_rc) {
     SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
-
     if (len_or_rc < 0) {
         if (len_or_rc == -94) {
             // These return codes are a hack
@@ -145,7 +144,6 @@ static void signpost_api_recv_callback(int len_or_rc) {
             return;
         }
     }
-
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
         api_handler_t** handler = module_info.api_handlers;
         while (*handler != NULL) {
@@ -296,7 +294,6 @@ static int signpost_initialization_key_exchange_finish(void) {
     return 0;
 }
 
-<<<<<<< HEAD
 int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
     printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
@@ -320,16 +317,6 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     if (signpost_api_send(destination_address, CommandFrame, InitializationApiType,
             InitializationKeyExchange, ecdh_param_len, ecdh_buf) > 0) {
       return SB_PORT_SUCCESS;
-=======
-static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
-    // debounce interrupt
-    //port_printf("ASYNC: Entered isolation callback\n\r");
-    port_signpost_delay_ms(50);
-    // are we supposed to be isolated?
-    if(port_signpost_mod_in_read() != 0) {
-    //    port_printf("WARN: spurious interrupt when not waiting for isolation\n");
-      return;
->>>>>>> Fixed i2c slave receive issue
     }
     else return SB_PORT_FAIL;
 }

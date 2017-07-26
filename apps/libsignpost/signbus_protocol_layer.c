@@ -275,7 +275,7 @@ static void protocol_async_callback(int len_or_rc) {
     if (len_or_rc < 0) return cb_data.cb(len_or_rc);
 
     uint8_t* key = (cb_data.addr_to_key == NULL || !cb_data.encrypted) ? NULL : cb_data.addr_to_key(*cb_data.sender_address);
-    SIGNBUS_DEBUG("encrypted: %d key: %p", cb_data.encrypted, key);
+    SIGNBUS_DEBUG("encrypted: %d key: %p\n", cb_data.encrypted, key);
 
     len_or_rc = protocol_encrypted_buffer_received(key,
             async_buf, len_or_rc,
