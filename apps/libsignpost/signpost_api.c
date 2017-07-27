@@ -47,7 +47,7 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
 }
 
 uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
-    return appid & 0x00ff;
+    return signpost_api_addr_to_mod_num(appid);
 }
 
 int signpost_api_error_reply(uint8_t destination_address,
@@ -1121,7 +1121,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     }
 
     report_buf[0] = report->num_reports;
-    memcpy(report_buf,report->reports,reports_size);
+    memcpy(report_buf+1,report->reports,reports_size);
 
     int rc;
     rc = signpost_api_send(ModuleAddressController,
