@@ -56,7 +56,7 @@ int signpost_api_send(uint8_t destination_address,
 #endif
 
 typedef enum initialization_state {
-    Wait = 0,
+    RequestIsolation = 0,
     Isolated,
     KeyExchange,
     FinishExchange,

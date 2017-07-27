@@ -218,7 +218,7 @@ static void signpost_initialization_key_exchange_callback(int len_or_rc) {
 }
 
 static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
-    if (init_state != Wait) return;
+    if (init_state != RequestIsolation) return;
     // update state and flip waiting variable
     init_state = Isolated;
     request_isolation_complete = true;
@@ -438,7 +438,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
     while(1) {
         switch(init_state) {
-          case Wait:
+          case RequestIsolation:
             request_isolation_complete = false;
             rc = signpost_initialization_request_isolation();
             if (rc != SB_PORT_SUCCESS) {
@@ -448,7 +448,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
             if (rc == SB_PORT_FAIL) {
               printf("INIT: Timed out waiting for controller isolation\n");
-              init_state = Wait;
+              init_state = RequestIsolation;
             };
 
             break;
@@ -456,7 +456,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             // check that mod_in is still low after delay
             port_signpost_delay_ms(50);
             if(port_signpost_mod_in_read() != 0) {
-              init_state = Wait;
+              init_state = RequestIsolation;
               break;
             }
             // Now isolated with controller
@@ -474,7 +474,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
             if (rc == SB_PORT_FAIL) {
               printf("INIT: Timed out waiting for controller declare response\n");
-              init_state = Wait;
+              init_state = RequestIsolation;
             };
 
             break;
@@ -485,13 +485,13 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             if (rc != SB_PORT_SUCCESS) {
               // if key exchange send failed for some reason, restart from the
               // beginning
-              init_state = Wait;
+              init_state = RequestIsolation;
             }
 
             rc = port_signpost_wait_for_with_timeout(&key_send_complete, 5000);
             if (rc == SB_PORT_FAIL) {
               printf("INIT: Timed out waiting for controller key exchange response\n");
-              init_state = Wait;
+              init_state = RequestIsolation;
             };
             break;
           case FinishExchange:
@@ -503,7 +503,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             } else {
               // if key exchange failed for some reason, restart from the
               // beginning
-              init_state = Wait;
+              init_state = RequestIsolation;
             }
 
             break;
