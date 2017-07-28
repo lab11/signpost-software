@@ -28,6 +28,7 @@
 #include "gpio.h"
 #include "RadioDefs.h"
 #include "CRC16.h"
+#include "led.h"
 
 //definitions for the ble
 #define DEVICE_NAME "Signpost"
@@ -195,8 +196,14 @@ static int track_failures(bool fail) {
 
     if(fail) {
         fail_counter++;
+        led_on(2);
+        delay_ms(5);
+        led_off(2);
     } else {
         fail_counter = 0;
+        led_on(3);
+        delay_ms(5);
+        led_off(3);
     }
 
     if(fail_counter == 20) {
@@ -404,6 +411,7 @@ int main (void) {
     //I did it last because as soon as we init we will start getting callbacks
     //those callbacks depend on the setup above
     int rc;
+
 
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
     static api_handler_t* handlers[] = {&networking_handler,NULL};
