@@ -1,13 +1,11 @@
 #include <stdbool.h>
-//#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include "CRC16.h"
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "port_signpost.h"
-
-#include "error_codes.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
