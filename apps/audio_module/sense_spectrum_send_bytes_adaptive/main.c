@@ -197,10 +197,10 @@ int main (void) {
     } while (rc < 0);
 
     //now use this to calculate the time we should be on and off
-    float on_percent = (e.energy_limit_mWh/9900.0);
+    float on_percent = (e.energy_limit_uWh/9900.0);
     float adjustment = 0;
-    if(((e.energy_used_since_reset_mWh/3600.0)/e.time_since_reset_s) > 1) {
-        adjustment = (e.energy_limit_mWh/(float)((e.energy_used_since_reset_mWh/3600.0)/e.time_since_reset_s)) - 48;
+    if(((e.energy_used_since_reset_uWh/3600.0)/e.time_since_reset_s) > 1) {
+        adjustment = (e.energy_limit_uWh/(float)((e.energy_used_since_reset_uWh/3600.0)/e.time_since_reset_s)) - 48;
     }
 
     if(adjustment > 20) adjustment = 20;

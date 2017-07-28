@@ -288,8 +288,8 @@ enum energy_message_type {
 
 //information sent to a module from the controller
 typedef struct __attribute__((packed)) energy_information {
-    uint32_t    energy_used_since_reset_mWh;
-    uint32_t    energy_limit_mWh;
+    uint32_t    energy_used_since_reset_uWh;
+    uint32_t    energy_limit_uWh;
     uint32_t    time_since_reset_s;
     uint8_t     energy_limit_warning_threshold;
     uint8_t     energy_limit_critical_threshold;
@@ -306,7 +306,7 @@ _Static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure s
 //of its energy was used when providing a service to other modules
 typedef struct __attribute__((packed)) energy_report_module {
     uint16_t application_id; //the application identifier that used the energy
-    uint32_t energy_used_mWh; //an integer number of the energy used in mWh
+    uint32_t energy_used_uWh; //an integer number of the energy used in uWh
 } signpost_energy_report_module_t;
 
 //we make an array of them to report full usage

@@ -103,10 +103,16 @@ static void send_energy_update (__attribute__((unused)) int now,
   energy_buf[18] = ((battery_full & 0xFF));
 
   signpost_energy_remaining_t rem;
+  printf("/**************************************/\n");
   rem.controller_energy_remaining = signpost_energy_policy_get_controller_energy_remaining_uwh();
+  printf("\tController Energy Remaining: %d uWh\n",rem.controller_energy_remaining);
   for(uint8_t i = 0; i < 8; i++) {
+    if(i == 3 || i ==4) continue;
+
     rem.module_energy_remaining[i] = signpost_energy_policy_get_module_energy_remaining_uwh(i);
+    printf("\t\tModule %d Energy Remaining: %d uWh\n",i,rem.module_energy_remaining[i]);
   }
+  printf("/**************************************/\n");
 
   //send this data to the radio module
   energy_buf[19] = (((rem.module_energy_remaining[0]/1000) & 0xFF00) >> 8 );
