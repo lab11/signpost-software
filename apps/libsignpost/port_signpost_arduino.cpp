@@ -5,10 +5,6 @@
 #include "signbus_io_interface.h"
 #include "port_signpost.h"
 
-//TODO: Verify/test multi-master support
-
-//TODO: choose mod in, mod out, and debug led pins for arduino
-
 //Current values are defined for the Arduino MKRZero
 #define ARDUINO_MOD_IN 			4
 #define ARDUINO_MOD_OUT 		5
