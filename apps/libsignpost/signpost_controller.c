@@ -281,11 +281,11 @@ static void energy_api_callback(uint8_t source_address,
 
       int mod_num = signpost_api_addr_to_mod_num(source_address);
 
-      info.energy_limit_mWh = (int)(signpost_energy_policy_get_module_energy_remaining_uwh(mod_num)/1000.0);
-      info.energy_used_since_reset_mWh = (int)(signpost_energy_policy_get_module_energy_used_uwh(mod_num)/1000.0);
+      info.energy_limit_uWh = (int)(signpost_energy_policy_get_module_energy_remaining_uwh(mod_num));
+      info.energy_used_since_reset_uWh = (int)(signpost_energy_policy_get_module_energy_used_uwh(mod_num));
       info.time_since_reset_s = (int)(signpost_energy_policy_get_time_since_module_reset_ms(mod_num)/1000.0);
-      info.energy_limit_warning_threshold = (info.energy_limit_mWh < 1000);
-      info.energy_limit_critical_threshold = (info.energy_limit_mWh < 200);
+      info.energy_limit_warning_threshold = (info.energy_limit_uWh < 1000000);
+      info.energy_limit_critical_threshold = (info.energy_limit_uWh < 200000);
 
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
@@ -492,7 +492,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A8000B;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A800CC;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");

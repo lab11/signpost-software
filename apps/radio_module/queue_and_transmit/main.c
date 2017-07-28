@@ -306,13 +306,13 @@ static void timer_callback (
         int rc = signpost_energy_query(&info);
         if(rc < 0) printf("ERROR: Energy query failed\n");
 
-        printf("Used %lu mWh since last reset\n",info.energy_used_since_reset_mWh);
+        printf("Used %lu uWh since last reset\n",info.energy_used_since_reset_uWh);
         //now figure out the percentages for each module
         for(i = 0; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
-                reps[i].energy_used_mWh =
-                        (uint32_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_mWh);
-                printf("Module %d used %lu mWh since last reset\n",module_num_map[i],reps[i].energy_used_mWh);
+                reps[i].energy_used_uWh =
+                        (uint32_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_uWh);
+                printf("Module %d used %lu uWh since last reset\n",module_num_map[i],reps[i].energy_used_uWh);
             } else {
                 break;
             }
