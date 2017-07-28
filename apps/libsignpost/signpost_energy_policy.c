@@ -111,19 +111,26 @@ int signpost_energy_policy_get_module_energy_used_uwh (int module_num) {
 // They also reset the energy used timers
 ///////////////////////////////////////////////////////////////
 void signpost_energy_policy_reset_controller_energy_used (void) {
-    energy_used.controller_energy_used = 0;
+    int energy = signpost_energy_get_controller_energy_uwh();
+    energy_used.controller_energy_used = -1*energy;
     time_since_reset.controller_time_since_reset = 0;
     energy_reset_start_time.controller_energy_reset_start_time = alarm_read();
 }
 
 void signpost_energy_policy_reset_linux_energy_used (void) {
-    energy_used.linux_energy_used = 0;
+    int energy = signpost_energy_get_linux_energy_uwh();
+    //this is a bit odd but it works
+    //essentially we dont' want to reset the real counters yet
+    //and used is virtual_used + counter
+    //if we reset to virtual_used = -counter then when we read used it will be 0
+    energy_used.linux_energy_used = -1*energy;
     time_since_reset.linux_time_since_reset = 0;
     energy_reset_start_time.linux_energy_reset_start_time = alarm_read();
 }
 
 void signpost_energy_policy_reset_module_energy_used (int module_num) {
-    energy_used.module_energy_used[module_num] = 0;
+    int energy = signpost_energy_get_module_energy_uwh(module_num);
+    energy_used.module_energy_used[module_num] = -1*energy;
     time_since_reset.module_time_since_reset[module_num] = 0;
     energy_reset_start_time.module_energy_reset_start_time[module_num] = alarm_read();
 }
@@ -212,9 +219,11 @@ void signpost_energy_policy_update_energy (void) {
     //now let's read all the coulomb counters
     int total_energy = 0;
     int linux_energy = signpost_energy_get_linux_energy_uwh();
+    printf("Linux used %d uWh\n",linux_energy);
     total_energy += linux_energy;
 
     int controller_energy = signpost_energy_get_controller_energy_uwh();
+    printf("Controller used %d uWh\n",controller_energy);
     total_energy += controller_energy;
 
     int module_energy[8];
@@ -224,10 +233,12 @@ void signpost_energy_policy_update_energy (void) {
 
         } else {
             module_energy[i] = signpost_energy_get_module_energy_uwh(i);
+            printf("Module %d used %d uWh\n",i,module_energy[i]);
             total_energy += module_energy[i];
         }
     }
     battery_energy_remaining = signpost_energy_get_battery_energy_uwh();
+    printf("Battery has %d uWh energy\n",battery_energy_remaining);
     //reset all of the coulomb counters so we can use them next time
     signpost_energy_reset_all_energy();
 
@@ -235,12 +246,15 @@ void signpost_energy_policy_update_energy (void) {
     // Update energy used fields by adding these energies
     ///////////////////////////////////////////////////////////////////
     energy_used.controller_energy_used += controller_energy;
+    printf("Controller has used %d uWh energy since reset\n",energy_used.controller_energy_used);
     energy_used.linux_energy_used += linux_energy;
+    printf("Linux has used %d uWh energy since reset\n",energy_used.linux_energy_used);
     for(uint8_t i = 0; i < 8; i++) {
         if(i == 3 || i == 4) {
 
         } else {
             energy_used.module_energy_used[i] += module_energy[i];
+            printf("Module %d has used %d uWh energy since reset\n",i,energy_used.module_energy_used[i]);
         }
     }
 
@@ -248,12 +262,15 @@ void signpost_energy_policy_update_energy (void) {
     // Update energy remaining fields by subtracting these energies
     ///////////////////////////////////////////////////////////////////
     energy_remaining.controller_energy_remaining -= controller_energy;
+    printf("Controller has %d uWh energy remaining\n",energy_remaining.controller_energy_remaining);
     energy_remaining.controller_energy_remaining -= linux_energy;
+    printf("Controller has %d uWh energy remaining\n",energy_remaining.controller_energy_remaining);
     for(uint8_t i = 0; i < 8; i++) {
         if(i == 3 || i == 4) {
 
         } else {
             energy_remaining.module_energy_remaining[i] -= module_energy[i];
+            printf("Module %d has %d uWh energy remaining\n",i,energy_remaining.module_energy_remaining[i]);
         }
     }
 
@@ -266,6 +283,7 @@ void signpost_energy_policy_update_energy (void) {
     // Calculate the amount of energy we have used and harvested
     ////////////////////////////////////////////////////////////////////
     int battery_used = battery_last_energy_remaining-battery_energy_remaining;
+    printf("Battery used %d uWh energy\n",battery_used);
     battery_last_energy_remaining = battery_energy_remaining;
 
     //theoretically battery_used = total_energy - solar_energy
@@ -339,21 +357,33 @@ void signpost_energy_policy_update_energy (void) {
 
 void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot, signpost_energy_report_t* report) {
     uint8_t num_reports = report->num_reports;
+    printf("Received %d reports from source module %d\n",num_reports, source_module_slot);
     for(uint8_t j = 0; j < num_reports; j++) {
         uint8_t mod_num = signpost_api_appid_to_mod_num(report->reports[j].application_id);
+        printf("Usage Report for mod %02X in slot %d:\n",report->reports[j].application_id,mod_num);
         //take the energy since last report, add/subtract it from all the totals
         if(mod_num == 3) {
-            energy_remaining.controller_energy_remaining -= (int)(report->reports[j].energy_used_mWh*1000);
-            energy_used.controller_energy_used += (int)(report->reports[j].energy_used_mWh*1000);
+            printf("\tUsed %lu uWh\n",report->reports[j].energy_used_uWh);
+            printf("\t\t%d uWh was remaining\n",energy_remaining.controller_energy_remaining);
+            energy_remaining.controller_energy_remaining -= (int)(report->reports[j].energy_used_uWh);
+            energy_used.controller_energy_used += (int)(report->reports[j].energy_used_uWh);
+            printf("\t\t%d uWh now remaining\n", energy_remaining.controller_energy_remaining);
 
-            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_mWh*1000);
-            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_mWh*1000);
+            printf("\tSource module %d had %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
+            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_uWh);
+            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
+            printf("\tSource module %d now has %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
         } else {
-            energy_remaining.module_energy_remaining[mod_num] -= (int)(report->reports[j].energy_used_mWh*1000);
-            energy_used.module_energy_used[mod_num] += (int)(report->reports[j].energy_used_mWh*1000);
+            printf("\tUsed %lu uWh\n",report->reports[j].energy_used_uWh);
+            printf("\t%d uWh was remaining\n",energy_remaining.module_energy_remaining[mod_num]);
+            energy_remaining.module_energy_remaining[mod_num] -= (int)(report->reports[j].energy_used_uWh);
+            energy_used.module_energy_used[mod_num] += (int)(report->reports[j].energy_used_uWh);
+            printf("\t%d uWh now emaining\n", energy_remaining.module_energy_remaining[mod_num]);
 
-            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_mWh*1000);
-            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_mWh*1000);
+            printf("\tSource module %d had %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
+            energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_uWh);
+            energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
+            printf("\tSource module %d now has %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
         }
     }
 }
