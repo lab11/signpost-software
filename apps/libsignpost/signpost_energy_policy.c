@@ -95,15 +95,30 @@ int signpost_energy_policy_get_battery_energy_remaining_uwh (void) {
 ////////////////////////////////////////////////////////////////
 
 int signpost_energy_policy_get_controller_energy_used_uwh (void) {
-    return (energy_used.controller_energy_used + signpost_energy_get_controller_energy_uwh());
+    int energy = (energy_used.controller_energy_used + signpost_energy_get_controller_energy_uwh());
+    if(energy < 0) {
+        return 0;
+    } else {
+        return energy;
+    }
 }
 
 int signpost_energy_policy_get_linux_energy_used_uwh (void) {
-    return (energy_used.linux_energy_used + signpost_energy_get_linux_energy_uwh());
+    int energy = (energy_used.linux_energy_used + signpost_energy_get_linux_energy_uwh());
+    if(energy < 0) {
+        return 0;
+    } else {
+        return energy;
+    }
 }
 
 int signpost_energy_policy_get_module_energy_used_uwh (int module_num) {
-    return (energy_used.module_energy_used[module_num] + signpost_energy_get_module_energy_uwh(module_num));
+    int energy = (energy_used.module_energy_used[module_num] + signpost_energy_get_module_energy_uwh(module_num));
+    if(energy < 0) {
+        return 0;
+    } else {
+        return energy;
+    }
 }
 
 ////////////////////////////////////////////////////////////////
