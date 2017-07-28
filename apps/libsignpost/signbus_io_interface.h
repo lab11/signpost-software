@@ -15,20 +15,11 @@ extern "C" {
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define SIGNBUS_DEBUG(...)
-<<<<<<< HEAD
 
 // #define SIGNBUS_DEBUG(...) do {\
 //     port_printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
 //     port_printf(__VA_ARGS__);\
 //    } while (0)
-
-=======
-
-// #define SIGNBUS_DEBUG(...) do {\
-//     port_printf("SBDBG %24s:%30s: %04d: ", __FILENAME__, __func__, __LINE__);\
-//     port_printf(__VA_ARGS__);\
-//    } while (0)
->>>>>>> Fixed issue with port_signpost_wait_for
 
 #define SIGNBUS_DEBUG_DUMP_BUF(_buf, _buflen)
 
