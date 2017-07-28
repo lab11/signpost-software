@@ -419,12 +419,12 @@ pub unsafe fn reset_handler() {
     //fix the rts line
     /*sam4l::gpio::PB[06].enable();
     sam4l::gpio::PB[06].enable_output();
-    sam4l::gpio::PB[06].clear();
+    sam4l::gpio::PB[06].clear();*/
 
     //turn off gsm power
     sam4l::gpio::PA[07].enable();
     sam4l::gpio::PA[07].enable_output();
-    sam4l::gpio::PA[07].set();*/
+    sam4l::gpio::PA[07].set();
 
     //clear gsm cts
     sam4l::gpio::PA[08].enable();
