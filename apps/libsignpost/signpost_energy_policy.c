@@ -14,11 +14,15 @@
 /////////////////////////////////////////////////////
 signpost_energy_remaining_t energy_remaining;
 signpost_energy_used_t energy_used;
+signpost_energy_average_t energy_average;
+signpost_energy_average_t virtual_energy_average;
 signpost_energy_time_since_reset_t time_since_reset;
 signpost_energy_reset_start_time_t energy_reset_start_time;
 
 static int battery_last_energy_remaining = 0;
 static int battery_energy_remaining;
+
+static uint32_t last_energy_update_time = 0;
 
 #define BATTERY_CAPACITY 9000000*11.1
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
@@ -62,6 +66,16 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
         memcpy(&time_since_reset,time,sizeof(signpost_energy_time_since_reset_t));
     }
 
+    //zero the average energies
+    energy_average.controller_energy_average = 0;
+    virtual_energy_average.controller_energy_average = 0;
+    energy_average.linux_energy_average = 0;
+    virtual_energy_average.linux_energy_average = 0;
+    for(uint8_t i =0; i < 8; i++) {
+        energy_average.module_energy_average[i] = 0;
+        virtual_energy_average.module_energy_average[i] = 0;
+    }
+
     //configure the coulomb counters
     signpost_energy_init_ltc2943();
 
@@ -71,6 +85,9 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
     //read the battery now so that the first interation works
     int bat = signpost_energy_get_battery_energy_uwh();
     battery_last_energy_remaining = bat;
+
+    //start the timer
+    last_energy_update_time = alarm_read();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -121,6 +138,19 @@ int signpost_energy_policy_get_module_energy_used_uwh (int module_num) {
     }
 }
 
+/////////////////////////////////////////////////////////////////
+// These functions return average energy over the update period
+/////////////////////////////////////////////////////////////////
+int signpost_energy_policy_get_controller_energy_average_uw (void) {
+    return energy_average.controller_energy_average;
+}
+int signpost_energy_policy_get_linux_energy_average_uw (void) {
+    return energy_average.linux_energy_average;
+}
+int signpost_energy_policy_get_module_energy_average_uw (int module_num) {
+    return energy_average.module_energy_average[module_num];
+}
+
 ////////////////////////////////////////////////////////////////
 // These functions reset the energy used counters
 // They also reset the energy used timers
@@ -153,6 +183,21 @@ void signpost_energy_policy_reset_module_energy_used (int module_num) {
 /////////////////////////////////////////////////////////////////////
 // These functions return the time on the timers
 /////////////////////////////////////////////////////////////////////
+
+static int calc_time_since_last_time_ms(uint32_t last_time) {
+    //calculate ms since last update
+    uint32_t alarm_freq = alarm_internal_frequency();
+    uint32_t now = alarm_read();
+    uint32_t ms;
+    if(now < last_time) {
+        ms = (uint32_t)(((((UINT32_MAX - last_time) + now)*1.0)/alarm_freq)*1000);
+    } else {
+        ms = (uint32_t)((((now - last_time)*1.0)/alarm_freq)*1000);
+    }
+
+    return ms;
+}
+
 int signpost_energy_policy_get_time_since_controller_reset_ms (void) {
     //calculate ms since last update
     uint32_t alarm_freq = alarm_internal_frequency();
@@ -202,7 +247,7 @@ int signpost_energy_policy_get_time_since_module_reset_ms (int module_num) {
 static void signpost_energy_policy_reset_and_update_energy_timers (void) {
     time_since_reset.controller_time_since_reset = signpost_energy_policy_get_time_since_controller_reset_ms();
     energy_reset_start_time.controller_energy_reset_start_time = alarm_read();
-
+    
     time_since_reset.linux_time_since_reset = signpost_energy_policy_get_time_since_linux_reset_ms();
     energy_reset_start_time.linux_energy_reset_start_time = alarm_read();
 
@@ -227,6 +272,10 @@ void signpost_energy_policy_update_energy (void) {
     // 6) consolidate harvested and total energy used
     // 7) distribute excess fairly to the modules
 
+    //calc the time
+    int update_period_s = calc_time_since_last_time_ms(last_energy_update_time)/1000;
+    last_energy_update_time = alarm_read();
+
     //////////////////////////////////////////////////////////////////////
     // Read the coulomb counters
     /////////////////////////////////////////////////////////////////////
@@ -237,9 +286,19 @@ void signpost_energy_policy_update_energy (void) {
     printf("Linux used %d uWh\n",linux_energy);
     total_energy += linux_energy;
 
+    //update linux average energy accounting
+    energy_average.linux_energy_average = (virtual_energy_average.linux_energy_average + linux_energy)/(3600/update_period_s);
+    virtual_energy_average.linux_energy_average = 0;
+
+    //get energy from controller
     int controller_energy = signpost_energy_get_controller_energy_uwh();
     printf("Controller used %d uWh\n",controller_energy);
     total_energy += controller_energy;
+
+    //udpate the energy average accounting
+    energy_average.controller_energy_average = (virtual_energy_average.controller_energy_average + controller_energy)/(3600/update_period_s);
+    virtual_energy_average.controller_energy_average = 0;
+
 
     int module_energy[8];
 
@@ -250,6 +309,10 @@ void signpost_energy_policy_update_energy (void) {
             module_energy[i] = signpost_energy_get_module_energy_uwh(i);
             printf("Module %d used %d uWh\n",i,module_energy[i]);
             total_energy += module_energy[i];
+
+
+            energy_average.module_energy_average[i] = (virtual_energy_average.module_energy_average[i] + module_energy[i])/(3600/update_period_s);
+            virtual_energy_average.module_energy_average[i] = 0;
         }
     }
     battery_energy_remaining = signpost_energy_get_battery_energy_uwh();
@@ -382,22 +445,26 @@ void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot
             printf("\t\t%d uWh was remaining\n",energy_remaining.controller_energy_remaining);
             energy_remaining.controller_energy_remaining -= (int)(report->reports[j].energy_used_uWh);
             energy_used.controller_energy_used += (int)(report->reports[j].energy_used_uWh);
+            virtual_energy_average.controller_energy_average += (int)(report->reports[j].energy_used_uWh);
             printf("\t\t%d uWh now remaining\n", energy_remaining.controller_energy_remaining);
 
             printf("\tSource module %d had %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
             energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_uWh);
             energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
+            virtual_energy_average.module_energy_average[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
             printf("\tSource module %d now has %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
         } else {
             printf("\tUsed %lu uWh\n",report->reports[j].energy_used_uWh);
             printf("\t%d uWh was remaining\n",energy_remaining.module_energy_remaining[mod_num]);
             energy_remaining.module_energy_remaining[mod_num] -= (int)(report->reports[j].energy_used_uWh);
             energy_used.module_energy_used[mod_num] += (int)(report->reports[j].energy_used_uWh);
+            virtual_energy_average.module_energy_average[mod_num] += (int)(report->reports[j].energy_used_uWh);
             printf("\t%d uWh now emaining\n", energy_remaining.module_energy_remaining[mod_num]);
 
             printf("\tSource module %d had %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
             energy_remaining.module_energy_remaining[source_module_slot] += (int)(report->reports[j].energy_used_uWh);
             energy_used.module_energy_used[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
+            virtual_energy_average.module_energy_average[source_module_slot] -= (int)(report->reports[j].energy_used_uWh);
             printf("\tSource module %d now has %d uWh remaining\n",source_module_slot,energy_remaining.module_energy_remaining[source_module_slot]);
         }
     }
