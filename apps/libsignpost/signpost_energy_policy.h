@@ -17,6 +17,12 @@ typedef struct energy_used {
     int module_energy_used[8];
 } signpost_energy_used_t;
 
+typedef struct energy_average {
+    int controller_energy_average;
+    int linux_energy_average;
+    int module_energy_average[8];
+} signpost_energy_average_t;
+
 typedef struct time_since_reset {
     uint32_t controller_time_since_reset;
     uint32_t linux_time_since_reset;
@@ -45,6 +51,11 @@ int signpost_energy_policy_get_battery_energy_remaining_uwh (void);
 int signpost_energy_policy_get_controller_energy_used_uwh (void);
 int signpost_energy_policy_get_linux_energy_used_uwh (void);
 int signpost_energy_policy_get_module_energy_used_uwh (int module_num);
+
+//these functions return the average energy used over the past 10 minute update period
+int signpost_energy_policy_get_controller_energy_average_uw (void);
+int signpost_energy_policy_get_linux_energy_average_uw (void);
+int signpost_energy_policy_get_module_energy_average_uw (int module_num);
 
 //these functions reset the energy used field
 void signpost_energy_policy_reset_controller_energy_used (void);
