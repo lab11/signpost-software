@@ -21,7 +21,7 @@
 #include "signpost_controller.h"
 
 uint8_t gps_buf[20];
-uint8_t energy_buf[40];
+uint8_t energy_buf[60];
 
 static void send_gps_update (__attribute__((unused)) int now,
                                 __attribute__((unused)) int experation,
@@ -131,10 +131,40 @@ static void send_energy_update (__attribute__((unused)) int now,
   energy_buf[32] = (((rem.module_energy_remaining[6]/1000) & 0xFF));
   energy_buf[33] = (((rem.module_energy_remaining[7]/1000) & 0xFF00) >> 8 );
   energy_buf[34] = (((rem.module_energy_remaining[7]/1000) & 0xFF));
+  
+  //signpost energy average
+  signpost_energy_average_t av;
+  printf("/**************************************/\n");
+  av.controller_energy_average = signpost_energy_policy_get_controller_energy_average_uw();
+  printf("\tController Energy Average: %d uW\n",av.controller_energy_average);
+  for(uint8_t i = 0; i < 8; i++) {
+    if(i == 3 || i ==4) continue;
+
+    av.module_energy_average[i] = signpost_energy_policy_get_module_energy_average_uw(i);
+    printf("\t\tModule %d Energy Remaining: %d uW\n",i,av.module_energy_average[i]);
+  }
+  printf("/**************************************/\n");
+  energy_buf[35] = (((av.module_energy_average[0]/1000) & 0xFF00) >> 8 );
+  energy_buf[36] = (((av.module_energy_average[0]/1000) & 0xFF));
+  energy_buf[37] = (((av.module_energy_average[1]/1000) & 0xFF00) >> 8 );
+  energy_buf[38] = (((av.module_energy_average[1]/1000) & 0xFF));
+  energy_buf[39] = (((av.module_energy_average[2]/1000) & 0xFF00) >> 8 );
+  energy_buf[40] = (((av.module_energy_average[2]/1000) & 0xFF));
+  energy_buf[41] = (((av.controller_energy_average/1000) & 0xFF00) >> 8 );
+  energy_buf[42] = (((av.controller_energy_average/1000) & 0xFF));
+  energy_buf[43] = 0;
+  energy_buf[44] = 0;
+  energy_buf[45] = (((av.module_energy_average[5]/1000) & 0xFF00) >> 8 );
+  energy_buf[46] = (((av.module_energy_average[5]/1000) & 0xFF));
+  energy_buf[47] = (((av.module_energy_average[6]/1000) & 0xFF00) >> 8 );
+  energy_buf[48] = (((av.module_energy_average[6]/1000) & 0xFF));
+  energy_buf[49] = (((av.module_energy_average[7]/1000) & 0xFF00) >> 8 );
+  energy_buf[50] = (((av.module_energy_average[7]/1000) & 0xFF));
+
 
   int rc;
   printf("Sending energy update packet\n");
-  rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_buf,35);
+  rc = signpost_networking_send_bytes(ModuleAddressRadio,energy_buf,51);
   energy_buf[1]++;
 
   if(rc < 0) printf("Error sending energy packet\n");
