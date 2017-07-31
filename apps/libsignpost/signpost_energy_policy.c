@@ -401,6 +401,7 @@ void signpost_energy_policy_update_energy (void) {
             for(uint8_t i = 0; i < 8; i++) {
                 if(i == 3 || i == 4 || spill_elgible[i] == 0) {
                     printf("Not adding energy to this module, spill elgible = %d\n",spill_elgible[i]);
+                    continue;
                 }
 
                 if(energy_remaining.module_energy_remaining[i] + module_surplus > MAX_MODULE_ENERGY_REMAINING) {
