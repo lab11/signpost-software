@@ -7,3 +7,12 @@
 [submodule "apps/support/mbedtls/mbedtls"]
     path = apps/support/mbedtls/mbedtls
     url = https://github.com/lab11/mbedtls
+[submodule "apps/support/kiss_fft"]
+	path = apps/support/kiss_fft
+	url = https://github.com/longle2718/kiss_fft
+[submodule "apps/support/log2fix"]
+	path = apps/support/log2fix
+	url = https://github.com/dmoulding/log2fix
+[submodule "apps/support/audio_class"]
+	path = apps/support/audio_class
+	url = https://bitbucket.org/longle1/audio_class
