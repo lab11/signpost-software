@@ -141,7 +141,7 @@ static void send_energy_update (__attribute__((unused)) int now,
     if(i == 3 || i ==4) continue;
 
     av.module_energy_average[i] = signpost_energy_policy_get_module_energy_average_uw(i);
-    printf("\t\tModule %d Energy Remaining: %d uW\n",i,av.module_energy_average[i]);
+    printf("\t\tModule %d Energy Average: %d uW\n",i,av.module_energy_average[i]);
   }
   printf("/**************************************/\n");
   energy_buf[35] = (((av.module_energy_average[0]/1000) & 0xFF00) >> 8 );
