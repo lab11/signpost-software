@@ -17,20 +17,20 @@
 #include "simple_post.h"
 #include "_kiss_fft_guts.h"
 #include "kiss_fftr.h"
-#include "common.h"
 #include "ridgeTracker.h"
+#include "common.h"
 
 static int freqAnalyze(kiss_fft_scalar *frame, kiss_fft_scalar *spec);
-static int printMat(char *filename, kiss_fft_scalar *in, size_t N);
-static int printMat2(char *filename, size_t *in, size_t N);
+static int printMat(const char *filename, kiss_fft_scalar *in, size_t N);
+static int printMat2(const char *filename, size_t *in, size_t N);
 
 int main (void) {
-    int err = SUCCESS;
+    int err = TOCK_SUCCESS;
     printf("[Audio Module] Event Detector\n");
 
     // initialize ADC
-    err = adc_initialize();
-    if (err < SUCCESS) {
+    //err = adc_initialize();
+    if (err < TOCK_SUCCESS) {
         printf("Initialize errored: %d\n", err);
     }
 
@@ -44,8 +44,8 @@ int main (void) {
     while (true) {
         // read data from ADC
         for (size_t k = frameIdx; k < frameIdx+INC_LEN; k++){
-            err = adc_read_single_sample(3);
-            if (err < SUCCESS) {
+            //err = adc_read_single_sample(3);
+            if (err < TOCK_SUCCESS) {
                 printf("ADC read error: %d\n", err);
             }
             uint16_t sample = err & 0xFFFF;
@@ -124,7 +124,7 @@ static int freqAnalyze(kiss_fft_scalar *frame, kiss_fft_scalar *spec){
     return 0;
 }
 
-static int printMat(char *filename, kiss_fft_scalar *in, size_t N){
+static int printMat(const char *filename, kiss_fft_scalar *in, size_t N){
     FILE *fp;
 
     if (! (fp = fopen(filename, "a"))){
@@ -143,7 +143,7 @@ static int printMat(char *filename, kiss_fft_scalar *in, size_t N){
     return 0;
 }
 
-static int printMat2(char *filename, size_t *in, size_t N){
+static int printMat2(const char *filename, size_t *in, size_t N){
     FILE *fp;
 
     if (! (fp = fopen(filename, "a"))){

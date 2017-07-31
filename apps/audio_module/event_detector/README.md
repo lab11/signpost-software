@@ -9,17 +9,15 @@ Further classifications are reserved for downstream processing.
 
 2.  **Important** Make sure the programming knob is turned to `MOD1`.
 
-3. Get all the prerequisites (See below)
-
-4. Flash the app
+3. Flash the app
 
     ```bash
         cd signpost/software/apps/audio_module/event_detector
         make flash
     ```
 
-## Prerequisites
+## Prerequisites (already in apps/support/)
 * Fixed-point FFT: git clone https://github.com/longle2718/kiss_fft
 * Fixed-point log: git clone https://github.com/dmoulding/log2fix
-* Ridge tracker: git clone https://bitbucket.org/longle1/gcwa
-  * Fixed-point implementation in C is under gcwa/c/
+* Ridge tracker: git clone https://bitbucket.org/longle1/audio_class
+  * Fixed-point implementation in C is under audio_class/c/
