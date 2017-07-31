@@ -113,7 +113,7 @@ static int sara_u260_del_file(const char* fname) {
 }
 
 static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
-    
+
     int ret = at_send(SARA_CONSOLE, "AT+UDWNFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
 
@@ -126,7 +126,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     char c[15];
     int clen = snprintf(c,15,"%lu",(uint32_t)len);
     if(clen <= 0) {
-        return SARA_U260_ERROR; 
+        return SARA_U260_ERROR;
     }
 
     ret = at_send(SARA_CONSOLE, c);
@@ -223,12 +223,12 @@ int sara_u260_get_post_response(uint8_t* buf, size_t max_len) {
 }
 
 int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_len) {
-    
+
     int ret = at_send(SARA_CONSOLE,"AT+URDBLOCK=\"postresult.txt\",");
     if (ret < 0) return SARA_U260_ERROR;
 
 
-    
+
     char c[60];
     snprintf(c,60,"%lu,%lu\r",(uint32_t)offset,(uint32_t)max_len);
     ret = at_send(SARA_CONSOLE,c);
@@ -289,4 +289,57 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
     free(tbuf);
 
     return dlen;
+}
+
+int sara_u260_get_ops_information(sara_u260_ops_info_t* inf, size_t num_info) {
+    int ret = at_send(SARA_CONSOLE,"AT+COPS=6\r");
+    if (ret < 0) return SARA_U260_ERROR;
+
+    //this size should allow us to receive numinfo neighbors
+    const uint32_t retbuf_size = num_info*50*sizeof(char);
+    char* retbuf = malloc(retbuf_size);
+    if(!retbuf) {
+        return SARA_U260_ERROR;
+    }
+
+    int ret_len = at_get_response(SARA_CONSOLE, num_info, (uint8_t*)retbuf, retbuf_size);
+    if(ret_len < 0)  return SARA_U260_ERROR;
+
+    uint8_t num_fields = 0;
+    int line_start_location = 0;
+    size_t inf_index = 0;
+    for(int i = 0; i < ret_len; i++) {
+        if(retbuf[i] == ',') {
+            num_fields++;
+        } else if(retbuf[i] == '\n') {
+            if(num_fields > 5) {
+                //the line should never be over 70 characters
+                char* line = retbuf+line_start_location;
+
+                //scanf the line
+                if(num_fields == 9) {
+                    sscanf(line,"%hu,%hu,%hx,%*d,%lx, %*d, %*d,%*d,%hhu,%*d\n",&inf[inf_index].mcc,
+                                                        &inf[inf_index].mnc,&inf[inf_index].lac,
+                                                        &inf[inf_index].ci,&inf[inf_index].rxlev);
+                    inf[inf_index].arfcn = 0;
+                    inf[inf_index].bsic = 0;
+                } else if(num_fields == 6) {
+                    sscanf(line,"%hu,%hu,%hx,%lx,%hhu,%hu,%hhu\n",&inf[inf_index].mcc,&inf[inf_index].mnc,
+                                                                &inf[inf_index].lac,&inf[inf_index].ci,
+                                                                &inf[inf_index].bsic,&inf[inf_index].arfcn,
+                                                                &inf[inf_index].rxlev);
+                }
+                inf_index++;
+                if(inf_index == num_info) {
+                    free(retbuf);
+                    return inf_index;
+                }
+            }
+            num_fields = 0;
+            line_start_location = i;
+        }
+    }
+
+    free(retbuf);
+    return inf_index;
 }
