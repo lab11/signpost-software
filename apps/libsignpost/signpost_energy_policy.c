@@ -298,7 +298,7 @@ void signpost_energy_policy_update_energy (void) {
     total_energy += controller_energy;
 
     //udpate the energy average accounting
-    energy_average.controller_energy_average = (virtual_energy_average.controller_energy_average + controller_energy)/(3600/update_period_s);
+    energy_average.controller_energy_average = (virtual_energy_average.controller_energy_average + controller_energy)*(3600/update_period_s);
     virtual_energy_average.controller_energy_average = 0;
 
 
@@ -313,7 +313,7 @@ void signpost_energy_policy_update_energy (void) {
             total_energy += module_energy[i];
 
 
-            energy_average.module_energy_average[i] = (virtual_energy_average.module_energy_average[i] + module_energy[i])/(3600/update_period_s);
+            energy_average.module_energy_average[i] = (virtual_energy_average.module_energy_average[i] + module_energy[i])*(3600/update_period_s);
             virtual_energy_average.module_energy_average[i] = 0;
         }
     }
