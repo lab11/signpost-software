@@ -482,7 +482,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
             module_state[i].isolation_state = ModuleDisabledEnergy;
             controller_module_disable_power(i);
             controller_module_disable_i2c(i);
-        } else if (module_state[i].isolation_state == ModuleEnabled) {
+        } else if (module_state[i].isolation_state == ModuleEnabled || module_state[i].isolation_state == ModuleDisabledEnergy) {
             module_state[i].isolation_state = ModuleEnabled;
             controller_module_enable_power(i);
             controller_module_enable_i2c(i);
