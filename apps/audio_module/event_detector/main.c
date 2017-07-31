@@ -149,6 +149,8 @@ static int freqAnalyze(kiss_fft_scalar *frame, kiss_fft_scalar *spec){
         in[i] = S_MUL(frame[i],win[i]) << 4;
     }
 
+    //This function takes too long (100-200ms)!! We should perform the allocation once at the
+    //beginning of the program (and pass cfg in as an argument?)
     if ((cfg = kiss_fftr_alloc(BUF_LEN, 0/*is_inverse_fft*/, NULL, NULL)) == NULL){
         printf("Not enough memory?\n");
         return 1;
