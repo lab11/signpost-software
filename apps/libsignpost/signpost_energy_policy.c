@@ -79,6 +79,8 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
     //configure the coulomb counters
     signpost_energy_init_ltc2943();
 
+    delay_ms(500);
+
     //reset all of the coulomb counters for the algorithm to work
     signpost_energy_reset_all_energy();
 
