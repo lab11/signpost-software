@@ -287,7 +287,7 @@ void signpost_energy_policy_update_energy (void) {
     total_energy += linux_energy;
 
     //update linux average energy accounting
-    energy_average.linux_energy_average = (virtual_energy_average.linux_energy_average + linux_energy)/(3600/update_period_s);
+    energy_average.linux_energy_average = (virtual_energy_average.linux_energy_average + linux_energy)*(3600/update_period_s);
     virtual_energy_average.linux_energy_average = 0;
 
     //get energy from controller
