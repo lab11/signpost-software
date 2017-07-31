@@ -96,7 +96,7 @@ int main (void) {
   static api_handler_t storage_handler = {StorageApiType, storage_api_callback};
   static api_handler_t* handlers[] = {&storage_handler, NULL};
   do {
-    rc = signpost_initialization_storage_master_init(handlers);
+    rc = signpost_initialization_module_init(ModuleAddressStorage, handlers);
     if (rc < 0) {
       printf(" - Error initializing bus access (code: %d). Sleeping 5s\n", rc);
       delay_ms(5000);

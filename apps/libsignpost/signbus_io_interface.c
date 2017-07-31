@@ -197,7 +197,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
 // safely call blocking methods until it is ready to either return or
 // call up the callback chain.
 //
-// This function will return the number of bytes received or < 0 for error.
+// This function will return the number of bytes received or < 0 for rcor.
 // For async invocation, the return value is passed as the callback argument.
 static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src) {
     uint8_t done = 0;
@@ -397,9 +397,9 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
     // from the callback to provide new data
 
     // listen for i2c messages asynchronously
-    int err = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
-    if (err < 0) {
-        return err;
+    int rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
+    if (rc < 0) {
+        return rc;
     }
 
     // sequence number is incremented once per data
@@ -430,7 +430,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
 
     // actually set up the fragmented read packet
     signbus_iterate_slave_read();
-    return 0;
+    return SB_PORT_SUCCESS;
 }
 
 // provide callback to be performed when the slave read has completed all data

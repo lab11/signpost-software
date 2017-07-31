@@ -6,6 +6,7 @@
 #include "i2c_master_slave.h"
 #include "led.h"
 #include "port_signpost.h"
+#include "signpost_entropy.h"
 #include "timer.h"
 #include "tock.h"
 
@@ -53,14 +54,16 @@ static uint8_t slave_read_buf[I2C_MAX_LEN];
 //This function is called upon signpost initialization
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
-    int rc = 0;
+    int rc;
     rc = i2c_master_slave_set_master_write_buffer(master_write_buf, I2C_MAX_LEN);
-    if (rc < 0) return rc;
+    if (rc < 0) return SB_PORT_FAIL;
     rc = i2c_master_slave_set_slave_read_buffer(slave_read_buf, I2C_MAX_LEN);
-    if (rc < 0) return rc;
+    if (rc < 0) return SB_PORT_FAIL;
     rc = i2c_master_slave_set_slave_address(i2c_address);
-    if (rc < 0) return rc;
-    return i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
+    if (rc < 0) return SB_PORT_FAIL;
+    rc = i2c_master_slave_set_callback(i2c_master_slave_callback, NULL);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 //This function is a blocking i2c send call
@@ -68,13 +71,14 @@ int port_signpost_init(uint8_t i2c_address) {
 //If the bus returns an error, use the appropriate error code
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
-    int rc = 0;
+    int rc;
     memcpy(master_write_buf, buf, len);
     master_write_yield_flag = false;
     rc = i2c_master_slave_write(dest, len);
-    if (rc < 0) return rc;
+    if (rc < 0) return SB_PORT_FAIL;
 
     yield_for(&master_write_yield_flag);
+    if (master_write_len_or_rc < 0) return SB_PORT_FAIL;
     return master_write_len_or_rc;
 }
 
@@ -83,27 +87,38 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
 //The address specified in init
 //Place data in the buffer no longer than the max len
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
-    int rc = 0;
+    int rc;
     rc = i2c_master_slave_set_slave_write_buffer(buf, max_len);
-    if (rc < 0) return rc;
+    if (rc < 0) return SB_PORT_FAIL;
     global_slave_write_cb = cb;
-    return i2c_master_slave_listen();
+    rc = i2c_master_slave_listen();
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
+    int rc;
     memcpy(slave_read_buf, buf, len);
     return i2c_master_slave_enable_slave_read(len);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 //These functions are used to control gpio outputs
 int port_signpost_mod_out_set(void) {
+    int rc;
     gpio_enable_output(MOD_OUT);
-    return gpio_set(MOD_OUT);
+    rc = gpio_set(MOD_OUT);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_mod_out_clear(void) {
+    int rc;
     gpio_enable_output(MOD_OUT);
-    return gpio_clear(MOD_OUT);
+    rc = gpio_clear(MOD_OUT);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_mod_in_read(void) {
@@ -118,20 +133,44 @@ int port_signpost_pps_read(void) {
 
 //This function is used to get the input interrupt for the falling edge of
 //mod-in
-int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb) {
-    int rc = 0;
+int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb) {
+    int rc;
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
-    if (rc < 0) return rc;
-    return gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
+    if (rc < 0) return SB_PORT_FAIL;
+    rc = gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
+}
+
+//This function is used to get the input interrupt for the rising edge of
+//mod-in
+int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb) {
+    int rc;
+    global_gpio_interrupt_cb = cb;
+    rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
+    if (rc < 0) return SB_PORT_FAIL;
+    rc = gpio_enable_interrupt(MOD_IN, PullUp, RisingEdge);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_mod_in_disable_interrupt(void) {
-    return gpio_disable_interrupt(MOD_IN);
+    int rc;
+    rc = gpio_disable_interrupt(MOD_IN);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
 void port_signpost_wait_for(void* wait_on_true){
     yield_for(wait_on_true);
+}
+
+int port_signpost_wait_for_with_timeout(void* wait_on_true, uint32_t ms) {
+    if (yield_for_with_timeout(wait_on_true, ms) == TOCK_SUCCESS) {
+      return SB_PORT_SUCCESS;
+    }
+    return SB_PORT_FAIL;
 }
 
 void port_signpost_delay_ms(unsigned ms) {
@@ -139,9 +178,30 @@ void port_signpost_delay_ms(unsigned ms) {
 }
 
 int port_signpost_debug_led_on(void) {
-    return led_on(DEBUG_LED);
-}
-int port_signpost_debug_led_off(void){
-    return led_off(DEBUG_LED);
+    int rc;
+    rc = led_on(DEBUG_LED);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
 }
 
+int port_signpost_debug_led_off(void){
+    int rc;
+    rc = led_off(DEBUG_LED);
+    if (rc < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
+}
+
+int port_rng_init(void) {
+    if (signpost_entropy_init() < 0) return SB_PORT_FAIL;
+    return SB_PORT_SUCCESS;
+}
+
+int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
+    int rc;
+    size_t bytes_to_request;
+    if (len < num) bytes_to_request = len;
+    else bytes_to_request = num;
+    rc = signpost_entropy_rand(buf, bytes_to_request);
+    if (rc < 0) return SB_PORT_FAIL;
+    return rc;
+}

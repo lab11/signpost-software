@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mbedtls/ctr_drbg.h"
+
 /* This is a port interface for the signpost API and networking stack!
 The goal is to export the minimal interface such that platforms
 can integrate with the signpost.
@@ -25,6 +27,18 @@ for each platform*/
 
 #define PORT_SIGNPOST_ERROR -1
 #define PORT_SIGNPOST_I2C_WRITE_ERROR -2
+
+//Error code definitions
+#define SB_PORT_SUCCESS       0
+#define SB_PORT_FAIL         -1
+#define SB_PORT_EBUSY        -2
+#define SB_PORT_EINVAL       -6
+#define SB_PORT_ESIZE        -7
+#define SB_PORT_ENOMEM       -9
+#define SB_PORT_ENOACK       -13
+
+// a context for the mbedtls prng
+extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 //These are the callback definitions
 
@@ -60,15 +74,36 @@ int port_signpost_pps_read(void);
 
 //This function is used to setup a gpio interrupt
 //interrupt assumes pulled up, falling edge
-int port_signpost_mod_in_enable_interrupt(port_signpost_callback cb);
+int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb);
+int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb);
 int port_signpost_mod_in_disable_interrupt(void);
 
 //This is a way to wait on a variable in a platform specific way
 void port_signpost_wait_for(void* wait_on_true);
+
+//This is a way to wait on a variable with a timeout.
+//Returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on timeout
+int port_signpost_wait_for_with_timeout(void* wait_on_true, uint32_t ms);
 
 void port_signpost_delay_ms(unsigned ms);
 
 //An optional debug led
 int port_signpost_debug_led_on(void);
 int port_signpost_debug_led_off(void);
+
+
+/*  port_rng_init
+ *  Sets up rng
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ */
+int port_rng_init(void);
+
+/*  port_rng_sync
+ *  Synchronous RNG request.
+ *    buf: user defined buffer.
+ *    len: length of buffer.
+ *    num: number of random bytes requested.
+ *  returns number of random bytes acquired on success, SB_PORT_FAIL on failure.
+ */
+int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
