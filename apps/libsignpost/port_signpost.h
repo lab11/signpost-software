@@ -82,7 +82,7 @@ int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb);
 int port_signpost_mod_in_disable_interrupt(void);
 
 //This is a way to wait on a variable in a platform specific way
-void port_signpost_wait_for(bool* wait_on_true);
+void port_signpost_wait_for(void* wait_on_true);
 
 //This is a way to wait on a variable with a timeout.
 //Returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on timeout

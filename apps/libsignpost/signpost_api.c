@@ -240,7 +240,7 @@ int signpost_initialization_request_isolation(void) {
     rc = port_signpost_debug_led_on();
     if (rc != SB_PORT_SUCCESS) return rc;
 
-    printf("INIT: Requested I2C isolation with controller\n");
+    port_printf("INIT: Requested I2C isolation with controller\n");
     return SB_PORT_SUCCESS;
 }
 
@@ -267,7 +267,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     // read params from contacted module
     if (mbedtls_ecdh_read_public(&ecdh, incoming_message,
                 incoming_message_length) < 0) {
-        //printf("failed to read public parameters\n");
+        //port_printf("failed to read public parameters\n");
         return SB_PORT_FAIL;
     }
 
@@ -287,13 +287,13 @@ static int signpost_initialization_key_exchange_finish(void) {
     SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
             key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
 
-    printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
+    port_printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
     return 0;
 }
 
 int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
-    printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
+    port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
@@ -326,14 +326,14 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
     module_info.i2c_address_mods[module_number] = source_address;
     module_info.haskey[module_number] = false;
 
-    printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
+    port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
     // Just ack, eventually will send new address
     return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
 }
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
     int ret = SB_PORT_SUCCESS;
 
-    printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
+    port_printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
     // init ecdh struct for key exchange
     mbedtls_ecdh_free(&ecdh);
     mbedtls_ecdh_init(&ecdh);
@@ -441,7 +441,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller isolation\n");
+              port_printf("INIT: Timed out waiting for controller isolation\n");
               init_state = RequestIsolation;
             };
 
@@ -467,7 +467,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller declare response\n");
+              port_printf("INIT: Timed out waiting for controller declare response\n");
               init_state = RequestIsolation;
             };
 
@@ -484,7 +484,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&key_send_complete, 5000);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller key exchange response\n");
+              port_printf("INIT: Timed out waiting for controller key exchange response\n");
               init_state = RequestIsolation;
             };
             break;
