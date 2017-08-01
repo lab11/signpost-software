@@ -24,7 +24,8 @@ static int battery_energy_remaining;
 
 static uint32_t last_energy_update_time = 0;
 
-#define BATTERY_CAPACITY 9000000*11.1
+//new capacity with lower max charge voltage
+#define BATTERY_CAPACITY 8690000*11.1
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
 #define MAX_MODULE_ENERGY_REMAINING BATTERY_CAPACITY*0.1
 
@@ -249,7 +250,7 @@ int signpost_energy_policy_get_time_since_module_reset_ms (int module_num) {
 static void signpost_energy_policy_reset_and_update_energy_timers (void) {
     time_since_reset.controller_time_since_reset = signpost_energy_policy_get_time_since_controller_reset_ms();
     energy_reset_start_time.controller_energy_reset_start_time = alarm_read();
-    
+
     time_since_reset.linux_time_since_reset = signpost_energy_policy_get_time_since_linux_reset_ms();
     energy_reset_start_time.linux_energy_reset_start_time = alarm_read();
 
