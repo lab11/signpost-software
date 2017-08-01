@@ -198,6 +198,8 @@ static void update_api_callback(uint8_t source_address,
     static bool got_transfer = false;
 
     if(frame_type == CommandFrame) {
+        printf("Received update request from 0x%02x\n", source_address);
+
         if(message_type == UpdateRequestMessage) {
             //parse the request
             uint32_t url_len;
@@ -207,6 +209,7 @@ static void update_api_callback(uint8_t source_address,
             if(message_length >= 4) {
                 memcpy(&url_len, message, 4);
             } else {
+                printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
                 return;
             }
@@ -214,17 +217,23 @@ static void update_api_callback(uint8_t source_address,
             if(message_length >= 8 + url_len) {
                 memcpy(&version_len, message+4+url_len, 4);
             } else {
+                printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
                 return;
             }
 
             if(message_length >= 8 + url_len + version_len) {
                 url = malloc(url_len);
-                if(!url) return;
+                if(!url) {
+                    printf("UPDATE ERROR: No memory for url of len %lu\n",url_len); 
+                    signpost_update_error_reply(source_address);
+                    return;
+                }
 
                 version = malloc(version_len);
                 if(!version) {
                     free(url);
+                    printf("UPDATE ERROR: No memory for verion of len %lu\n",version_len); 
                     signpost_update_error_reply(source_address);
                     return;
                 }
@@ -232,9 +241,13 @@ static void update_api_callback(uint8_t source_address,
                 memcpy(url, message+4, url_len);
                 memcpy(version, message+4+url_len, version_len);
             } else {
+                printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
                 return;
             }
+
+            printf("Update URL: %*s\n",(int)url_len,url);
+            printf("Update Version: %*s\n",(int)version_len,version);
 
             //find the first slash in the url
             uint32_t slash = 0;
@@ -279,12 +292,16 @@ static void update_api_callback(uint8_t source_address,
                 snprintf(post_slash_version, url_len - slash + 10, "%s/info.txt", url+slash);
                 snprintf(post_slash_app, url_len - slash + 10, "%s/app.bin", url+slash);
             }
+            printf("Update URL: %s\n",pre_slash);
+            printf("Update Info Path: %s\n",post_slash_version);
+            printf("Update App Path: %s\n",post_slash_app);
 
             //send the http get for the version file
             int ret = sara_u260_basic_http_get(pre_slash,post_slash_version);
             free(post_slash_version);
 
             if(ret != SARA_U260_SUCCESS) {
+                printf("UPDATE: HTTP get of version info failed with error %d\n",ret);
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
@@ -294,17 +311,20 @@ static void update_api_callback(uint8_t source_address,
 
             int offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
+                printf("UPDATE: finding end of header failed with error %d\n",offset);
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
                 return;
             }
+            printf("UPDATE: Header ends at position %d\n",offset);
 
             //read the body of the file
             char read_buf[200];
             ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
             if(ret == 200) {
+                printf("UPDATE ERROR: Info file too long\n");
                 //the info file should not be this long
                 free(version);
                 free(pre_slash);
@@ -346,6 +366,7 @@ static void update_api_callback(uint8_t source_address,
             free(version);
             if(cmp <= 0) {
                 //don't update because versions match
+                printf("UPDATE ERROR: New version equal to or older than current version\n");
                 free(pre_slash);
                 free(post_slash_app);
                 return;
@@ -354,6 +375,8 @@ static void update_api_callback(uint8_t source_address,
             //extract the length and the CRC
             uint16_t crc = strtol(len_line,&crc_line,16);
             uint32_t len = strtol(version_line,&len_line,16);
+            printf("UPDATE: Found CRC of 0x%02x\n",crc);
+            printf("UPDATE: Found length of 0x%04lx\n",len);
 
 
             //okay now fetch the actual update
@@ -361,6 +384,7 @@ static void update_api_callback(uint8_t source_address,
             free(pre_slash);
             free(post_slash_app);
             if(ret != SARA_U260_SUCCESS) {
+                printf("UPDATE: HTTP get of binary failed with error %d\n",ret);
                 signpost_update_error_reply(source_address);
                 return;
             }
@@ -368,6 +392,7 @@ static void update_api_callback(uint8_t source_address,
             //find the end of the response
             offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
+                printf("UPDATE: finding end of header failed with error %d\n",offset);
                 signpost_update_error_reply(source_address);
                 return;
             }
@@ -381,9 +406,11 @@ static void update_api_callback(uint8_t source_address,
                     return;
                 } else if (ret < 200) {
                     //done getting responses
+                    printf("UPDATE: Transferring final with offset %d\n",offset);
                     signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,ret);
                     done_transferring = true;
                 } else {
+                    printf("UPDATE: Transferring with offset %d\n",offset);
                     signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,200);
                     offset += 200;
                 }
@@ -392,10 +419,12 @@ static void update_api_callback(uint8_t source_address,
                 if(ret  < TOCK_SUCCESS) return;
             }
 
+            printf("UPDATE: Sending update done reply\n");
             signpost_update_done_reply(source_address,UpdateFetched,len,crc);
         }
     } else if(frame_type == ResponseFrame) {
         if(message_type == UpdateResponseMessage) {
+            printf("UPDATE: Received ack to continue transfer\n");
             got_transfer = true;
         }
     } else {
