@@ -585,6 +585,7 @@ pub unsafe fn reset_handler() {
         capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>,
         capsules::virtual_flash::FlashUser::new(mux_flash));
     pub static mut STFU_HOLDING_PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+
     let stfu_holding_nv_to_page = static_init!(
         capsules::nonvolatile_to_pages::NonvolatileToPages<'static,
             capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
@@ -592,6 +593,7 @@ pub unsafe fn reset_handler() {
             virtual_flash_stfu_holding,
             &mut STFU_HOLDING_PAGEBUFFER));
     hil::flash::HasClient::set_client(virtual_flash_stfu_holding, stfu_holding_nv_to_page);
+
     pub static mut STFU_HOLDING_BUFFER: [u8; 512] = [0; 512];
     let stfu_holding = static_init!(
         capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
@@ -608,13 +610,14 @@ pub unsafe fn reset_handler() {
     let virtual_flash_btldrflags = static_init!(
         capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>,
         capsules::virtual_flash::FlashUser::new(mux_flash));
-    pub static mut PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+    pub static mut BTLDRPAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+
     let stfu = static_init!(
         signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate<'static,
             capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
         signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate::new(
             virtual_flash_btldrflags,
-            &mut PAGEBUFFER));
+            &mut BTLDRPAGEBUFFER));
     hil::flash::HasClient::set_client(virtual_flash_btldrflags, stfu);
 
 
