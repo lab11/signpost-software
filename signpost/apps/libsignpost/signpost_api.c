@@ -1435,7 +1435,7 @@ int signpost_fetch_update(char* url,
     uint32_t version_len = strlen(version_string);
     char* message = malloc(url_len+version_len+8);
     if(!message) {
-        return TOCK_FAIL;
+        return SB_PORT_ENOMEM;
     }
 
     memcpy(message,&url_len,4);
@@ -1452,7 +1452,11 @@ int signpost_fetch_update(char* url,
     while(true) {
         update_message = false;
         incoming_active_callback = update_callback;
-        port_signpost_wait_for(&update_message);
+        int rc = port_signpost_wait_for_with_timeout(&update_message, 60000);
+        if(rc < SB_PORT_SUCCESS) {
+            //timeout
+            return SB_PORT_FAIL;
+        }
 
         //we got the message, is it a done or a xfer message?
         if(incoming_message_type == UpdateTransferMessage) {
@@ -1463,13 +1467,13 @@ int signpost_fetch_update(char* url,
             memcpy(&data_len, incoming_message, 4);
             uint8_t* data = malloc(data_len);
             if(!data) {
-                return TOCK_FAIL;
+                return SB_PORT_ENOMEM;
             }
             memcpy(data, incoming_message+4, data_len);
             memcpy(&offset, incoming_message+4+data_len, 4);
 
             if(offset+data_len > flash_scratch_length) {
-                return TOCK_FAIL;
+                return SB_PORT_ENOMEM;
             }
 
             ret = port_signpost_flash_write(flash_scratch_start + offset, data, data_len);
@@ -1499,7 +1503,7 @@ int signpost_fetch_update(char* url,
                 return resp.response_code;
             }
         } else {
-            return TOCK_FAIL;
+            return SB_PORT_FAIL;
         }
     }
 }
@@ -1525,7 +1529,7 @@ int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, uin
 
     uint8_t* message = malloc(len+8);
     if(!message) {
-        return TOCK_FAIL;
+        return SB_PORT_ENOMEM;
     }
 
     memcpy(message, &len, 4);
