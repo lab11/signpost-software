@@ -238,7 +238,7 @@ static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src)
                 continue;
             }
         }
-        //SIGNBUS_DEBUG("msg_source_addr: %x\n", packet.header.src);
+        SIGNBUS_DEBUG("packet.header.src: 0x%x\n", packet.header.src);
         *src = packet.header.src;
 
         //are there more fragments?
