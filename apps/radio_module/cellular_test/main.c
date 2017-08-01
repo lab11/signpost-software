@@ -40,7 +40,31 @@ int main (void) {
             printf("Did not get response\n");
         } else {
             dbuf[l] = 0;
-            printf("Got resposne of length %d: \n",l);
+            printf("Got response of length %d: \n",l);
+            printf("%s\n", (char*)dbuf);
+        }
+    }
+
+    delay_ms(10000);
+
+    printf("Now trying http get\n");
+    ret = sara_u260_basic_http_get("rawgit.com","/lab11/signpost-software/master/apps/radio_module/cellular_test/README.md");
+
+    if(ret == SARA_U260_NO_SERVICE) {
+        printf("No Service! try again in a bit.\n");
+    }
+
+    delay_ms(10000);
+
+    if(ret >= 0) {
+        uint8_t dbuf[1000] = {0};
+        printf("Getting response\n");
+        int l = sara_u260_get_get_response(dbuf, 999);
+        if(l < 0) {
+            printf("Did not get response\n");
+        } else {
+            dbuf[l] = 0;
+            printf("Got response of length %d: \n",l);
             printf("%s\n", (char*)dbuf);
         }
     }
