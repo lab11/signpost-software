@@ -417,6 +417,8 @@ typedef enum {
     UpdateRequestMessage = 0,
     UpdateResponseMessage = 1,
     UpdateTransferMessage = 2,
+    UpdateUpToDateMessage = 3,
+    UpdateErrorMessage = 4,
 } signpost_update_message_type_e;
 
 typedef enum {
@@ -444,31 +446,34 @@ typedef struct signpost_update_done {
 // version string should be formatted *.*.*... compared section by section MAX 16 chars
 
 //this will fetch the update and perform it
-int signpost_update(char* url, 
-                    char* version_string, 
-                    uint32_t flash_scratch_start, 
-                    uint32_t flash_scratch_length, 
+int signpost_update(char* url,
+                    char* version_string,
+                    uint32_t flash_scratch_start,
+                    uint32_t flash_scratch_length,
                     uint32_t flash_dest_address);
 
 //this gives the user a bit more control to fetch, then decide when to apply
-int signpost_fetch_update(char* url, 
-                            char* version_string, 
-                            uint32_t flash_scratch_start, 
-                            uint32_t flash_scratch_length, 
+int signpost_fetch_update(char* url,
+                            char* version_string,
+                            uint32_t flash_scratch_start,
+                            uint32_t flash_scratch_length,
                             uint32_t* update_length,
                             uint16_t* crc);
 
 //this is the apply function for the fetch counterpart
-int signpost_apply_update(uint32_t flash_dest_address, 
-                            uint32_t flash_scratch_start, 
+int signpost_apply_update(uint32_t flash_dest_address,
+                            uint32_t flash_scratch_start,
                             uint32_t update_length,
                             uint16_t crc);
 
-int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, 
+int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk,
                                     uint32_t offset, uint32_t len);
 
-int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, 
+int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len,
                                 uint16_t crc);
+
+int signpost_update_error_reply(uint8_t dest_addr);
+int signpost_update_up_to_date_reply(uint8_t dest_addr);
 
 #ifdef __cplusplus
 }
