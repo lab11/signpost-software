@@ -207,12 +207,14 @@ static void update_api_callback(uint8_t source_address,
             if(message_length >= 4) {
                 memcpy(&url_len, message, 4);
             } else {
+                signpost_update_error_reply(source_address);
                 return;
             }
 
             if(message_length >= 8 + url_len) {
                 memcpy(&version_len, message+4+url_len, 4);
             } else {
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -223,12 +225,14 @@ static void update_api_callback(uint8_t source_address,
                 version = malloc(version_len);
                 if(!version) {
                     free(url);
+                    signpost_update_error_reply(source_address);
                     return;
                 }
 
                 memcpy(url, message+4, url_len);
                 memcpy(version, message+4+url_len, version_len);
             } else {
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -245,6 +249,7 @@ static void update_api_callback(uint8_t source_address,
             if(!pre_slash)  {
                 free(url);
                 free(version);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -253,6 +258,7 @@ static void update_api_callback(uint8_t source_address,
                 free(url);
                 free(version);
                 free(pre_slash);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -261,6 +267,7 @@ static void update_api_callback(uint8_t source_address,
                 free(url);
                 free(version);
                 free(pre_slash);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -281,6 +288,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -289,6 +297,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -300,6 +309,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -309,6 +319,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -317,6 +328,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_error_reply(source_address);
                 return;
             }
 
@@ -325,6 +337,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
+                signpost_update_up_to_date_reply(source_address);
                 return;
             }
 
@@ -348,12 +361,14 @@ static void update_api_callback(uint8_t source_address,
             free(pre_slash);
             free(post_slash_app);
             if(ret != SARA_U260_SUCCESS) {
+                signpost_update_error_reply(source_address);
                 return;
             }
 
             //find the end of the response
             offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
+                signpost_update_error_reply(source_address);
                 return;
             }
 
