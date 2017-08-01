@@ -376,10 +376,8 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     signbus_io_init(i2c_address);
     rc = port_rng_init();
     if (rc < 0) return rc;
-    SIGNBUS_DEBUG("io and entropy init complete\n\r");
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
-    SIGNBUS_DEBUG("async protocol setup\n\r");
     // Clear keys
     for (int i=0; i < NUM_MODULES; i++) {
         module_info.haskey[i] = false;
@@ -586,8 +584,6 @@ static void signpost_processing_callback(__attribute__((unused)) int result){
 }
 
 int signpost_processing_init(const char* path) {
-    //erpc_client_init(NULL);
-
     //form the sending message
     uint16_t size = strlen(path);
     uint16_t crc  = CRC16_Calc((uint8_t*)path,size,0xFFFF);
