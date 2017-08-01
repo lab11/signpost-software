@@ -1545,14 +1545,33 @@ int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, uin
     return ret;
 }
 
-int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint16_t crc) {
+int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len, uint16_t crc) {
     signpost_update_done_t rep;
     rep.response_code = response_code;
+    rep.total_length = len;
     rep.crc = crc;
 
     int ret = signpost_api_send(dest_addr,
        ResponseFrame, UpdateApiType, UpdateResponseMessage,
        sizeof(signpost_update_done_t), (uint8_t*) &rep);
+
+    return ret;
+}
+
+int signpost_update_error_reply(uint8_t dest_addr) {
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateErrorMessage,
+       0, NULL);
+
+    return ret;
+}
+
+int signpost_update_up_to_date_reply(uint8_t dest_addr) {
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateUpToDateMessage,
+       0, NULL);
 
     return ret;
 }
