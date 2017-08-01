@@ -1,5 +1,6 @@
 #include <stdbool.h>
 
+#include "tock.h"
 #include "signpost_tock_firmware_update.h"
 
 
@@ -13,7 +14,7 @@ int signpost_tock_firmware_update_go(uint32_t source,
   ret = allow(DRIVER_NUM_STFU, 0, (uint8_t*) config, 16);
   if (ret < 0) return ret;
 
-  command(DRIVER_NUM_STFU, 1, 0);
+  return command(DRIVER_NUM_STFU, 1, 0);
 }
 
 struct stfu_holding_data {
@@ -23,7 +24,7 @@ struct stfu_holding_data {
 static struct stfu_holding_data result = { .fired = false };
 
 // Internal callback for faking synchronous reads
-static void stfu_holding_cb(int value,
+static void stfu_holding_cb(__attribute__ ((unused)) int value,
                        __attribute__ ((unused)) int unused1,
                        __attribute__ ((unused)) int unused2,
                        void* ud) {
