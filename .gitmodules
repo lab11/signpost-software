@@ -7,3 +7,6 @@
 [submodule "apps/support/mbedtls/mbedtls"]
     path = apps/support/mbedtls/mbedtls
     url = https://github.com/lab11/mbedtls
+[submodule "kernel/boards/bootloader/tock-bootloader"]
+	path = kernel/boards/bootloader/tock-bootloader
+	url = https://github.com/lab11/tock-bootloader
