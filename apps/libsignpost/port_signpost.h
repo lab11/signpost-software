@@ -114,7 +114,7 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
  * Platform specific implementation of printf
  * This is usually implemented using vprintf and stdarg.h
  */
-int port_printf(const char *fmt, ...);
+int port_printf(const char *fmt, ...) __attribute__ __printf__;
 
 #ifdef __cplusplus
 }
