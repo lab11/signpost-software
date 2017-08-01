@@ -1,7 +1,8 @@
 #include <signpost_tock_firmware_update.h>
+#include "tock.h"
 
 
-int main () {
+int main (void) {
   int ret;
 
   printf("started\n");
