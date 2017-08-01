@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include "crc.h"
+#include "strnstr.h"
 
 //nordic includes
 #include "nrf.h"
@@ -22,6 +23,7 @@
 #include "console.h"
 #include "timer.h"
 #include "xdot.h"
+#include "sara_u260.h"
 #include "i2c_master_slave.h"
 #include "app_watchdog.h"
 #include "radio_module.h"
@@ -152,18 +154,15 @@ static void networking_api_callback(uint8_t source_address,
     }
 }
 
-static int find_end_response_body(void) {
+static int find_end_of_response_header(void) {
     //okay now parse the version file
     //first loop through looking for the end of the header
     bool header_done = false;
-    uint8_t read_buf[200];
+    char read_buf[200];
     uint32_t offset = 0;
     while(!header_done) {
-        int ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+        int ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
         if(ret < SARA_U260_SUCCESS) {
-            free(version);
-            free(pre_slash);
-            free(post_slash);
             return ret;
         }
 
@@ -171,23 +170,20 @@ static int find_end_response_body(void) {
         char* pt = strnstr(read_buf,"\r\n\r\n",200);
         if(pt != NULL) {
             offset += (pt-read_buf);
-            head_done = true;
-            break SARA_U260_ERROR;
+            header_done = true;
+            break;
         }
 
         //make sure we didn't just get part of it
-        if(!strncmp(read_buf+199,"\r") || !strncmp(read_buf+198,"\r\n") || !strncmp(read_buf+197,"\r\n\r")) {
+        if(!strncmp(read_buf+199,"\r",1) || !strncmp(read_buf+198,"\r\n",2) || !strncmp(read_buf+197,"\r\n\r",3)) {
             //we could have gotten part of it, shift a bit and read again
             offset += 4;
         } else {
             offset += 200;
         }
 
-        if(ret < 200 && head_done == false) {
+        if(ret < 200 && header_done == false) {
             //we got to the end and didn't find the end of the header
-            free(version);
-            free(pre_slash);
-            free(post_slash);
             return SARA_U260_ERROR;
         }
     }
@@ -253,7 +249,7 @@ static void update_api_callback(uint8_t source_address,
             }
 
             char* post_slash_version = malloc(url_len - slash+10);
-            if(!post_slash) {
+            if(!post_slash_version) {
                 free(url);
                 free(version);
                 free(pre_slash);
@@ -261,7 +257,7 @@ static void update_api_callback(uint8_t source_address,
             }
 
             char* post_slash_app = malloc(url_len - slash+10);
-            if(!post_slash) {
+            if(!post_slash_app) {
                 free(url);
                 free(version);
                 free(pre_slash);
@@ -278,7 +274,7 @@ static void update_api_callback(uint8_t source_address,
             }
 
             //send the http get for the version file
-            int ret = sarah_u260_basic_http_get(pre_slash,post_slash_version);
+            int ret = sara_u260_basic_http_get(pre_slash,post_slash_version);
             free(post_slash_version);
 
             if(ret != SARA_U260_SUCCESS) {
@@ -297,8 +293,8 @@ static void update_api_callback(uint8_t source_address,
             }
 
             //read the body of the file
-            uint8_t read_buf[200];
-            int ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+            char read_buf[200];
+            ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
             if(ret == 200) {
                 //the info file should not be this long
                 free(version);
@@ -348,7 +344,7 @@ static void update_api_callback(uint8_t source_address,
 
 
             //okay now fetch the actual update
-            int ret = sarah_u260_basic_http_get(pre_slash,post_slash_app);
+            ret = sara_u260_basic_http_get(pre_slash,post_slash_app);
             free(pre_slash);
             free(post_slash_app);
             if(ret != SARA_U260_SUCCESS) {
@@ -356,7 +352,7 @@ static void update_api_callback(uint8_t source_address,
             }
 
             //find the end of the response
-            int offset = find_end_of_response_header();
+            offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
                 return;
             }
@@ -365,15 +361,15 @@ static void update_api_callback(uint8_t source_address,
             bool done_transferring = false;
             offset = 0;
             while(!done_transferring) {
-                ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+                ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
                 if(ret < SARA_U260_SUCCESS) {
                     return;
                 } else if (ret < 200) {
                     //done getting responses
-                    signpost_update_transfer_reply(source_address,read_buf,offset,ret);
+                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,ret);
                     done_transferring = true;
                 } else {
-                    signpost_update_transfer_reply(source_address,read_buf,offset,200);
+                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,200);
                     offset += 200;
                 }
 
