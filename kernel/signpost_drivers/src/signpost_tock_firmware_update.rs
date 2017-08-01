@@ -1,19 +1,14 @@
 //! Tell the bootloader to load new code.
 
 use core::cell::Cell;
-use core::cmp;
 use kernel::common::take_cell::TakeCell;
 use kernel::common::take_cell::MapCell;
 use kernel::hil;
-use kernel::{AppId, AppSlice, Callback, Container, Driver, ReturnCode, Shared};
+use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 
 /// This module is either waiting to do something, or handling a read/write.
 #[derive(Clone,Copy,Debug,PartialEq)]
-enum State {
-    Idle,
-    Read,
-    Write,
-}
+enum State {}
 
 pub struct SignpostTockFirmwareUpdate<'a, F: hil::flash::Flash + 'static> {
     /// The module providing a `Flash` interface.
@@ -41,8 +36,6 @@ impl<'a, F: hil::flash::Flash + 'a> SignpostTockFirmwareUpdate<'a, F> {
 
     fn do_firmware_update (&self, source: u32, destination: u32, length: u32, crc: u32) -> ReturnCode {
         self.pagebuffer.take().map_or(ReturnCode::ERESERVE, move |pagebuffer| {
-            let page_size = pagebuffer.as_mut().len();
-
             self.source.set(source);
             self.destination.set(destination);
             self.length.set(length);
@@ -86,7 +79,7 @@ impl<'a, F: hil::flash::Flash + 'a> hil::flash::Client<F> for SignpostTockFirmwa
         self.driver.write_page(2, pagebuffer);
     }
 
-    fn write_complete(&self, pagebuffer: &'static mut F::Page, _error: hil::flash::Error) {
+    fn write_complete(&self, _pagebuffer: &'static mut F::Page, _error: hil::flash::Error) {
         // Reboot!
     }
 
@@ -100,7 +93,7 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     /// ### `allow_num`
     ///
     /// - `0`: Buffer that is 16 bytes long and will contain reset config information.
-    fn allow(&self, appid: AppId, allow_num: usize, slice: AppSlice<Shared, u8>) -> ReturnCode {
+    fn allow(&self, _appid: AppId, _allow_num: usize, slice: AppSlice<Shared, u8>) -> ReturnCode {
         if slice.len() == 16 {
             self.config.replace(slice);
             ReturnCode::SUCCESS
