@@ -97,7 +97,7 @@ static int sara_u260_setup_http_profile(const char* url) {
     int ret = at_send(SARA_CONSOLE,"AT+UHTTP=0\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 3000);
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,1,\"");
@@ -109,13 +109,13 @@ static int sara_u260_setup_http_profile(const char* url) {
     ret = at_send(SARA_CONSOLE,"\"\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 3000);
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE,"AT+UHTTP=0,5,80\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 3000);
     if (ret < 0) return SARA_U260_ERROR;
 
     return SARA_U260_SUCCESS;
@@ -331,7 +331,7 @@ int sara_u260_basic_http_get(const char* url, const char* path) {
     ret = at_send(SARA_CONSOLE,"\",\"getresult.txt\"\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_response(SARA_CONSOLE, 3);
+    ret = at_wait_for_response(SARA_CONSOLE, 3, 30000);
 
     return ret;
 }
