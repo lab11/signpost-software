@@ -148,10 +148,16 @@ static void initialization_api_callback(uint8_t source_address,
     }
 }
 
+static bool checking_init = false;
 static void check_module_init_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) int expiration,
                             __attribute__ ((unused)) int unused,
                             __attribute__ ((unused)) void* ud) {
+
+
+    if(checking_init) return;
+
+    checking_init = true;
 
     //tickle watchdog
     app_watchdog_combine(WATCH_LIB_INIT);
@@ -211,6 +217,8 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
           isolated_count++;
         }
     }
+
+    checking_init = false;
 }
 
 typedef struct duty_cycle_struct {
@@ -492,7 +500,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A800CC;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A800DD;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
