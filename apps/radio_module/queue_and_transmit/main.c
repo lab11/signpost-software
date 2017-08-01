@@ -152,6 +152,246 @@ static void networking_api_callback(uint8_t source_address,
     }
 }
 
+static int find_end_response_body(void) {
+    //okay now parse the version file
+    //first loop through looking for the end of the header
+    bool header_done = false;
+    uint8_t read_buf[200];
+    uint32_t offset = 0;
+    while(!header_done) {
+        int ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+        if(ret < SARA_U260_SUCCESS) {
+            free(version);
+            free(pre_slash);
+            free(post_slash);
+            return ret;
+        }
+
+        //find if the end string is in this string
+        char* pt = strnstr(read_buf,"\r\n\r\n",200);
+        if(pt != NULL) {
+            offset += (pt-read_buf);
+            head_done = true;
+            break SARA_U260_ERROR;
+        }
+
+        //make sure we didn't just get part of it
+        if(!strncmp(read_buf+199,"\r") || !strncmp(read_buf+198,"\r\n") || !strncmp(read_buf+197,"\r\n\r")) {
+            //we could have gotten part of it, shift a bit and read again
+            offset += 4;
+        } else {
+            offset += 200;
+        }
+
+        if(ret < 200 && head_done == false) {
+            //we got to the end and didn't find the end of the header
+            free(version);
+            free(pre_slash);
+            free(post_slash);
+            return SARA_U260_ERROR;
+        }
+    }
+
+    return offset;
+}
+
+static void update_api_callback(uint8_t source_address,
+        signbus_frame_type_t frame_type, __attribute ((unused)) signbus_api_type_t api_type,
+        uint8_t message_type, size_t message_length, uint8_t* message) {
+
+    static bool got_transfer = false;
+
+    if(frame_type == CommandFrame) {
+        if(message_type == UpdateRequestMessage) {
+            //parse the request
+            uint32_t url_len;
+            uint32_t version_len;
+            char* url;
+            char* version;
+            if(message_length >= 4) {
+                memcpy(&url_len, message, 4);
+            } else {
+                return;
+            }
+
+            if(message_length >= 8 + url_len) {
+                memcpy(&version_len, message+4+url_len, 4);
+            } else {
+                return;
+            }
+
+            if(message_length >= 8 + url_len + version_len) {
+                url = malloc(url_len);
+                if(!url) return;
+
+                version = malloc(version_len);
+                if(!version) {
+                    free(url);
+                    return;
+                }
+
+                memcpy(url, message+4, url_len);
+                memcpy(version, message+4+url_len, version_len);
+            } else {
+                return;
+            }
+
+            //find the first slash in the url
+            uint32_t slash = 0;
+            for(uint32_t i = 0; i < url_len; i++) {
+                if(url[i] == '/') {
+                    slash = i;
+                    break;
+                }
+            }
+
+            char* pre_slash = malloc(slash + 1);
+            if(!pre_slash)  {
+                free(url);
+                free(version);
+                return;
+            }
+
+            char* post_slash_version = malloc(url_len - slash+10);
+            if(!post_slash) {
+                free(url);
+                free(version);
+                free(pre_slash);
+                return;
+            }
+
+            char* post_slash_app = malloc(url_len - slash+10);
+            if(!post_slash) {
+                free(url);
+                free(version);
+                free(pre_slash);
+                return;
+            }
+
+            snprintf(pre_slash, slash+1, "%s", url);
+            if(url[url_len] == '/') {
+                snprintf(post_slash_version, url_len - slash + 10, "%sinfo.txt", url+slash);
+                snprintf(post_slash_app, url_len - slash + 10, "%sapp.bin", url+slash);
+            } else {
+                snprintf(post_slash_version, url_len - slash + 10, "%s/info.txt", url+slash);
+                snprintf(post_slash_app, url_len - slash + 10, "%s/app.bin", url+slash);
+            }
+
+            //send the http get for the version file
+            int ret = sarah_u260_basic_http_get(pre_slash,post_slash_version);
+            free(post_slash_version);
+
+            if(ret != SARA_U260_SUCCESS) {
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            int offset = find_end_of_response_header();
+            if(offset < SARA_U260_SUCCESS) {
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            //read the body of the file
+            uint8_t read_buf[200];
+            int ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+            if(ret == 200) {
+                //the info file should not be this long
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            //parse the body of the file
+            char* version_line = strnstr(read_buf,"\n",ret);
+            if(!version_line) {
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            char* len_line = strnstr(version_line,"\n",ret - (version_line-read_buf));
+            if(!len_line) {
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            char* crc_line = strnstr(len_line,"\n",ret - (len_line-read_buf));
+            if(!len_line) {
+                free(version);
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            //compare the version
+            int cmp = strncmp(read_buf, version, (version_line - read_buf));
+            free(version);
+            if(cmp <= 0) {
+                //don't update because versions match
+                free(pre_slash);
+                free(post_slash_app);
+                return;
+            }
+
+            //extract the length and the CRC
+            uint16_t crc = strtol(len_line,&crc_line,16);
+            uint32_t len = strtol(version_line,&len_line,16);
+
+
+            //okay now fetch the actual update
+            int ret = sarah_u260_basic_http_get(pre_slash,post_slash_app);
+            free(pre_slash);
+            free(post_slash_app);
+            if(ret != SARA_U260_SUCCESS) {
+                return;
+            }
+
+            //find the end of the response
+            int offset = find_end_of_response_header();
+            if(offset < SARA_U260_SUCCESS) {
+                return;
+            }
+
+            //now stream the binary back in chunks
+            bool done_transferring = false;
+            offset = 0;
+            while(!done_transferring) {
+                ret = sara_u260_get_get_partial_response(read_buf, offset, 200);
+                if(ret < SARA_U260_SUCCESS) {
+                    return;
+                } else if (ret < 200) {
+                    //done getting responses
+                    signpost_update_transfer_reply(source_address,read_buf,offset,ret);
+                    done_transferring = true;
+                } else {
+                    signpost_update_transfer_reply(source_address,read_buf,offset,200);
+                    offset += 200;
+                }
+
+                ret = yield_for_with_timeout(&got_transfer, 10000);
+                if(ret  < TOCK_SUCCESS) return;
+            }
+
+            signpost_update_done_reply(source_address,UpdateFetched,len,crc);
+        }
+    } else if(frame_type == ResponseFrame) {
+        if(message_type == UpdateResponseMessage) {
+            got_transfer = true;
+        }
+    } else {
+        return;
+    }
+}
+
 void ble_address_set(void) {
     static ble_gap_addr_t gap_addr;
 
@@ -414,7 +654,8 @@ int main (void) {
 
 
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
-    static api_handler_t* handlers[] = {&networking_handler,NULL};
+    static api_handler_t update_handler = {UpdateApiType, update_api_callback};
+    static api_handler_t* handlers[] = {&networking_handler,&update_handler,NULL};
     do {
         rc = signpost_initialization_module_init(ModuleAddressRadio,handlers);
         if (rc<0) {
