@@ -110,6 +110,10 @@ int port_rng_init(void);
  */
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
+/* port_printf
+ * Platform specific implementation of printf
+ * This is usually implemented using vprintf and stdarg.h
+ */
 int port_printf(const char *fmt, ...);
 
 #ifdef __cplusplus
