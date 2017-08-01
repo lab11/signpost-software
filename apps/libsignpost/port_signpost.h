@@ -110,10 +110,13 @@ int port_rng_init(void);
  */
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
+<<<<<<< HEAD
 /* port_printf
  * Platform specific implementation of printf
  * This is usually implemented using vprintf and stdarg.h
  */
+=======
+>>>>>>> Modified arduino files for new port layer specs
 int port_printf(const char *fmt, ...) __attribute__ ((format (gnu_printf, 1, 2)));
 
 #ifdef __cplusplus
