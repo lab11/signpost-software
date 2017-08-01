@@ -2,8 +2,6 @@
 
 #include "mbedtls/entropy.h"
 
-//#include "rng.h"
-#include "port_signpost.h"
 #include "signpost_entropy.h"
 #include "port_signpost.h"
 
