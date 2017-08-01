@@ -117,6 +117,8 @@ static int sara_u260_setup_http_profile(const char* url) {
 
     ret = at_wait_for_response(SARA_CONSOLE, 3);
     if (ret < 0) return SARA_U260_ERROR;
+
+    return SARA_U260_SUCCESS;
 }
 
 
@@ -141,7 +143,7 @@ static int sara_u260_del_file(const char* fname) {
 }
 
 static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
-    
+
     int ret = at_send(SARA_CONSOLE, "AT+UDWNFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
 
@@ -154,7 +156,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     char c[15];
     int clen = snprintf(c,15,"%lu",(uint32_t)len);
     if(clen <= 0) {
-        return SARA_U260_ERROR; 
+        return SARA_U260_ERROR;
     }
 
     ret = at_send(SARA_CONSOLE, c);
@@ -205,7 +207,7 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     if(ret < 0) {
         return ret;
     }
-    
+
     ret = sara_u260_setup_http_profile(url);
     if (ret < 0) return SARA_U260_ERROR;
 
@@ -228,13 +230,13 @@ static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, s
 
     int ret = at_send(SARA_CONSOLE,"AT+URDBLOCK=\"");
     if (ret < 0) return SARA_U260_ERROR;
-    
+
     ret = at_send_buf(SARA_CONSOLE, (uint8_t*)fname, strlen(fname));
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_send(SARA_CONSOLE, "\",");
     if (ret < 0) return SARA_U260_ERROR;
-    
+
     char c[60];
     snprintf(c,60,"%lu,%lu\r",(uint32_t)offset,(uint32_t)max_len);
     ret = at_send(SARA_CONSOLE,c);
