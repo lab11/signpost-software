@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "crc.h"
 
 //nordic includes
 #include "nrf.h"
@@ -20,13 +21,14 @@
 #include "tock.h"
 #include "console.h"
 #include "timer.h"
-#include "iM880A_RadioInterface.h"
+#include "xdot.h"
 #include "i2c_master_slave.h"
 #include "app_watchdog.h"
 #include "radio_module.h"
 #include "gpio.h"
 #include "RadioDefs.h"
 #include "CRC16.h"
+#include "led.h"
 
 //definitions for the ble
 #define DEVICE_NAME "Signpost"
@@ -45,7 +47,7 @@
 };*/
 
 //definitions for the i2c
-#define BUFFER_SIZE 21
+#define BUFFER_SIZE 50
 #define ADDRESS_SIZE 6
 #define NUMBER_OF_MODULES 8
 
@@ -53,14 +55,17 @@
 //make a queue of 30 deep
 #define QUEUE_SIZE 30
 uint8_t data_queue[QUEUE_SIZE][BUFFER_SIZE];
+uint8_t data_length[QUEUE_SIZE];
 uint8_t queue_head = 0;
 uint8_t queue_tail = 0;
 uint32_t lora_packets_sent = 1;
-uint32_t lora_last_packets_sent = 0;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
-uint8_t status_send_buf[20] = {0};
+uint8_t status_send_buf[50] = {0};
+
+//these structures for reporting energy to the controller
+
 
 static void increment_queue_pointer(uint8_t* p) {
     if(*p == (QUEUE_SIZE -1)) {
@@ -75,26 +80,7 @@ static void increment_queue_pointer(uint8_t* p) {
 #endif
 static uint8_t address[ADDRESS_SIZE] = { COMPILE_TIME_ADDRESS };
 
-
-//these are the lora callback functions for seeing if everything is okay
-
-static void lora_rx_callback(uint8_t* payload __attribute__ ((unused)),
-                        uint8_t len __attribute__ ((unused)),
-                        TRadioFlags flag __attribute__ ((unused))) {
-    //this should never happen because I'm not receiving
-//    printf("Lora received a message?\n");
-}
-
-static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
-                        uint8_t status) {
-    //right now the  radio library ONLY implements txdone messages
-    if(status == DEVMGMT_STATUS_OK) {
-        lora_packets_sent++;
-    } else {
-        printf("Lora error, resetting...");
-        //app_watchdog_reset_app();
-    }
-}
+static int join_lora_network(void);
 
 /*static void adv_config_data(void) {
     static uint8_t i = 0;
@@ -116,7 +102,14 @@ static void lora_tx_callback(TRadioMsg* message __attribute__ ((unused)),
 }*/
 
 static void count_module_packet(uint8_t module_address) {
+
+    if(module_address == 0x0) {
+        //this was an error
+        return;
+    }
+
     for(uint8_t i = 0; i < NUMBER_OF_MODULES; i++) {
+
         if(module_num_map[i] == 0) {
             module_num_map[i] = module_address;
             module_packet_count[i]++;
@@ -136,10 +129,12 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
         return -1;
     } else {
         data_queue[queue_tail][0] = addr;
-        if(len  <= BUFFER_SIZE -1) {
+        if(len <= BUFFER_SIZE -1) {
             memcpy(data_queue[queue_tail]+1, buffer, len);
+            data_length[queue_tail] = len+1;
         } else {
             memcpy(data_queue[queue_tail]+1, buffer, BUFFER_SIZE-1);
+            data_length[queue_tail] = BUFFER_SIZE;
         }
         increment_queue_pointer(&queue_tail);
         return 0;
@@ -189,44 +184,100 @@ void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
     //and maybe this
 }
 
+static uint8_t sn = 0;
+static bool currently_sending = false;
+
+
+#define SUCCESS 0
+#define FAILURE 1
+
+static int track_failures(bool fail) {
+    static int fail_counter = 0;
+
+    if(fail) {
+        fail_counter++;
+        led_on(2);
+        delay_ms(5);
+        led_off(2);
+    } else {
+        fail_counter = 0;
+        led_on(3);
+        delay_ms(5);
+        led_off(3);
+    }
+
+    if(fail_counter == 20) {
+        //try reseting the xdot and rejoining the network
+        printf("20 straight failures. soft reset!\n");
+        xdot_reset();
+        delay_ms(500);
+
+        return join_lora_network();
+    } else if(fail_counter == 40) {
+        //hard reset the xdot using the power pin and rejoin the network
+        printf("40 straight failures. Hard reset!\n");
+        gpio_set(LORA_POWER);
+        delay_ms(1000);
+        gpio_clear(LORA_POWER);
+        delay_ms(1000);
+
+        xdot_reset();
+        delay_ms(500);
+
+        return join_lora_network();
+
+    } else if(fail_counter == 50) {
+        //just ask the controller to reset us and see if that fixes it
+        int rc;
+        do {
+            rc = signpost_energy_duty_cycle(1000);
+            delay_ms(1000);
+        } while (rc < 0);
+    }
+
+    return -1;
+}
+
 static void timer_callback (
     int callback_type __attribute__ ((unused)),
     int length __attribute__ ((unused)),
     int unused __attribute__ ((unused)),
     void * callback_args __attribute__ ((unused))) {
 
-    static uint8_t LoRa_send_buffer[ADDRESS_SIZE + BUFFER_SIZE + 2];
+    if(currently_sending) return;
+
+    static uint8_t LoRa_send_buffer[(ADDRESS_SIZE + BUFFER_SIZE)];
     static uint8_t send_counter = 0;
 
     if(queue_head != queue_tail) {
 
-        if(lora_last_packets_sent == lora_packets_sent) {
-            //error
-            printf("lora error! Reseting..\n");
-            //app_watchdog_reset_app();
-        } else {
-            lora_last_packets_sent = lora_packets_sent;
-        }
-
         //count the packet
         count_module_packet(data_queue[queue_head][0]);
+
+        data_queue[queue_head][2] = sn;
 
         //send the packet
         memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
         memcpy(LoRa_send_buffer+ADDRESS_SIZE, data_queue[queue_head], BUFFER_SIZE);
-        uint16_t crc = CRC16_Calc(LoRa_send_buffer, ADDRESS_SIZE+BUFFER_SIZE, 0xFFFF);
-        LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE] = (uint8_t)((crc & 0xFF00) >> 8);
-        LoRa_send_buffer[ADDRESS_SIZE+BUFFER_SIZE+1] = (uint8_t)(crc & 0xFF);
-        uint16_t status = iM880A_SendRadioTelegram(LoRa_send_buffer,BUFFER_SIZE+ADDRESS_SIZE+2);
+
+        currently_sending = true;
+        xdot_wake();
+        int status = xdot_send(LoRa_send_buffer,data_length[queue_head]+ADDRESS_SIZE);
 
         //parse the HCI layer error codes
-        if(status != 0) {
-            //error
-            printf("lora error! Resetting...\n");
-            //app_watchdog_reset_app();
+        if(status < 0) {
+            printf("Xdot send failed\n");
+            track_failures(FAILURE);
+        } else {
+            track_failures(SUCCESS);
+            printf("Xdot send succeeded!\n");
+            sn++;
+            increment_queue_pointer(&queue_head);
         }
-        increment_queue_pointer(&queue_head);
     }
+
+    currently_sending = false;
+    xdot_sleep();
 
     send_counter++;
 
@@ -237,34 +288,121 @@ static void timer_callback (
         status_send_buf[1]++;
         status_send_buf[2] = number_of_modules;
 
+        //make an array of energy reports based on the number_of_modules
+        signpost_energy_report_t energy_report;
+        signpost_energy_report_module_t* reps = malloc(number_of_modules*sizeof(signpost_energy_report_module_t));
+        if(!reps) return;
+
         //copy the modules and their send numbers into the buffer
+        //at the same time total up the packets sent
         uint8_t i = 0;
+        uint16_t packets_total = 0;
         for(; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
                 status_send_buf[3+ i*2] = module_num_map[i];
+                reps[i].application_id = module_num_map[i];
                 status_send_buf[3+ i*2 + 1] = module_packet_count[i];
+                packets_total += module_packet_count[i];
             } else {
                 break;
             }
         }
 
-        if(queue_tail >= queue_head) {
-            status_send_buf[3+i*2] = queue_tail-queue_head;
-        } else {
-            status_send_buf[3+i*2] = QUEUE_SIZE-(queue_head-queue_tail);
+        printf("Sending energy query\n");
+        signpost_energy_information_t info;
+        int rc = signpost_energy_query(&info);
+        if(rc < 0) printf("ERROR: Energy query failed\n");
+
+        printf("Used %lu uWh since last reset\n",info.energy_used_since_reset_uWh);
+        //now figure out the percentages for each module
+        for(i = 0; i < NUMBER_OF_MODULES; i++){
+            if(module_num_map[i] != 0) {
+                reps[i].energy_used_uWh =
+                        (uint32_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_uWh);
+                printf("Module %d used %lu uWh since last reset\n",module_num_map[i],reps[i].energy_used_uWh);
+            } else {
+                break;
+            }
         }
 
-        add_buffer_to_queue(0x22, status_send_buf, BUFFER_SIZE);
+
+        //now pack it into an energy report structure
+        energy_report.num_reports = number_of_modules;
+        energy_report.reports = reps;
+
+        //send it to the controller
+        printf("Sending energy report\n");
+        rc = signpost_energy_report(&energy_report);
+        if(rc < 0) {
+            printf("Energy report failed\n");
+        } else {
+            rc = signpost_energy_reset();
+            if(rc < 0) printf("ERROR: Energy reset failed\n");
+
+            //reset_packet_send_bufs
+            for(i = 0; i < NUMBER_OF_MODULES; i++) {
+                module_packet_count[i] = 0;
+            }
+        }
+
+        //calculate and add the queue size in the status packet
+        if(queue_tail >= queue_head) {
+            status_send_buf[3+number_of_modules*2] = queue_tail-queue_head;
+        } else {
+            status_send_buf[3+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
+        }
+
+        //put it in the send buffer
+        add_buffer_to_queue(0x22, status_send_buf, 3+number_of_modules*2+1);
 
         //reset send_counter
         send_counter = 0;
 
-        //reset_packet_send_bufs
-        for(i = 0; i < NUMBER_OF_MODULES; i++) {
-            module_packet_count[i] = 0;
-        }
+
+
+        free(reps);
     }
 
+    app_watchdog_tickle_kernel();
+}
+
+#ifndef APP_KEY
+#error Missing required define APP_KEY of format: 0x00, 0x00,... (x32)
+#endif
+static uint8_t appKey[16] = { APP_KEY };
+
+static int join_lora_network(void) {
+    xdot_wake();
+    delay_ms(1000);
+
+    int rc = xdot_init();
+    if(rc < 0) printf("xDot Init Error!\n");
+
+    //setup lora
+    uint8_t appEUI[8] = {0};
+
+    rc  = xdot_set_ack(1);
+    rc |= xdot_set_txpwr(20);
+    rc |= xdot_set_txdr(3);
+    rc |= xdot_set_adr(0);
+    if(rc < 0)  printf("XDot settings error!\n");
+
+    do {
+        printf("Joining Network...\n");
+        rc = xdot_join_network(appEUI, appKey);
+        if(rc < 0) {
+            printf("Failed to join network\n");
+            rc = track_failures(FAILURE);
+            delay_ms(5000);
+        }
+        app_watchdog_tickle_kernel();
+    } while (rc < 0);
+
+    xdot_sleep();
+    track_failures(SUCCESS);
+    printf("Joined successfully! Starting packets\n");
+
+    return 0;
 }
 
 int main (void) {
@@ -273,6 +411,7 @@ int main (void) {
     //I did it last because as soon as we init we will start getting callbacks
     //those callbacks depend on the setup above
     int rc;
+
 
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
     static api_handler_t* handlers[] = {&networking_handler,NULL};
@@ -288,11 +427,10 @@ int main (void) {
     delay_ms(10);
     gpio_clear(BLE_POWER);
 
-    //soft reset the LoRa Radio at startup
-    gpio_enable_output(LORA_RESET);
-    gpio_clear(LORA_RESET);
-    delay_ms(50);
-    gpio_set(LORA_RESET);
+    gpio_enable_output(LORA_POWER);
+    gpio_set(LORA_POWER);
+    delay_ms(500);
+    gpio_clear(LORA_POWER);
 
     status_send_buf[0] = 0x01;
     status_send_buf[1] = 0;
@@ -301,6 +439,11 @@ int main (void) {
 
     //setup a tock timer to
     //eddystone_adv((char *)PHYSWEB_URL,NULL);
+    //
+    app_watchdog_set_kernel_timeout(60000);
+    app_watchdog_start();
+
+    join_lora_network();
 
     for(uint8_t i = 0; i < QUEUE_SIZE; i++) {
         for(uint8_t j = 0; j < BUFFER_SIZE; j++) {
@@ -308,18 +451,7 @@ int main (void) {
         }
     }
 
-    //setup lora
-    //register radio callbacks
-    iM880A_Init();
-    iM880A_RegisterRadioCallbacks(lora_rx_callback, lora_tx_callback);
-    //configure
-    iM880A_Configure();
-
-    // Setup a watchdog
-    //app_watchdog_set_kernel_timeout(10000);
-    //app_watchdog_start();
-
-    //setup timer
+        //setup timer
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
 }
