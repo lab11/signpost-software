@@ -1502,8 +1502,11 @@ int signpost_fetch_update(char* url,
             } else {
                 return resp.response_code;
             }
+        } else if (incoming_message_type == UpdateUpToDateMessage) {
+            return UpdateUpToDate;
         } else {
-            return SB_PORT_FAIL;
+            //this must be an error code
+            return UpdateFetchFailure;
         }
     }
 }
