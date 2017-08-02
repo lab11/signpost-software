@@ -494,7 +494,7 @@ typedef enum {
 typedef struct signpost_update_done {
     uint32_t response_code;
     uint32_t total_length;
-    uint16_t crc;
+    uint32_t crc;
 } signpost_update_done_t;
 
 
@@ -519,19 +519,19 @@ int signpost_fetch_update(char* url,
                             uint32_t flash_scratch_start,
                             uint32_t flash_scratch_length,
                             uint32_t* update_length,
-                            uint16_t* crc);
+                            uint32_t* crc);
 
 //this is the apply function for the fetch counterpart
 int signpost_apply_update(uint32_t flash_dest_address,
                             uint32_t flash_scratch_start,
                             uint32_t update_length,
-                            uint16_t crc);
+                            uint32_t crc);
 
 int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk,
                                     uint32_t offset, uint32_t len);
 
 int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len,
-                                uint16_t crc);
+                                uint32_t crc);
 
 int signpost_update_error_reply(uint8_t dest_addr);
 int signpost_update_up_to_date_reply(uint8_t dest_addr);
