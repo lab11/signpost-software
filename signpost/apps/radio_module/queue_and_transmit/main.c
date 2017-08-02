@@ -225,7 +225,7 @@ static void update_api_callback(uint8_t source_address,
             if(message_length >= 8 + url_len + version_len) {
                 url = malloc(url_len);
                 if(!url) {
-                    printf("UPDATE ERROR: No memory for url of len %lu\n",url_len); 
+                    printf("UPDATE ERROR: No memory for url of len %lu\n",url_len);
                     signpost_update_error_reply(source_address);
                     return;
                 }
@@ -233,7 +233,7 @@ static void update_api_callback(uint8_t source_address,
                 version = malloc(version_len);
                 if(!version) {
                     free(url);
-                    printf("UPDATE ERROR: No memory for verion of len %lu\n",version_len); 
+                    printf("UPDATE ERROR: No memory for verion of len %lu\n",version_len);
                     signpost_update_error_reply(source_address);
                     return;
                 }
@@ -373,9 +373,9 @@ static void update_api_callback(uint8_t source_address,
             }
 
             //extract the length and the CRC
-            uint16_t crc = strtol(len_line,&crc_line,16);
+            uint32_t crc = strtol(len_line,&crc_line,16);
             uint32_t len = strtol(version_line,&len_line,16);
-            printf("UPDATE: Found CRC of 0x%02x\n",crc);
+            printf("UPDATE: Found CRC of 0x%04lx\n",crc);
             printf("UPDATE: Found length of 0x%04lx\n",len);
 
 
