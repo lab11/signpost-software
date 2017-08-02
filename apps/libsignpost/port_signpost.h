@@ -146,6 +146,8 @@ int port_signpost_flash_write(uint32_t address, uint8_t* data, uint32_t data_len
 //it should, check the crc, copy the flash to the destination, then reset
 int port_signpost_apply_update(uint32_t dest_address, uint32_t source_address, uint32_t update_length, uint16_t crc);
 
+int port_signpost_apply_update(uint32_t dest_address, uint32_t source_address, uint32_t update_length, uint32_t crc);
+
 #ifdef __cplusplus
 }
 #endif
