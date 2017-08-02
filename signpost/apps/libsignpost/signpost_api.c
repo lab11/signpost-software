@@ -1461,32 +1461,43 @@ int signpost_fetch_update(const char* url,
         //we got the message, is it a done or a xfer message?
         if(incoming_message_type == UpdateTransferMessage) {
             //take the message, unpack it, do a flash write, then respond
+            printf("Received transfer message\n");
             uint32_t data_len;
             uint32_t offset;
 
             memcpy(&data_len, incoming_message, 4);
             uint8_t* data = malloc(data_len);
             if(!data) {
+                printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
             memcpy(data, incoming_message+4, data_len);
             memcpy(&offset, incoming_message+4+data_len, 4);
 
             if(offset+data_len > flash_scratch_length) {
+                printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
 
+            printf("Writing to flash\n");
             ret = port_signpost_flash_write(flash_scratch_start + offset, data, data_len);
 
             free(data);
-            if(ret < 0) return ret;
+            if(ret < 0) {
+                printf("Error writing to flash\n");
+                return ret;
+            }
 
             //send response message so radio can proceed
+            printf("Sending response message to get more data\n");
             ret = signpost_api_send(ModuleAddressRadio,
                 ResponseFrame, UpdateApiType, UpdateResponseMessage,
                 0, NULL);
 
-            if(ret < 0) return ret;
+            if(ret < 0)  {
+                printf("Error sending response message\n");
+                return ret;
+            };
         } else if (incoming_message_type == UpdateResponseMessage) {
             signpost_update_done_t resp;
             memcpy(&resp, incoming_message, sizeof(signpost_update_done_t));
