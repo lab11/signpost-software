@@ -270,7 +270,7 @@ pub unsafe fn reset_handler() {
          &sam4l::gpio::PB[02], //NRF RESET
          &sam4l::gpio::PB[08], //NRF BOOT
          &sam4l::gpio::PB[11], //NRF POWERGATE
-         &sam4l::gpio::PA[13], //LORA INT1
+         &sam4l::gpio::PB[13], //LORA INT1
          &sam4l::gpio::PB[08], //NRF BOOT
          &sam4l::gpio::PA[06], //LORA POWERGATE
          &sam4l::gpio::PB[04], //LORA RESET
@@ -424,7 +424,7 @@ pub unsafe fn reset_handler() {
     //turn off gsm power
     sam4l::gpio::PA[07].enable();
     sam4l::gpio::PA[07].enable_output();
-    sam4l::gpio::PA[07].set();
+    sam4l::gpio::PA[07].clear();
 
     //clear gsm cts
     sam4l::gpio::PA[08].enable();
