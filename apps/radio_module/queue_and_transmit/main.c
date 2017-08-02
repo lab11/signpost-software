@@ -161,8 +161,10 @@ static int find_end_of_response_header(void) {
     char read_buf[200];
     uint32_t offset = 0;
     while(!header_done) {
+        printf("Reading 200 bytes\n");
         int ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
         if(ret < SARA_U260_SUCCESS) {
+            printf("Byte read error code %d\n", ret);
             return ret;
         }
 
@@ -171,18 +173,22 @@ static int find_end_of_response_header(void) {
         if(pt != NULL) {
             offset += (pt-read_buf);
             header_done = true;
+            printf("Found end of header at byte %d!\n",offset);
             break;
         }
 
         //make sure we didn't just get part of it
         if(!strncmp(read_buf+199,"\r",1) || !strncmp(read_buf+198,"\r\n",2) || !strncmp(read_buf+197,"\r\n\r",3)) {
             //we could have gotten part of it, shift a bit and read again
+            printf("We might have split off offset - read again\n",offset);
             offset += 4;
         } else {
+            printf("Nothing here on to the next read\n");
             offset += 200;
         }
 
         if(ret < 200 && header_done == false) {
+            printf("End of file without finding anything\n");
             //we got to the end and didn't find the end of the header
             return SARA_U260_ERROR;
         }
@@ -191,16 +197,27 @@ static int find_end_of_response_header(void) {
     return offset;
 }
 
+#define WAITING_FOR_UPDATE 0
+#define TRANSFERRING_BINARY 1
+#define CHECKING_UPDATE 2
+
 static void update_api_callback(uint8_t source_address,
         signbus_frame_type_t frame_type, __attribute ((unused)) signbus_api_type_t api_type,
         uint8_t message_type, size_t message_length, uint8_t* message) {
 
-    static bool got_transfer = false;
+    static int update_state = WAITING_FOR_UPDATE;
+    static bool done_transferring = false;
+    static uint32_t crc;
+    static uint32_t len;
+    static uint32_t offset;
+    static uint32_t binary_offset;
 
     if(frame_type == CommandFrame) {
         printf("Received update request from 0x%02x\n", source_address);
 
-        if(message_type == UpdateRequestMessage) {
+        if(message_type == UpdateRequestMessage && update_state == WAITING_FOR_UPDATE) {
+            update_state = CHECKING_UPDATE;
+
             //parse the request
             uint32_t url_len;
             uint32_t version_len;
@@ -211,6 +228,7 @@ static void update_api_callback(uint8_t source_address,
             } else {
                 printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
@@ -219,35 +237,43 @@ static void update_api_callback(uint8_t source_address,
             } else {
                 printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
+            printf("Update: url_len: %d version_len: %d\n",url_len,version_len);
+
             if(message_length >= 8 + url_len + version_len) {
-                url = malloc(url_len);
+                url = malloc(url_len+5);
+                memset(url, 0, url_len+5);
                 if(!url) {
                     printf("UPDATE ERROR: No memory for url of len %lu\n",url_len);
                     signpost_update_error_reply(source_address);
+                    update_state = WAITING_FOR_UPDATE;
                     return;
                 }
 
-                version = malloc(version_len);
+                version = malloc(version_len+5);
+                memset(version, 0, version_len+5);
                 if(!version) {
                     free(url);
                     printf("UPDATE ERROR: No memory for verion of len %lu\n",version_len);
                     signpost_update_error_reply(source_address);
+                    update_state = WAITING_FOR_UPDATE;
                     return;
                 }
 
                 memcpy(url, message+4, url_len);
-                memcpy(version, message+4+url_len, version_len);
+                memcpy(version, message+8+url_len, version_len);
             } else {
                 printf("UPDATE ERROR - update message too short\n");
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
-            printf("Update URL: %*s\n",(int)url_len,url);
-            printf("Update Version: %*s\n",(int)version_len,version);
+            printf("Update URL: %.*s\n",(int)url_len,url);
+            printf("Update Version: %.*s\n",(int)version_len,version);
 
             //find the first slash in the url
             uint32_t slash = 0;
@@ -263,6 +289,7 @@ static void update_api_callback(uint8_t source_address,
                 free(url);
                 free(version);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
@@ -272,6 +299,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
@@ -281,6 +309,7 @@ static void update_api_callback(uint8_t source_address,
                 free(version);
                 free(pre_slash);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
@@ -300,24 +329,30 @@ static void update_api_callback(uint8_t source_address,
             int ret = sara_u260_basic_http_get(pre_slash,post_slash_version);
             free(post_slash_version);
 
-            if(ret != SARA_U260_SUCCESS) {
+            if(ret < SARA_U260_SUCCESS) {
                 printf("UPDATE: HTTP get of version info failed with error %d\n",ret);
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
-            int offset = find_end_of_response_header();
+            delay_ms(10000);
+
+            offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
                 printf("UPDATE: finding end of header failed with error %d\n",offset);
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
+            //move past the newline series
+            offset += 4;
             printf("UPDATE: Header ends at position %d\n",offset);
 
             //read the body of the file
@@ -330,8 +365,10 @@ static void update_api_callback(uint8_t source_address,
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
+            printf("Got version file:\n%.*s\n",ret,read_buf);
 
             //parse the body of the file
             char* version_line = strnstr(read_buf,"\n",ret);
@@ -340,28 +377,32 @@ static void update_api_callback(uint8_t source_address,
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
-            char* len_line = strnstr(version_line,"\n",ret - (version_line-read_buf));
+            char* len_line = strnstr(version_line+1,"\n",ret - (version_line-read_buf));
             if(!len_line) {
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
-            char* crc_line = strnstr(len_line,"\n",ret - (len_line-read_buf));
+            char* crc_line = strnstr(len_line+1,"\n",ret - (len_line-read_buf));
             if(!len_line) {
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
                 signpost_update_up_to_date_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
             //compare the version
+            printf("Read version of %.*s\n",(version_line-read_buf),read_buf);
             int cmp = strncmp(read_buf, version, (version_line - read_buf));
             free(version);
             if(cmp <= 0) {
@@ -369,63 +410,95 @@ static void update_api_callback(uint8_t source_address,
                 printf("UPDATE ERROR: New version equal to or older than current version\n");
                 free(pre_slash);
                 free(post_slash_app);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
             //extract the length and the CRC
-            uint32_t crc = strtol(len_line,&crc_line,16);
-            uint32_t len = strtol(version_line,&len_line,16);
-            printf("UPDATE: Found CRC of 0x%04lx\n",crc);
-            printf("UPDATE: Found length of 0x%04lx\n",len);
+            printf("CRC read as %.*s\n",crc_line-len_line,len_line+1);
+            crc = strtoul(len_line+1,&crc_line,16);
+            len = strtoul(version_line,&len_line,16);
+            printf("UPDATE: Found CRC of 0x%08lx\n",crc);
+            printf("UPDATE: Found length of 0x%08lx\n",len);
 
 
             //okay now fetch the actual update
             ret = sara_u260_basic_http_get(pre_slash,post_slash_app);
             free(pre_slash);
             free(post_slash_app);
-            if(ret != SARA_U260_SUCCESS) {
+            if(ret < SARA_U260_SUCCESS) {
                 printf("UPDATE: HTTP get of binary failed with error %d\n",ret);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
+
+            delay_ms(10000);
 
             //find the end of the response
             offset = find_end_of_response_header();
             if(offset < SARA_U260_SUCCESS) {
                 printf("UPDATE: finding end of header failed with error %d\n",offset);
                 signpost_update_error_reply(source_address);
+                update_state = WAITING_FOR_UPDATE;
                 return;
             }
 
+            //again move past newlines
+            offset += 4;
+
+            //okay now we should move to the transferring state
+            update_state = TRANSFERRING_BINARY;
+
             //now stream the binary back in chunks
-            bool done_transferring = false;
-            offset = 0;
-            while(!done_transferring) {
-                ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
+            //
+            //send the first chunk then return and send the rest from response frames
+            done_transferring = false;
+            binary_offset = 0;
+            ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
+            if(ret < SARA_U260_SUCCESS) {
+                printf("Update ERROR getting partial response\n");
+                update_state = WAITING_FOR_UPDATE;
+                return;
+            } else if (ret < 200) {
+                //done getting responses
+                printf("UPDATE: Transferring final with offset %d\n",offset);
+                signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,ret);
+                done_transferring = true;
+            } else {
+                printf("UPDATE: Transferring with offset %d\n",offset);
+                signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,200);
+                binary_offset += 200;
+                offset += 200;
+            }
+        }
+    } else if(frame_type == ResponseFrame) {
+        if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
+            printf("UPDATE: Received ack to continue transfer\n");
+            if(done_transferring) {
+                printf("Sending update reply done\n");
+                signpost_update_done_reply(source_address,UpdateFetched,len,crc);
+                update_state = WAITING_FOR_UPDATE;
+                return;
+            } else {
+                uint8_t read_buf[200];
+                int ret = sara_u260_get_get_partial_response((uint8_t*)read_buf, offset, 200);
                 if(ret < SARA_U260_SUCCESS) {
+                    printf("Update ERROR getting partial response\n");
+                    update_state = WAITING_FOR_UPDATE;
                     return;
                 } else if (ret < 200) {
                     //done getting responses
                     printf("UPDATE: Transferring final with offset %d\n",offset);
-                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,ret);
+                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,ret);
                     done_transferring = true;
                 } else {
                     printf("UPDATE: Transferring with offset %d\n",offset);
-                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,offset,200);
+                    signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,200);
+                    binary_offset += 200;
                     offset += 200;
                 }
-
-                ret = yield_for_with_timeout(&got_transfer, 10000);
-                if(ret  < TOCK_SUCCESS) return;
             }
-
-            printf("UPDATE: Sending update done reply\n");
-            signpost_update_done_reply(source_address,UpdateFetched,len,crc);
-        }
-    } else if(frame_type == ResponseFrame) {
-        if(message_type == UpdateResponseMessage) {
-            printf("UPDATE: Received ack to continue transfer\n");
-            got_transfer = true;
         }
     } else {
         return;
@@ -709,9 +782,15 @@ int main (void) {
     gpio_clear(BLE_POWER);
 
     gpio_enable_output(LORA_POWER);
+//    gpio_enable_output(GSM_POWER);
     gpio_set(LORA_POWER);
+ //   gpio_set(GSM_POWER);
     delay_ms(500);
     gpio_clear(LORA_POWER);
+  //  gpio_clear(GSM_POWER);
+
+    delay_ms(1000);
+    rc = sara_u260_init();
 
     status_send_buf[0] = 0x01;
     status_send_buf[1] = 0;
