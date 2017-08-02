@@ -173,14 +173,14 @@ static int find_end_of_response_header(void) {
         if(pt != NULL) {
             offset += (pt-read_buf);
             header_done = true;
-            printf("Found end of header at byte %d!\n",offset);
+            printf("Found end of header at byte %lu!\n",offset);
             break;
         }
 
         //make sure we didn't just get part of it
         if(!strncmp(read_buf+199,"\r",1) || !strncmp(read_buf+198,"\r\n",2) || !strncmp(read_buf+197,"\r\n\r",3)) {
             //we could have gotten part of it, shift a bit and read again
-            printf("We might have split off offset - read again\n",offset);
+            printf("We might have split off offset - read again\n");
             offset += 4;
         } else {
             printf("Nothing here on to the next read\n");
@@ -241,7 +241,7 @@ static void update_api_callback(uint8_t source_address,
                 return;
             }
 
-            printf("Update: url_len: %d version_len: %d\n",url_len,version_len);
+            printf("Update: url_len: %lu version_len: %lu\n",url_len,version_len);
 
             if(message_length >= 8 + url_len + version_len) {
                 url = malloc(url_len+5);
@@ -341,9 +341,9 @@ static void update_api_callback(uint8_t source_address,
 
             delay_ms(10000);
 
-            offset = find_end_of_response_header();
-            if(offset < SARA_U260_SUCCESS) {
-                printf("UPDATE: finding end of header failed with error %d\n",offset);
+            ret = find_end_of_response_header();
+            if(ret < SARA_U260_SUCCESS) {
+                printf("UPDATE: finding end of header failed with error %lu\n",offset);
                 free(version);
                 free(pre_slash);
                 free(post_slash_app);
@@ -351,9 +351,10 @@ static void update_api_callback(uint8_t source_address,
                 update_state = WAITING_FOR_UPDATE;
                 return;
             }
+            offset = ret;
             //move past the newline series
             offset += 4;
-            printf("UPDATE: Header ends at position %d\n",offset);
+            printf("UPDATE: Header ends at position %lu\n",offset);
 
             //read the body of the file
             char read_buf[200];
@@ -436,14 +437,14 @@ static void update_api_callback(uint8_t source_address,
             delay_ms(10000);
 
             //find the end of the response
-            offset = find_end_of_response_header();
-            if(offset < SARA_U260_SUCCESS) {
-                printf("UPDATE: finding end of header failed with error %d\n",offset);
+            ret = find_end_of_response_header();
+            if(ret < SARA_U260_SUCCESS) {
+                printf("UPDATE: finding end of header failed with error %lu\n",offset);
                 signpost_update_error_reply(source_address);
                 update_state = WAITING_FOR_UPDATE;
                 return;
             }
-
+            offset = ret;
             //again move past newlines
             offset += 4;
 
@@ -462,11 +463,11 @@ static void update_api_callback(uint8_t source_address,
                 return;
             } else if (ret < 200) {
                 //done getting responses
-                printf("UPDATE: Transferring final with offset %d\n",offset);
+                printf("UPDATE: Transferring final with offset %lu\n",offset);
                 signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,ret);
                 done_transferring = true;
             } else {
-                printf("UPDATE: Transferring with offset %d\n",offset);
+                printf("UPDATE: Transferring with offset %lu\n",offset);
                 signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,200);
                 binary_offset += 200;
                 offset += 200;
@@ -489,11 +490,11 @@ static void update_api_callback(uint8_t source_address,
                     return;
                 } else if (ret < 200) {
                     //done getting responses
-                    printf("UPDATE: Transferring final with offset %d\n",offset);
+                    printf("UPDATE: Transferring final with offset %lu\n",offset);
                     signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,ret);
                     done_transferring = true;
                 } else {
-                    printf("UPDATE: Transferring with offset %d\n",offset);
+                    printf("UPDATE: Transferring with offset %lu\n",offset);
                     signpost_update_transfer_reply(source_address,(uint8_t*)read_buf,binary_offset,200);
                     binary_offset += 200;
                     offset += 200;
