@@ -4,7 +4,12 @@
 #include <adc.h>
 #include "microwave_radar.h"
 
+//Sample frequency of 4khz because if you look at the raw signal you don't
+//see signal features >2khz
 #define SAMPLE_FREQ 4000
+
+//This was found moving from about 10m away and observing the output of the
+//algorithm
 #define MOTION_THRESHOLD 1000000
 static sample_cb* sample_callback = NULL;
 
@@ -135,11 +140,11 @@ int mr_init(void) {
 
 //this functionality isn't present in hardware yet
 int mr_disable(void) {
-    return -1;
+    return TOCK_ENOSUPPORT;
 }
 
 int mr_enable(void) {
-    return -1;
+    return TOCK_ENOSUPPORT;
 }
 
 //boolean is motion or not. compares motion index to threshold
