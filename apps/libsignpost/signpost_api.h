@@ -507,15 +507,15 @@ typedef struct signpost_update_done {
 // version string should be formatted *.*.*... compared section by section MAX 16 chars
 
 //this will fetch the update and perform it
-int signpost_update(char* url,
-                    char* version_string,
+int signpost_update(const char* url,
+                    const char* version_string,
                     uint32_t flash_scratch_start,
                     uint32_t flash_scratch_length,
                     uint32_t flash_dest_address);
 
 //this gives the user a bit more control to fetch, then decide when to apply
-int signpost_fetch_update(char* url,
-                            char* version_string,
+int signpost_fetch_update(const char* url,
+                            const char* version_string,
                             uint32_t flash_scratch_start,
                             uint32_t flash_scratch_length,
                             uint32_t* update_length,
