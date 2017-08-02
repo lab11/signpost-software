@@ -1409,7 +1409,7 @@ int signpost_update(char* url,
                     uint32_t flash_dest_address) {
 
     uint32_t update_len;
-    uint16_t crc;
+    uint32_t crc;
     int ret = signpost_fetch_update(url, version_string, flash_scratch_start,
                                          flash_scratch_length, &update_len,
                                          &crc);
@@ -1428,7 +1428,7 @@ int signpost_fetch_update(char* url,
                             uint32_t flash_scratch_start,
                             uint32_t flash_scratch_length,
                             uint32_t* update_length,
-                            uint16_t* crc) {
+                            uint32_t* crc) {
 
     //first pack the initial update request to the radio
     uint32_t url_len = strlen(url);
@@ -1496,7 +1496,7 @@ int signpost_fetch_update(char* url,
             } else if(resp.response_code == UpdateFetched) {
                 //copy the crc and length and return update fetched
                 memcpy(&update_length, &resp.total_length, 4);
-                memcpy(&crc, &resp.crc, 2);
+                memcpy(&crc, &resp.crc, 4);
 
                 return UpdateFetched;
             } else {
@@ -1515,7 +1515,7 @@ int signpost_fetch_update(char* url,
 int signpost_apply_update(uint32_t flash_dest_address,
                             uint32_t flash_scratch_start,
                             uint32_t update_length,
-                            uint16_t crc) {
+                            uint32_t crc) {
 
     int ret = port_signpost_apply_update(flash_dest_address,
                                          flash_scratch_start,
@@ -1548,7 +1548,7 @@ int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, uin
     return ret;
 }
 
-int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len, uint16_t crc) {
+int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len, uint32_t crc) {
     signpost_update_done_t rep;
     rep.response_code = response_code;
     rep.total_length = len;
