@@ -20,7 +20,11 @@ TOCKLOADER=tockloader
 # Where in the SAM4L flash to load the kernel with `tockloader`
 KERNEL_ADDRESS=0x10000
 
-BOOTLOADER_FILE = $(SIGNPOST_BOARDS_DIR)/bootloader/justjump_bootloader.bin
+BOOTLOADER_FILE = $(SIGNPOST_BOARDS_DIR)/bootloader/tock-bootloader/build/signpost_bootloader.bin
+BOOTLOADER_DIRECTORY = $(SIGNPOST_BOARDS_DIR)/bootloader/tock-bootloader
+
+$(BOOTLOADER_FILE):
+	make -C $(BOOTLOADER_DIRECTORY)
 
 # Upload programs over uart with tockloader
 ifdef PORT

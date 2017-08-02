@@ -53,6 +53,9 @@ struct MicrowaveRadarModule {
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
     app_flash: &'static capsules::app_flash_driver::AppFlash<'static>,
+    stfu: &'static signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate<'static,
+        capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
+    stfu_holding: &'static capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
     ipc: kernel::ipc::IPC,
 }
 
@@ -72,6 +75,8 @@ impl Platform for MicrowaveRadarModule {
             30 => f(Some(self.app_flash)),
 
             108 => f(Some(self.app_watchdog)),
+            120 => f(Some(self.stfu)),
+            121 => f(Some(self.stfu_holding)),
 
             0xff => f(Some(&self.ipc)),
             _ => f(None)
@@ -275,6 +280,58 @@ pub unsafe fn reset_handler() {
         signpost_drivers::watchdog_kernel::WatchdogKernel::new(watchdog_alarm, &sam4l::wdt::WDT, 1200));
     watchdog_alarm.set_client(watchdog);
 
+    //
+    // Flash
+    //
+
+    let mux_flash = static_init!(
+        capsules::virtual_flash::MuxFlash<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::virtual_flash::MuxFlash::new(&sam4l::flashcalw::FLASH_CONTROLLER));
+    hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, mux_flash);
+
+    //
+    // Firmware Update
+    //
+    let virtual_flash_stfu_holding = static_init!(
+        capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::virtual_flash::FlashUser::new(mux_flash));
+    pub static mut STFU_HOLDING_PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+
+    let stfu_holding_nv_to_page = static_init!(
+        capsules::nonvolatile_to_pages::NonvolatileToPages<'static,
+            capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
+        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
+            virtual_flash_stfu_holding,
+            &mut STFU_HOLDING_PAGEBUFFER));
+    hil::flash::HasClient::set_client(virtual_flash_stfu_holding, stfu_holding_nv_to_page);
+
+    pub static mut STFU_HOLDING_BUFFER: [u8; 512] = [0; 512];
+    let stfu_holding = static_init!(
+        capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
+        capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
+            stfu_holding_nv_to_page, kernel::Container::create(),
+            0x60000, // Start address for userspace accessible region
+            0x20000, // Length of userspace accessible region
+            0,       // Start address of kernel accessible region
+            0,       // Length of kernel accessible region
+            &mut STFU_HOLDING_BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(stfu_holding_nv_to_page, stfu_holding);
+
+
+    let virtual_flash_btldrflags = static_init!(
+        capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::virtual_flash::FlashUser::new(mux_flash));
+    pub static mut BTLDRPAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+
+    let stfu = static_init!(
+        signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate<'static,
+            capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
+        signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate::new(
+            virtual_flash_btldrflags,
+            &mut BTLDRPAGEBUFFER));
+    hil::flash::HasClient::set_client(virtual_flash_btldrflags, stfu);
+
+
 
     //
     // Actual platform object
@@ -289,6 +346,8 @@ pub unsafe fn reset_handler() {
         app_watchdog: app_watchdog,
         rng: rng,
         app_flash: app_flash,
+        stfu: stfu,
+        stfu_holding: stfu_holding,
         ipc: kernel::ipc::IPC::new(),
     };
 
