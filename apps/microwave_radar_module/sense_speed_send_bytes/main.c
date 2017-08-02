@@ -114,9 +114,8 @@ int main (void) {
     send_buf[0] = 0x01;
     send_buf[1] = 0x00;
 
-    // setup timer
-    // set to about two seconds, but a larger prime number so that hopefully we
-    //  can avoid continually conflicting with other modules
+    // setup two timers. One every 500ms to check for motion and
+    // one to send data every 5s summarizing that motion
     static tock_timer_t send_timer;
     timer_every(5000, timer_callback, NULL, &send_timer);
 
