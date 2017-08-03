@@ -13,6 +13,9 @@
 //initializes and turns off command echo
 int sara_u260_init(void);
 
+//returns whether there is service or not
+int sara_u260_check_connection(void);
+
 //Attempts to perform an HTTP Post
 //Will attempt to join the network and setup a packet switch connect if one does not exist
 int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, size_t len);
