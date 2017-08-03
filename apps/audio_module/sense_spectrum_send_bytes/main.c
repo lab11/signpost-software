@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 //#include <math.h>
+#include <time.h>
 
 #include <tock.h>
 #include <console.h>
@@ -25,7 +26,7 @@
 #define RED_LED 3
 #define BUFFER_SIZE 20
 
-uint8_t send_buf[20];
+uint8_t send_buf[100];
 bool sample_done = false;
 bool still_sampling = false;
 
@@ -48,6 +49,8 @@ static void delay(void) {
     for(volatile uint16_t i = 0; i < 2000; i++);
 }
 
+struct tm current_time;
+
 int bands_total[7] = {0};
 int bands_max[7] = {0};
 int bands_now[7] = {0};
@@ -62,8 +65,6 @@ static void adc_callback (
 
     static uint8_t i = 0;
 
-    //send_buf[2+i*2] = (uint8_t)((sample >> 8) & 0xff);
-    //send_buf[2+i*2+1] = (uint8_t)(sample & 0xff);
     bands_total[i] += sample;
     if(sample > bands_max[i]) {
         bands_max[i] = sample;
@@ -113,6 +114,8 @@ static void adc_callback (
     sample_done = true;
 }
 
+static uint32_t utime;
+
 static void timer_callback (
         int callback_type __attribute__ ((unused)),
         int pin_value __attribute__ ((unused)),
@@ -121,16 +124,14 @@ static void timer_callback (
         ) {
 
     int rc;
-    printf("About to send data to radio\n");
+    static int count = 0;
 
+    //calculate the band averages over the timer period
+    //and pack them into the send buf
+    
     for(uint8_t j = 0; j < 7; j++) {
-        send_buf[2+j*2] = (uint8_t)((bands_max[j] >> 8) & 0xff);
-        send_buf[2+j*2+1] = (uint8_t)(bands_max[j] & 0xff);
+        send_buf[6+count*7+j] = (uint8_t)((bands_total[j]/bands_num[j]) & 0xff);
     }
-
-    rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,16);
-    send_buf[1]++;
-    printf("Sent data with return code %d\n\n\n",rc);
 
     //reset all the variables for the next period
     for(uint8_t j = 0; j < 7; j++) {
@@ -140,9 +141,41 @@ static void timer_callback (
         bands_num[j] = 0;
     }
 
-    if(rc >= 0 && still_sampling == true) {
-        app_watchdog_tickle_kernel();
-        still_sampling = false;
+    count++;
+
+    if(count == 10) {
+        printf("About to send data to radio\n");
+        rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,6+count*7);
+        send_buf[1]++;
+        printf("Sent data with return code %d\n\n\n",rc);
+
+        if(rc >= 0 && still_sampling == true) {
+            app_watchdog_tickle_kernel();
+            still_sampling = false;
+        }
+
+        count = 0;
+
+        //okay now try to get the time from the controller
+        signpost_timelocation_time_t stime;
+        rc = signpost_timelocation_get_time(&stime);
+        if(rc < 0 && stime.satellite_count > 2) {
+            printf("Failed to get time - report zero time\n");
+            utime = 0;
+        } else {
+            current_time.tm_year = stime.year;
+            current_time.tm_mon = stime.month;
+            current_time.tm_mday = stime.day;
+            current_time.tm_hour = stime.hours;
+            current_time.tm_min = stime.minutes;
+            current_time.tm_sec = stime.seconds;
+            current_time.tm_isdst = 0;
+            utime = mktime(&current_time);
+            send_buf[2] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[3] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[4] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[5] = (uint8_t)((utime & 0xff));
+        }
     }
 }
 
@@ -178,7 +211,6 @@ int main (void) {
     send_buf[0] = 0x01;
     send_buf[1] = 0x00;
 
-
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);
     gpio_enable_output(POWER);
@@ -186,7 +218,6 @@ int main (void) {
     gpio_clear(POWER);
     gpio_clear(STROBE);
     gpio_clear(RESET);
-
 
     // start up the app watchdog
     app_watchdog_set_kernel_timeout(60000);
@@ -196,9 +227,8 @@ int main (void) {
     adc_set_callback(adc_callback, NULL);
 
     //start timer
-    static tock_timer_t timer;
-    timer_every(10000, timer_callback, NULL, &timer);
-
+    static tock_timer_t send_timer;
+    timer_every(1000, timer_callback, NULL, &send_timer);
 
     while (1) {
         sample_done = false;
