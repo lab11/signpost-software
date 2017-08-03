@@ -128,7 +128,7 @@ static void timer_callback (
 
     //calculate the band averages over the timer period
     //and pack them into the send buf
-    
+
     for(uint8_t j = 0; j < 7; j++) {
         send_buf[6+count*7+j] = (uint8_t)((bands_total[j]/bands_num[j]) & 0xff);
     }
@@ -208,7 +208,7 @@ int main (void) {
     gpio_clear(8);
     gpio_clear(9);
 
-    send_buf[0] = 0x01;
+    send_buf[0] = 0x02;
     send_buf[1] = 0x00;
 
     gpio_enable_output(STROBE);
