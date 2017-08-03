@@ -8,6 +8,7 @@
 #define SARA_U260_ERROR -1
 #define SARA_U260_INVALIDPARAM -2
 #define SARA_U260_NO_SERVICE -3
+#define SARA_U260_OPERATION_FAILED -4
 
 //initializes and turns off command echo
 int sara_u260_init(void);

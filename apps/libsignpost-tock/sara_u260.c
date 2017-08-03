@@ -165,7 +165,7 @@ static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) 
     ret = at_send(SARA_CONSOLE, "\r");
     if (ret < 0) return SARA_U260_ERROR;
 
-    ret = at_wait_for_custom_response(SARA_CONSOLE,3,2000,"\n>");
+    ret = at_wait_for_custom_response(SARA_CONSOLE,3,2000,"\n>",-1);
     if (ret < 0) return SARA_U260_ERROR;
 
     //now send the buffer in chunks of 30
@@ -222,8 +222,17 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     if (ret < 0) return SARA_U260_ERROR;
 
     ret = at_wait_for_response(SARA_CONSOLE, 3, 30000);
+    if (ret < 0) return SARA_U260_ERROR;
 
-    return ret;
+    uint8_t rbuf[30];
+    ret = at_get_custom_response(SARA_CONSOLE,3,20000,rbuf,30,"+UUHTTPCR",2);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    if(rbuf[15] == '0') {
+        return SARA_U260_OPERATION_FAILED;
+    } else {
+        return SARA_U260_SUCCESS;
+    }
 }
 
 static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len) {
@@ -333,7 +342,15 @@ int sara_u260_basic_http_get(const char* url, const char* path) {
 
     ret = at_wait_for_response(SARA_CONSOLE, 3, 30000);
 
-    return ret;
+    uint8_t rbuf[30];
+    ret = at_get_custom_response(SARA_CONSOLE,3,20000,rbuf,30,"+UUHTTPCR",2);
+    if (ret < 0) return SARA_U260_ERROR;
+
+    if(rbuf[15] == '0') {
+        return SARA_U260_OPERATION_FAILED;
+    } else {
+        return SARA_U260_SUCCESS;
+    }
 }
 
 //Returns response from most recent get

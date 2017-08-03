@@ -22,12 +22,18 @@ static int check_buffer(uint8_t* buf, int len) {
     return AT_NO_RESPONSE;
 }
 
-static int check_custom_buffer(uint8_t* buf, int len, const char* rstring) {
+static int check_custom_buffer(uint8_t* buf, int len, const char* rstring, int position) {
 
     int rlen = strlen(rstring);
     if(len >= rlen) {
-        if(!strncmp((char*)buf+len-rlen,rstring,rlen)) {
-            return AT_SUCCESS;
+        if(position > 0 && position < len-rlen) {
+            if(!strncmp((char*)buf+position,rstring,rlen)) {
+                return AT_SUCCESS;
+            }
+        } else {
+            if(!strncmp((char*)buf+len-rlen,rstring,rlen)) {
+                return AT_SUCCESS;
+            }
         }
     }
 
@@ -51,9 +57,9 @@ int at_wait_for_response(int console_num, uint8_t max_tries, uint32_t timeout_ms
     return at_get_response(console_num, max_tries, timeout_ms, buf, 200);
 }
 
-int at_wait_for_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, const char* rstring) {
+int at_wait_for_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, const char* rstring, int position) {
     static uint8_t buf[200];
-    return at_get_custom_response(console_num, max_tries, timeout_ms, buf, 200, rstring);
+    return at_get_custom_response(console_num, max_tries, timeout_ms, buf, 200, rstring, position);
 }
 
 int at_get_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uint8_t* buf, size_t max_len) {
@@ -77,7 +83,7 @@ int at_get_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uin
     return AT_NO_RESPONSE;
 }
 
-int at_get_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uint8_t* buf, size_t max_len, const char* rstring) {
+int at_get_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, uint8_t* buf, size_t max_len, const char* rstring, int position) {
 
     int tlen = 0;
     for(uint8_t i = 0; i < max_tries; i++) {
@@ -86,7 +92,7 @@ int at_get_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_
         if(len < 0) return AT_ERROR;
 
         tlen += len;
-        int check = check_custom_buffer(buf, tlen, rstring);
+        int check = check_custom_buffer(buf, tlen, rstring, position);
 
         if(check == AT_SUCCESS) {
             return tlen;
