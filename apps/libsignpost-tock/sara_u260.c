@@ -26,7 +26,7 @@ int sara_u260_init(void) {
     }
 }
 
-static int sara_u260_check_connection(void) {
+int sara_u260_check_connection(void) {
     int ret = at_send(SARA_CONSOLE, "AT+COPS?\r");
     if (ret < 0) return SARA_U260_ERROR;
 
