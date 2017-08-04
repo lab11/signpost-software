@@ -51,9 +51,9 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
 }
 
 int signpost_api_error_reply(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type) {
+        signbus_api_type_t api_type, uint8_t message_type, int error_code) {
     return signpost_api_send(destination_address,
-            ErrorFrame, api_type, message_type, 0, NULL);
+            ErrorFrame, api_type, message_type, sizeof(int), (uint8_t*)&error_code);
 }
 
 void signpost_api_error_reply_repeating(uint8_t destination_address,
@@ -131,16 +131,23 @@ static void signpost_api_start_new_async_recv(void) {
 static void signpost_api_recv_callback(int len_or_rc) {
     SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
     if (len_or_rc < 0) {
+<<<<<<< d9c7f9034686f8f6efd29778c54be5a3537f8fdc
         if (len_or_rc == SB_PORT_FAIL) {
             // These return codes are a hack
             port_printf("Dropping message with HMAC/HASH failure\n");
             signpost_api_start_new_async_recv();
+=======
+        if (len_or_rc == SB_PORT_ECRYPT) {
+            printf("Dropping message with HMAC/HASH failure\n");
+            //signpost_api_error_reply_repeating(incoming_source_address, incoming_api_type, incoming_message_type, SB_PORT_ECRYPT, true, true, 1);
+            signpost_api_start_new_async_recv();
+            return;
+>>>>>>> Add return message for error messages
         } else {
             port_printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
             // XXX trip watchdog reset or s/t?
             //volatile int crash = *(int*)0;
         }
-        signpost_api_start_new_async_recv();
     }
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
         api_handler_t** handler = module_api.api_handlers;
@@ -403,7 +410,12 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
     int ret = SB_PORT_SUCCESS;
 
+<<<<<<< d9c7f9034686f8f6efd29778c54be5a3537f8fdc
     port_printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
+=======
+    printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
+
+>>>>>>> Add return message for error messages
     // init ecdh struct for key exchange
     mbedtls_ecdh_free(&ecdh);
     mbedtls_ecdh_init(&ecdh);
@@ -423,7 +435,7 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
     if (module_number == 0xff) return SB_PORT_FAIL;
     uint8_t* key = module_info.keys[module_number];
     size_t keylen;
-    // calculated shared secret
+    // calculate shared secret
     ret = mbedtls_ecdh_calc_secret(&ecdh, &keylen, key, ECDH_KEY_LENGTH, mbedtls_ctr_drbg_random, &ctr_drbg_context);
     if(ret < SB_PORT_SUCCESS) return ret;
     SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
@@ -1089,7 +1101,7 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    if (rc < 0) {
       port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
-            NetworkingPostMessage, true, true, 1);
+            NetworkingPostMessage, rc, true, true, 1);
    }
 }
 
@@ -1101,7 +1113,7 @@ void signpost_networking_send_reply(uint8_t src_addr, int return_code) {
    if (rc < 0) {
       printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
-            NetworkingSendMessage, true, true, 1);
+            NetworkingSendMessage, rc, true, true, 1);
    }
 }
 

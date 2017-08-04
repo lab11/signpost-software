@@ -23,7 +23,7 @@ typedef struct api_handler {
 // Callers MUST echo back the api_type and message_type of the bad message.
 __attribute__((warn_unused_result))
 int signpost_api_error_reply(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type);
+        signbus_api_type_t api_type, uint8_t message_type, int error_code);
 
 // Convenience method that will repeatedly try to reply with failures and
 // itself "cannot" fail (it simply eventually gives up).
@@ -33,7 +33,7 @@ int signpost_api_error_reply(uint8_t destination_address,
 // controlling all prints, and the latter designed to allow callers to simply
 // directly call this method without needing to report failure themselves.
 void signpost_api_error_reply_repeating(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type,
+        signbus_api_type_t api_type, uint8_t message_type, int error_code,
         bool print_warnings, bool print_on_first_send, unsigned tries);
 
 // API layer send call
