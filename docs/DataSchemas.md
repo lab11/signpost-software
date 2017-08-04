@@ -1,17 +1,14 @@
-Signpost Data Schemas
+Current Signpost Data Schemas
 =====================
 
+These are the data and associated data formats that are currently being
+collected by deployed Signposts. This data is being sent to the internal
+Lab11 Influx database, the [Global Data Plane (GDP)](https://swarmlab.eecs.berkeley.edu/projects/4814/global-data-plane),
+and can be subscribed to using MQTT. Please contact us to set up an
+MQTT username and password.
 
-Generate Test Data
-------------------
-
-    npm install mqtt
-    ./generate_test_data.js
-
-Make sure you have an MQTT broker running on `localhost` (or change the path
-in the script).
-
-
+Currently the following signposts are deployed:
+  - c098e5120002
 
 Schemas
 -------
@@ -24,34 +21,111 @@ All data packets include a `_meta` section like the following:
 ```
 {
 	"_meta": {
-		"received_time": <time in ISO-8601 format>,
-		"device_id":     <signpost id>,
-		"receiver":      "lora",
-		"gateway_id":    <gateway_id>
+		"received_time":    <time in ISO-8601 format>,
+		"device_id":        <signpost MAC>,
+		"receiver":         <lora_or_http>,
+		"gateway_id":       <gateway_id>
+		"geohash":          <most_recent_geohash>
+		"sequence_number":  <0-255>
 	}
 }
 ```
 
-
-
 ### Audio Frequency Module
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_audio_frequency
+MQTT Topic: signpost/lab11/audio
+
+Fields represent the average amplitude of the corresponding frequency band in db
+over the second following the reported timestamp.
 
 ```
 {
 	"device": "signpost_audio_frequency",
-	"63Hz":    <0 - 4095>,
-	"160Hz":   <0 - 4095>,
-	"400Hz":   <0 - 4095>,
-	"1000Hz":  <0 - 4095>,
-	"2500Hz":  <0 - 4095>,
-	"6250Hz":  <0 - 4095>,
-	"16000Hz": <0 - 4095>
+	"timestamp":    <gps_time_as_unix>,
+	"63Hz":    <uint8_t>,
+	"160Hz":   <uint8_t>,
+	"400Hz":   <uint8_t>,
+	"1000Hz":  <uint8_t>,
+	"2500Hz":  <uint8_t>,
+	"6250Hz":  <uint8_t>,
+	"16000Hz": <uint8_t>
 }
 
 ```
 
 
+### GPS Data
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_gps
+MQTT Topic: signpost/lab11/gps
+
+```
+{
+	"device": "signpost_gps",
+	"latitude":  <float>,
+	"latitude_direction": "N"|"S",
+	"longitude": <float>,
+	"longitude_direction": "E"|"W",
+	"timestamp": <ISO time>
+}
+```
+
+
+### Signpost Energy
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_energy
+MQTT Topic: signpost/lab11/energy
+
+```
+{
+    device: "signpost_energy",
+    battery_voltage_mV: <uint16_t>,
+    battery_current_uA: <int32_t>,
+    solar_voltage_mV: <uint16_t>,
+    solar_current_uA: <int32_t>,
+    battery_capacity_percent_remaining: <uint8_t>,
+    battery_capacity_remaining_mAh: <uint16_t>,
+    battery_capacity_full_mAh: <uint16_t>,
+    controller_energy_remaining_mWh: <uint16_t>,
+    module0_energy_remaining_mWh: <uint16_t>,
+    module1_energy_remaining_mWh: <uint16_t>,
+    module2_energy_remaining_mWh: <uint16_t>,
+    module5_energy_remaining_mWh: <uint16_t>,
+    module6_energy_remaining_mWh: <uint16_t>,
+    module7_energy_remaining_mWh: <uint16_t>,
+    controller_energy_average_mWh: <uint16_t>,
+    module0_energy_average_mW: <uint16_t>,
+    module1_energy_average_mW: <uint16_t>,
+    module2_energy_average_mW: <uint16_t>,
+    module5_energy_average_mW: <uint16_t>,
+    module6_energy_average_mW: <uint16_t>,
+    module7_energy_average_mW: <uint16_t>,
+}
+
+
+### Radio Status
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_radio_status
+MQTT Topic: signpost/lab11/radio-status
+
+```
+{
+	"device": "signpost_radio_status",
+    "controller_packets_sent": <uint8_t>,
+	"2.4gHz_spectrum_packets_sent": <uint8_t>,
+	"ambient_sensing_packets_sent": <uint8_t>,
+	"audio_spectrum_packets_sent": <uint8_t>,
+	"microwave_radar_packets_sent": <uint8_t>,
+	"ucsd_air_quality_packets_sent": <uint8_t>,
+	"radio_status_packets_sent": <uint8_t>,
+    "radio_queue_length": <uint8_t8_t>
+}
+```
+
+The following packet structures are less finalized. We will continue to update this page.
+----------------------------------------------------------------------------------------
+
 ### Microwave Radar Module
+
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_microwave_radar_
+MQTT Topic: signpost/lab11/radar
 
 ```
 {
@@ -99,39 +173,7 @@ All data packets include a `_meta` section like the following:
 }
 ```
 
-### GPS Data
 
-```
-{
-	"device": "signpost_gps",
-	"latitude":  <float>,
-	"latitude_direction": "N"|"S",
-	"longitude": <float>,
-	"longitude_direction": "E"|"W",
-	"timestamp": <ISO time>
-}
-```
-
-### Signpost Status
-
-```
-{
-	"device": "signpost_status",
-	"module0_enabled": <boolean>,
-	"module1_enabled": <boolean>,
-	"module2_enabled": <boolean>,
-	"module5_enabled": <boolean>,
-	"module6_enabled": <boolean>,
-	"module7_enabled": <boolean>,
-	"controller_energy_mAh": <float>,
-	"module0_energy_mAh": <float>,
-	"module1_energy_mAh": <float>,
-	"module2_energy_mAh": <float>,
-	"module5_energy_mAh": <float>,
-	"module6_energy_mAh": <float>,
-	"module7_energy_mAh": <float>
-}
-```
 
 ### UCSD Air Quality
 
@@ -146,37 +188,6 @@ All data packets include a `_meta` section like the following:
 }
 ```
 
-### Radio Status
-
-```
-{
-	"device": "signpost_radio_status",
-	"status_ble_packets_sent": <uint>,
-	"gps_ble_packets_sent": <uint>,
-	"2.4gHz_spectrum_ble_packets_sent": <uint>,
-	"ambient_sensing_ble_packets_sent": <uint>,
-	"audio_spectrum_ble_packets_sent": <uint>,
-	"microwave_radar_ble_packets_sent": <uint>,
-	"ucsd_air_quality_ble_packets_sent": <uint>,
-	"radio_status_ble_packets_sent": <uint>,
-    "status_lora_packets_sent": <uint>,
-	"gps_lora_packets_sent": <uint>,
-	"2.4gHz_spectrum_lora_packets_sent": <uint>,
-	"ambient_sensing_lora_packets_sent": <uint>,
-	"audio_spectrum_lora_packets_sent": <uint>,
-	"microwave_radar_lora_packets_sent": <uint>,
-	"ucsd_air_quality_lora_packets_sent": <uint>,
-	"radio_status_lora_packets_sent": <uint>,
-    "status_radio_energy_used_mWh": <float>,
-	"gps_radio_energy_used_mWh": <float>,
-	"2.4gHz_spectrum_radio_energy_used_mWh": <float>,
-	"ambient_sensing_radio_energy_used_mWh": <float>,
-	"audio_spectrum_radio_energy_used_mWh": <float>,
-	"microwave_radar_radio_energy_used_mWh": <float>,
-	"ucsd_air_quality_radio_energy_used_mWh": <float>,
-	"radio_status_radio_energy_used_mWh": <float>,
-}
-```
 
 
 I2C Message Structure
