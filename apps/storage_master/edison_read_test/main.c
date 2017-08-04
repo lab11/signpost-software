@@ -17,6 +17,7 @@
 #include "signpost_storage.h"
 #include "signpost_api.h"
 #include "storage_master.h"
+#include "port_signpost.h"
 
 // buffer for holding i2c slave read data
 #define SLAVE_READ_LEN 512
@@ -41,7 +42,7 @@ static void processing_api_callback(uint8_t source_address,
     int rc;
 
     if(api_type != ProcessingApiType) {
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
         return;
     }
 
@@ -159,7 +160,7 @@ static void storage_api_callback(uint8_t source_address,
   int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
     return;
   }
 
