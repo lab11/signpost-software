@@ -20,14 +20,14 @@ All data packets include a `_meta` section like the following:
 
 ```
 {
-	"_meta": {
-		"received_time":    <time in ISO-8601 format>,
-		"device_id":        <signpost MAC>,
-		"receiver":         <lora_or_http>,
-		"gateway_id":       <gateway_id>
-		"geohash":          <most_recent_geohash>
-		"sequence_number":  <uint8_t>
-	}
+    "_meta": {
+        "received_time":    <time in ISO-8601 format>,
+        "device_id":        <signpost MAC>,
+        "receiver":         <lora_or_http>,
+        "gateway_id":       <gateway_id>
+        "geohash":          <most_recent_geohash>
+        "sequence_number":  <uint8_t>
+    }
 }
 ```
 
@@ -41,15 +41,15 @@ over the second following the reported timestamp.
 
 ```
 {
-	"device": "signpost_audio_frequency",
-	"timestamp":    <gps_time_as_unix>,
-	"63Hz":    <uint8_t>,
-	"160Hz":   <uint8_t>,
-	"400Hz":   <uint8_t>,
-	"1000Hz":  <uint8_t>,
-	"2500Hz":  <uint8_t>,
-	"6250Hz":  <uint8_t>,
-	"16000Hz": <uint8_t>
+    "device": "signpost_audio_frequency",
+    "timestamp":    <gps_time_as_unix>,
+    "63Hz":    <uint8_t>,
+    "160Hz":   <uint8_t>,
+    "400Hz":   <uint8_t>,
+    "1000Hz":  <uint8_t>,
+    "2500Hz":  <uint8_t>,
+    "6250Hz":  <uint8_t>,
+    "16000Hz": <uint8_t>
 }
 
 ```
@@ -62,12 +62,12 @@ MQTT Topic: signpost/lab11/gps
 
 ```
 {
-	"device": "signpost_gps",
-	"latitude":  <float>,
-	"latitude_direction": "N"|"S",
-	"longitude": <float>,
-	"longitude_direction": "E"|"W",
-	"timestamp": <ISO time>
+    "device": "signpost_gps",
+    "latitude":  <float>,
+    "latitude_direction": "N"|"S",
+    "longitude": <float>,
+    "longitude_direction": "E"|"W",
+    "timestamp": <ISO time>
 }
 ```
 
@@ -79,28 +79,28 @@ MQTT Topic: signpost/lab11/energy
 
 ```
 {
-    device: "signpost_energy",
-    battery_voltage_mV: <uint16_t>,
-    battery_current_uA: <int32_t>,
-    solar_voltage_mV: <uint16_t>,
-    solar_current_uA: <int32_t>,
-    battery_capacity_percent_remaining: <uint8_t>,
-    battery_capacity_remaining_mAh: <uint16_t>,
-    battery_capacity_full_mAh: <uint16_t>,
-    controller_energy_remaining_mWh: <uint16_t>,
-    module0_energy_remaining_mWh: <uint16_t>,
-    module1_energy_remaining_mWh: <uint16_t>,
-    module2_energy_remaining_mWh: <uint16_t>,
-    module5_energy_remaining_mWh: <uint16_t>,
-    module6_energy_remaining_mWh: <uint16_t>,
-    module7_energy_remaining_mWh: <uint16_t>,
-    controller_energy_average_mWh: <uint16_t>,
-    module0_energy_average_mW: <uint16_t>,
-    module1_energy_average_mW: <uint16_t>,
-    module2_energy_average_mW: <uint16_t>,
-    module5_energy_average_mW: <uint16_t>,
-    module6_energy_average_mW: <uint16_t>,
-    module7_energy_average_mW: <uint16_t>,
+    "device": "signpost_energy",
+    "battery_voltage_mV" <uint16_t>,
+    "battery_current_uA" <int32_t>,
+    "solar_voltage_mV" <uint16_t>,
+    "solar_current_uA" <int32_t>,
+    "battery_capacity_percent_remaining" <uint8_t>,
+    "battery_capacity_remaining_mAh" <uint16_t>,
+    "battery_capacity_full_mAh" <uint16_t>,
+    "controller_energy_remaining_mWh" <uint16_t>,
+    "module0_energy_remaining_mWh" <uint16_t>,
+    "module1_energy_remaining_mWh" <uint16_t>,
+    "module2_energy_remaining_mWh" <uint16_t>,
+    "module5_energy_remaining_mWh" <uint16_t>,
+    "module6_energy_remaining_mWh" <uint16_t>,
+    "module7_energy_remaining_mWh" <uint16_t>,
+    "controller_energy_average_mWh" <uint16_t>,
+    "module0_energy_average_mW" <uint16_t>,
+    "module1_energy_average_mW" <uint16_t>,
+    "module2_energy_average_mW" <uint16_t>,
+    "module5_energy_average_mW" <uint16_t>,
+    "module6_energy_average_mW" <uint16_t>,
+    "module7_energy_average_mW" <uint16_t>,
 }
 ```
 
@@ -111,14 +111,14 @@ MQTT Topic: signpost/lab11/radio-status
 
 ```
 {
-	"device": "signpost_radio_status",
+    "device": "signpost_radio_status",
     "controller_packets_sent": <uint8_t>,
-	"2.4gHz_spectrum_packets_sent": <uint8_t>,
-	"ambient_sensing_packets_sent": <uint8_t>,
-	"audio_spectrum_packets_sent": <uint8_t>,
-	"microwave_radar_packets_sent": <uint8_t>,
-	"ucsd_air_quality_packets_sent": <uint8_t>,
-	"radio_status_packets_sent": <uint8_t>,
+    "2.4gHz_spectrum_packets_sent": <uint8_t>,
+    "ambient_sensing_packets_sent": <uint8_t>,
+    "audio_spectrum_packets_sent": <uint8_t>,
+    "microwave_radar_packets_sent": <uint8_t>,
+    "ucsd_air_quality_packets_sent": <uint8_t>,
+    "radio_status_packets_sent": <uint8_t>,
     "radio_queue_length": <uint8_t8_t>
 }
 ```
@@ -132,10 +132,10 @@ MQTT Topic: signpost/lab11/radar
 
 ```
 {
-	"device": "signpost_microwave_radar",
-	"motion": <boolean>,
-	"velocity_m/s": <float>,
-	"motion_confidence": <uint32_t>,
+    "device": "signpost_microwave_radar",
+    "motion": <boolean>,
+    "velocity_m/s": <float>,
+    "motion_confidence": <uint32_t>,
 }
 ```
 
@@ -147,11 +147,11 @@ MQTT Topic: signpost/lab11/ambient
 
 ```
 {
-	"device": "signpost_ambient",
-	"temperature_c":    <float>,
-	"humidity":         <float>,
-	"light_lux":        <float>,
-	"pressure_pascals": <float>
+    "device": "signpost_ambient",
+    "temperature_c":    <float>,
+    "humidity":         <float>,
+    "light_lux":        <float>,
+    "pressure_pascals": <float>
 }
 ```
 
@@ -163,12 +163,12 @@ MQTT Topic: signpost/lab11/aqm
 
 ```
 {
-	device:              'signpost_ucsd_air_quality',
-	co2_ppm:             <uint16_t>,
-	VOC_PID_ppb:         <uint32_t>,
-	VOC_IAQ_ppb:         <uint32_t>,
-	barometric_millibar: <uint16_t>,
-	humidity_percent:    <uint16_t>,
+    "device"              'signpost_ucsd_air_quality',
+    "co2_ppm"             <uint16_t>,
+    "VOC_PID_ppb"         <uint32_t>,
+    "VOC_IAQ_ppb"         <uint32_t>,
+    "barometric_millibar" <uint16_t>,
+    "humidity_percent"    <uint16_t>,
 }
 ```
 <!--
