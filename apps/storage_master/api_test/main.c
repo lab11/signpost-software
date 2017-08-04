@@ -15,6 +15,7 @@
 #include "signpost_api.h"
 #include "signpost_storage.h"
 #include "storage_master.h"
+#include "port_signpost.h"
 
 static void storage_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
@@ -22,7 +23,7 @@ static void storage_api_callback(uint8_t source_address,
   int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
     return;
   }
 
