@@ -424,6 +424,7 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 
     module_info.haskey[signpost_api_addr_to_mod_num(source_address)] = true;
 
+    port_signpost_save_state(&module_info);
     return ret;
 }
 
@@ -467,8 +468,15 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
 }
 
 int signpost_initialization_controller_module_init(api_handler_t** api_handlers) {
+    module_state_t check_state;
     int rc = signpost_initialization_common(ModuleAddressController, api_handlers);
     if (rc < 0) return rc;
+
+    port_signpost_load_state(&check_state);
+    printf("magic: 0x%lx\n", check_state.magic);
+    if (check_state.magic == MOD_STATE_MAGIC) {
+      memcpy(&module_info, &check_state, sizeof(module_state_t));
+    }
 
     // Begin listening for replies
     signpost_api_start_new_async_recv();
@@ -499,11 +507,12 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
         switch(init_state) {
           case CheckKeys:
             // Load state
-            //port_signpost_load_state(&check_state);
-            keys_exist = false;//check_state.magic == MOD_STATE_MAGIC;
+            port_signpost_load_state(&check_state);
+            printf("magic: 0x%lx\n", check_state.magic);
+            keys_exist = check_state.magic == MOD_STATE_MAGIC;
             if (keys_exist) {
               // TODO Load keys and fill out module_info struct
-              init_state = RegisterWithKeys;
+              init_state = Done;//RegisterWithKeys;
               memcpy(&module_info, &check_state, sizeof(module_state_t));
             }
             else {
@@ -605,7 +614,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             break;
           case Done:
             // Save module state
-            //port_signpost_save_state(&module_info);
+            port_signpost_save_state(&module_info);
             // Completed Init
             port_signpost_mod_in_disable_interrupt();
             port_signpost_mod_out_set();
