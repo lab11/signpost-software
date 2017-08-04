@@ -129,7 +129,7 @@ int signpost_initialization_register_respond(uint8_t source_address);
 //  source_address  - The I2C address of the module that sent a declare request
 //  module_number   - The module slot that is currently isolated
 __attribute__((warn_unused_result))
-int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number);
+int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number, uint8_t other_module_number);
 
 // Send a response to a key exchange request
 // Assumes controller has already isolated source and target

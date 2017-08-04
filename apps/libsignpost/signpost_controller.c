@@ -2,6 +2,7 @@
 #include "signpost_controller.h"
 #include "signpost_energy_policy.h"
 #include "signpost_api.h"
+#include "port_signpost.h"
 #include "controller.h"
 #include "timer.h"
 #include "gps.h"
@@ -89,7 +90,7 @@ static void initialization_api_callback(uint8_t source_address,
       signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
       return;
     }
-    int module_number;
+    uint8_t req_mod_num;
     int rc;
     switch (frame_type) {
         case NotificationFrame:
@@ -104,25 +105,30 @@ static void initialization_api_callback(uint8_t source_address,
                           __LINE__, source_address);
                     }
 
-                case InitializationDeclare:
-                    // only if we have a module isolated or from storage master
-                    if (mod_isolated_out < 0 && source_address != ModuleAddressStorage) {
+                case InitializationDeclare: {
+
+                    // only if we have a module isolated
+                    if (mod_isolated_out < 0) {
                         return;
                     }
-                    if (source_address == ModuleAddressStorage)  {
-                        module_number = 4;
-                    }
                     else {
-                        module_number = MODOUT_pin_to_mod_name(mod_isolated_out);
+                        req_mod_num = MODOUT_pin_to_mod_name(mod_isolated_out);
                     }
 
-                    rc = signpost_initialization_declare_respond(source_address, module_number);
+                    //TODO add limit to number of times a module can request isolation
+                    // enable i2c for requested module
+                    uint8_t mod_num_to_isolate = signpost_api_addr_to_mod_num((uint8_t) message[0]);
+                    if (mod_num_to_isolate < NUM_MODULES && mod_num_to_isolate != 3) {
+                      controller_module_enable_i2c(mod_num_to_isolate);
+                    }
+                    rc = signpost_initialization_declare_respond(source_address, req_mod_num, mod_num_to_isolate);
 
                     if (rc < 0) {
                       printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
-                          __LINE__, module_number, source_address);
+                          __LINE__, req_mod_num, source_address);
                     }
                     break;
+                }
                 case InitializationKeyExchange:
                     // Prepare and reply ECDH key exchange
                     rc = signpost_initialization_key_exchange_respond(source_address,

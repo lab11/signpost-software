@@ -42,6 +42,7 @@ for each platform*/
 
 typedef struct module_struct {
     uint32_t                magic;
+    uint8_t                 self_mod_num;
     uint8_t                 i2c_address;
     uint8_t                 i2c_address_mods[NUM_MODULES];
     uint16_t                nonces[NUM_MODULES];
