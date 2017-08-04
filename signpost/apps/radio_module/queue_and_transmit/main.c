@@ -626,6 +626,7 @@ static void timer_callback (
             //do we have cell service?
             int ret = sara_u260_check_connection();
             if(ret < SARA_U260_SUCCESS) {
+                printf("Can't send - no service\n");
                 //we lost service - return;
                 cellular_state = SARA_U260_NO_SERVICE;
                 currently_sending = false;;
@@ -828,6 +829,7 @@ static int join_lora_network(void) {
             printf("Failed to join network\n");
             track_failures(FAILURE);
             delay_ms(5000);
+            xdot_wake();
         }
         app_watchdog_tickle_kernel();
     } while (rc < 0);
@@ -897,5 +899,6 @@ int main (void) {
         if(lora_state != LORA_JOINED) {
             join_lora_network();
         }
+        yield();
     }
 }
