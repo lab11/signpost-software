@@ -136,18 +136,11 @@ static void signpost_api_start_new_async_recv(void) {
 static void signpost_api_recv_callback(int len_or_rc) {
     SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
     if (len_or_rc < 0) {
-<<<<<<< d9c7f9034686f8f6efd29778c54be5a3537f8fdc
-        if (len_or_rc == SB_PORT_FAIL) {
-            // These return codes are a hack
-            port_printf("Dropping message with HMAC/HASH failure\n");
-            signpost_api_start_new_async_recv();
-=======
         if (len_or_rc == SB_PORT_ECRYPT) {
-            printf("Dropping message with HMAC/HASH failure\n");
+            port_printf("Dropping message with HMAC/HASH failure\n");
             //signpost_api_error_reply_repeating(incoming_source_address, incoming_api_type, incoming_message_type, SB_PORT_ECRYPT, true, true, 1);
             signpost_api_start_new_async_recv();
             return;
->>>>>>> Add return message for error messages
         } else {
             port_printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
             // XXX trip watchdog reset or s/t?
@@ -355,13 +348,21 @@ static int signpost_initialization_key_exchange_finish(void) {
 
 static int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
+<<<<<<< 165a1e3087212addc8dce15125d53894ce5f8bd3
     port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
+=======
+    uint8_t module_number = signpost_api_addr_to_mod_num(destination_address);
+    printf("INIT: Granted I2C isolation and started initialization with module %d\n", module_number);
+>>>>>>> Add commented out wip api callback
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
     }
     incoming_active_callback = signpost_initialization_key_exchange_callback;
 
+    // clear previous state
+    module_info.haskey[module_number] = false;
+    memset(module_info.keys[module_number], 0, ECDH_KEY_LENGTH);
 
     // Prepare for ECDH key exchange
     mbedtls_ecdh_init(&ecdh);
@@ -414,11 +415,16 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
 
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
     int ret = SB_PORT_SUCCESS;
+    uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
 
+<<<<<<< 165a1e3087212addc8dce15125d53894ce5f8bd3
 <<<<<<< d9c7f9034686f8f6efd29778c54be5a3537f8fdc
     port_printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
 =======
     printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
+=======
+    printf("INIT: Performing key exchange with module %d\n", module_number);
+>>>>>>> Add commented out wip api callback
 
 >>>>>>> Add return message for error messages
     // init ecdh struct for key exchange
@@ -435,8 +441,6 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
     ret = mbedtls_ecdh_make_public(&ecdh, &ecdh_param_len, ecdh_buf, ECDH_BUF_LEN, mbedtls_ctr_drbg_random, &ctr_drbg_context);
     if(ret < SB_PORT_SUCCESS) return ret;
 
-    // get key address of contacting module
-    uint8_t  module_number = signpost_api_addr_to_mod_num(incoming_source_address);
     if (module_number == 0xff) return SB_PORT_FAIL;
     uint8_t* key = module_info.keys[module_number];
     size_t keylen;
@@ -449,11 +453,63 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
             ResponseFrame, InitializationApiType, InitializationKeyExchange,
             ecdh_param_len, ecdh_buf);
 
-    module_info.haskey[signpost_api_addr_to_mod_num(source_address)] = true;
+    module_info.haskey[module_number] = true;
 
     port_signpost_save_state(&module_info);
     return ret;
 }
+
+//static void signpost_initialization_module_api_callback(uint8_t source_address,
+//    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
+//    uint8_t message_type, __attribute__ ((unused)) size_t message_length,
+//    uint8_t* message) {
+//
+//    if (api_type != InitializationApiType) {
+//      signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
+//      return;
+//    }
+//    int rc;
+//    switch (frame_type) {
+//        case NotificationFrame:
+//            // XXX unexpected, drop
+//            break;
+//        case CommandFrame:
+//            switch (message_type) {
+//                case InitializationRegister:
+//                    rc = signpost_initialization_register_respond(source_address);
+//                    if (rc < 0) {
+//                      printf(" - %d: Error responding to initialization register request for address 0x%02x. Dropping.\n",
+//                          __LINE__, source_address);
+//                    }
+//
+//                case InitializationDeclare: {
+//                    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_ENOSUPPORT, true, true, 1);
+//                    break;
+//                }
+//                case InitializationKeyExchange:
+//                    // Prepare and reply ECDH key exchange
+//                    rc = signpost_initialization_key_exchange_respond(source_address,
+//                            message, message_length);
+//                    if (rc < 0) {
+//                      printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
+//                          __LINE__, source_address);
+//                    }
+//                    break;
+//                //exchange module
+//                //get mods
+//                default:
+//                   break;
+//            }
+//        case ResponseFrame:
+//            // XXX unexpected, drop
+//            break;
+//        case ErrorFrame:
+//            // XXX unexpected, drop
+//            break;
+//        default:
+//            break;
+//    }
+//}
 
 static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** api_handlers) {
     SIGNBUS_DEBUG("i2c %02x handlers %p\n", i2c_address, api_handlers);
@@ -653,6 +709,16 @@ static int signpost_initialization_initialize_loop(void) {
 
 int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
     int rc;
+    //size_t i = 0;
+
+    //// get number of api_handlers and insert initialization handler
+    //while(api_handlers+(i++) != NULL) {}
+    //printf("passed in handlers: %d\n", i);
+    //api_handler_t** updated_api_handlers = (api_handler_t**) malloc(i*sizeof(api_handler_t*));
+    //printf("updated_api_handlers: %p\n", updated_api_handlers);
+    //static api_handler_t initialization_handler  = {InitializationApiType, signpost_initialization_module_api_callback};
+    //updated_api_handlers[0] = &initialization_handler;
+    //memcpy(updated_api_handlers+1, api_handlers, i-1);
 
     rc = signpost_initialization_common(i2c_address, api_handlers);
     if (rc < SB_PORT_SUCCESS) return rc;
