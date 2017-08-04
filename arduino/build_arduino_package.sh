@@ -4,8 +4,9 @@
 #SKETCHBOOK_PATH is the path to the sketchbook for your Arduino IDE installation
 #On Linux this is usually ~/Arduino/
 #On Windows this is usually ~/Documents/Arduino/
+#To run on windows, use a bash emulator. This script was tested using git bash
 #NOTE: Script will not execute properly if any file paths have any spaces in them
-
+#NOTE: The developer build option does not work on Windows
 #Set paths to source files
 CONFIG_PATH="config"
 PACKAGE_PATH="packages/1.6.15"
