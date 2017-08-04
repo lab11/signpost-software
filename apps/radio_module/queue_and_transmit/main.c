@@ -35,7 +35,7 @@
 //definitions for the ble
 #define DEVICE_NAME "Signpost"
 #define PHYSWEB_URL "j2x.us/signp"
-
+#define POST_ADDRESS "ec2-35-162-1-106.us-west-2.compute.amazonaws.com"
 
 #define UMICH_COMPANY_IDENTIFIER 0x02E0
 
@@ -49,15 +49,17 @@
 };*/
 
 //definitions for the i2c
-#define BUFFER_SIZE 50
+#define BUFFER_SIZE 100
 #define ADDRESS_SIZE 6
 #define NUMBER_OF_MODULES 8
+#define CELL_POST_SIZE 2000
 
 //array of the data we're going to send on the radios
 //make a queue of 30 deep
-#define QUEUE_SIZE 30
+#define QUEUE_SIZE 6
 uint8_t data_queue[QUEUE_SIZE][BUFFER_SIZE];
 uint8_t data_length[QUEUE_SIZE];
+uint8_t data_address[QUEUE_SIZE];
 uint8_t queue_head = 0;
 uint8_t queue_tail = 0;
 uint32_t lora_packets_sent = 1;
@@ -65,6 +67,12 @@ uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
 uint8_t status_send_buf[50] = {0};
+uint8_t status_length_offset = 0;
+uint8_t status_data_offset = 0;
+
+#define LORA_JOINED 0
+#define LORA_ERROR -1
+int lora_state = LORA_ERROR;
 
 //these structures for reporting energy to the controller
 
@@ -128,18 +136,26 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
     uint8_t temp_tail = queue_tail;
     increment_queue_pointer(&temp_tail);
     if(temp_tail == queue_head) {
-        return -1;
+        return TOCK_FAIL;
     } else {
-        data_queue[queue_tail][0] = addr;
-        if(len <= BUFFER_SIZE -1) {
-            memcpy(data_queue[queue_tail]+1, buffer, len);
-            data_length[queue_tail] = len+1;
+        if(len <= BUFFER_SIZE) {
+            data_address[queue_tail]= addr;
+            memcpy(data_queue[queue_tail], buffer, len);
+            data_length[queue_tail] = len;
+            increment_queue_pointer(&queue_tail);
         } else {
-            memcpy(data_queue[queue_tail]+1, buffer, BUFFER_SIZE-1);
-            data_length[queue_tail] = BUFFER_SIZE;
+            return TOCK_ENOMEM;
         }
-        increment_queue_pointer(&queue_tail);
         return 0;
+    }
+}
+
+static uint8_t calc_queue_length(void) {
+    //calculate and add the queue size in the status packet
+    if(queue_tail >= queue_head) {
+        return queue_tail-queue_head;
+    } else {
+        return QUEUE_SIZE-(queue_head-queue_tail);
     }
 }
 
@@ -148,8 +164,9 @@ static void networking_api_callback(uint8_t source_address,
         uint8_t message_type, size_t message_length, uint8_t* message) {
 
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
-        if(message_type == NetworkingSend) {
-            add_buffer_to_queue(source_address, message, message_length);
+        if(message_type == NetworkingSendMessage) {
+            int rc = add_buffer_to_queue(source_address, message, message_length);
+            signpost_networking_send_reply(source_address, rc);
         }
     }
 }
@@ -339,8 +356,6 @@ static void update_api_callback(uint8_t source_address,
                 return;
             }
 
-            delay_ms(10000);
-
             ret = find_end_of_response_header();
             if(ret < SARA_U260_SUCCESS) {
                 printf("UPDATE: finding end of header failed with error %lu\n",offset);
@@ -433,8 +448,6 @@ static void update_api_callback(uint8_t source_address,
                 update_state = WAITING_FOR_UPDATE;
                 return;
             }
-
-            delay_ms(10000);
 
             //find the end of the response
             ret = find_end_of_response_header();
@@ -560,8 +573,9 @@ static int track_failures(bool fail) {
         led_off(3);
     }
 
-    if(fail_counter == 20) {
+    if(fail_counter == 10) {
         //try reseting the xdot and rejoining the network
+        lora_state = LORA_ERROR;
         printf("20 straight failures. soft reset!\n");
         xdot_reset();
         delay_ms(500);
@@ -569,6 +583,7 @@ static int track_failures(bool fail) {
         return join_lora_network();
     } else if(fail_counter == 40) {
         //hard reset the xdot using the power pin and rejoin the network
+        lora_state = LORA_ERROR;
         printf("40 straight failures. Hard reset!\n");
         gpio_set(LORA_POWER);
         delay_ms(1000);
@@ -579,19 +594,13 @@ static int track_failures(bool fail) {
         delay_ms(500);
 
         return join_lora_network();
-
-    } else if(fail_counter == 50) {
-        //just ask the controller to reset us and see if that fixes it
-        int rc;
-        do {
-            rc = signpost_energy_duty_cycle(1000);
-            delay_ms(1000);
-        } while (rc < 0);
     }
 
     return -1;
 }
 
+
+static int cellular_state = SARA_U260_NO_SERVICE;
 static void timer_callback (
     int callback_type __attribute__ ((unused)),
     int length __attribute__ ((unused)),
@@ -599,39 +608,116 @@ static void timer_callback (
     void * callback_args __attribute__ ((unused))) {
 
     if(currently_sending) return;
-
-    static uint8_t LoRa_send_buffer[(ADDRESS_SIZE + BUFFER_SIZE)];
     static uint8_t send_counter = 0;
 
     if(queue_head != queue_tail) {
 
-        //count the packet
-        count_module_packet(data_queue[queue_head][0]);
-
-        data_queue[queue_head][2] = sn;
-
-        //send the packet
-        memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
-        memcpy(LoRa_send_buffer+ADDRESS_SIZE, data_queue[queue_head], BUFFER_SIZE);
+        if(cellular_state == SARA_U260_NO_SERVICE) {
+            int ret = sara_u260_check_connection();
+            if(ret < SARA_U260_SUCCESS) {
+                //we lost service - return;
+                printf("Still cellular no service\n");
+                cellular_state = SARA_U260_NO_SERVICE;
+            } else {
+                printf("Regained cellular service\n");
+                cellular_state = SARA_U260_SUCCESS;
+            }
+        }
 
         currently_sending = true;
-        xdot_wake();
-        int status = xdot_send(LoRa_send_buffer,data_length[queue_head]+ADDRESS_SIZE);
 
-        //parse the HCI layer error codes
-        if(status < 0) {
-            printf("Xdot send failed\n");
-            track_failures(FAILURE);
-        } else {
-            track_failures(SUCCESS);
-            printf("Xdot send succeeded!\n");
-            sn++;
-            increment_queue_pointer(&queue_head);
+        if(calc_queue_length() > QUEUE_SIZE*0.66 && cellular_state == SARA_U260_SUCCESS) {
+            printf("Attempting to send data with cellular radio\n");
+
+            //do we have cell service?
+            int ret = sara_u260_check_connection();
+            if(ret < SARA_U260_SUCCESS) {
+                //we lost service - return;
+                cellular_state = SARA_U260_NO_SERVICE;
+                currently_sending = false;;
+                return;
+            }
+
+            //the queue has gotten to long, let's just send it over cellular
+            //make a big buffer to pack a large chunk of the queue into
+            uint8_t cell_buffer[CELL_POST_SIZE];
+            size_t used = 0;
+            memcpy(cell_buffer, address, ADDRESS_SIZE);
+            used += ADDRESS_SIZE;
+            memcpy(cell_buffer + used, &sn, 1);
+            used += 1;
+            bool done = false;
+            uint8_t temp_head = queue_head;
+            while(!done) {
+                if(used + 2 + data_length[queue_head] < CELL_POST_SIZE) {
+                    cell_buffer[used] = (uint8_t)((data_length[temp_head] & 0xff00) >> 8);
+                    cell_buffer[used+1] = (uint8_t)((data_length[temp_head] & 0xff));
+                    used += 2;
+                    memcpy(cell_buffer + used, data_queue[temp_head], data_length[temp_head]);
+                    used += data_length[temp_head];
+                    count_module_packet(data_address[temp_head]);
+                    increment_queue_pointer(&temp_head);
+
+                    if(temp_head == queue_tail) {
+                        done = true;
+                    }
+                } else {
+                    done = true;
+                }
+            }
+
+            printf("Attempting to perform post on network\n");
+
+            //now that we have the buffer, perform the http post
+            ret = sara_u260_basic_http_post(POST_ADDRESS, "/signpost", cell_buffer, used);
+            if(ret < SARA_U260_SUCCESS) {
+                printf("SARA U260 Post Failed\n");
+            } else {
+                uint8_t rbuf[20];
+                ret = sara_u260_get_post_response(rbuf,20);
+                if(ret >= SARA_U260_SUCCESS) {
+                    if(!strncmp((char*)(&rbuf[9]),"200 OK", 6)) {
+                        sn++;
+                        printf("SARA U260 Post Successful\n");
+                        queue_head = temp_head;
+                    } else {
+                        printf("SARA U260 Post Failed - Bad Response\n");
+                    }
+                } else {
+                    printf("SARA U260 Post Failed - No Response\n");
+                }
+
+            }
+        } else if (lora_state == LORA_JOINED) {
+            //send another packet over LORA
+            uint8_t LoRa_send_buffer[(ADDRESS_SIZE + BUFFER_SIZE + 1)];
+            //count the packet
+            count_module_packet(data_address[queue_head]);
+
+            //send the packet
+            memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
+            memcpy(LoRa_send_buffer+ADDRESS_SIZE, &sn, 1);
+            memcpy(LoRa_send_buffer+ADDRESS_SIZE + 1, data_queue[queue_head], BUFFER_SIZE);
+
+            xdot_wake();
+            int status = xdot_send(LoRa_send_buffer,data_length[queue_head]+ADDRESS_SIZE+1);
+
+            //parse the HCI layer error codes
+            if(status < 0) {
+                printf("Xdot send failed\n");
+                track_failures(FAILURE);
+            } else {
+                track_failures(SUCCESS);
+                printf("Xdot send succeeded!\n");
+                sn++;
+                increment_queue_pointer(&queue_head);
+            }
+
+            xdot_sleep();
         }
+        currently_sending = false;
     }
 
-    currently_sending = false;
-    xdot_sleep();
 
     send_counter++;
 
@@ -639,8 +725,7 @@ static void timer_callback (
     //also send an energy report to the controller
     if(send_counter == 30) {
         //increment the sequence number
-        status_send_buf[1]++;
-        status_send_buf[2] = number_of_modules;
+        status_send_buf[status_data_offset] = number_of_modules;
 
         //make an array of energy reports based on the number_of_modules
         signpost_energy_report_t energy_report;
@@ -653,9 +738,9 @@ static void timer_callback (
         uint16_t packets_total = 0;
         for(; i < NUMBER_OF_MODULES; i++){
             if(module_num_map[i] != 0) {
-                status_send_buf[3+ i*2] = module_num_map[i];
+                status_send_buf[status_data_offset+1+ i*2] = module_num_map[i];
                 reps[i].application_id = module_num_map[i];
-                status_send_buf[3+ i*2 + 1] = module_packet_count[i];
+                status_send_buf[status_data_offset+1+ i*2 + 1] = module_packet_count[i];
                 packets_total += module_packet_count[i];
             } else {
                 break;
@@ -679,7 +764,6 @@ static void timer_callback (
             }
         }
 
-
         //now pack it into an energy report structure
         energy_report.num_reports = number_of_modules;
         energy_report.reports = reps;
@@ -701,18 +785,20 @@ static void timer_callback (
 
         //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
-            status_send_buf[3+number_of_modules*2] = queue_tail-queue_head;
+            status_send_buf[status_data_offset+1+number_of_modules*2] = queue_tail-queue_head;
         } else {
-            status_send_buf[3+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
+            status_send_buf[status_data_offset+1+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
         }
 
+        uint8_t status_len = 2+number_of_modules*2+1;
+        status_send_buf[status_length_offset] = (uint8_t)((status_len&0xff00) >> 8);
+        status_send_buf[status_length_offset+1] = (uint8_t)((status_len&0xff));
+
         //put it in the send buffer
-        add_buffer_to_queue(0x22, status_send_buf, 3+number_of_modules*2+1);
+        add_buffer_to_queue(0x22, status_send_buf, status_data_offset+1+number_of_modules*2+1);
 
         //reset send_counter
         send_counter = 0;
-
-
 
         free(reps);
     }
@@ -754,6 +840,7 @@ static int join_lora_network(void) {
 
     xdot_sleep();
     track_failures(SUCCESS);
+    lora_state = LORA_JOINED;
     printf("Joined successfully! Starting packets\n");
 
     return 0;
@@ -793,8 +880,12 @@ int main (void) {
     delay_ms(1000);
     rc = sara_u260_init();
 
-    status_send_buf[0] = 0x01;
-    status_send_buf[1] = 0;
+    status_send_buf[0] = strlen("lab11/radio-status");
+    memcpy(status_send_buf+1,"lab11/radio-status",strlen("lab11/radio-status"));
+    status_length_offset = 1 + strlen("lab11/radio-status");
+    status_data_offset = status_length_offset+2;
+    status_send_buf[status_data_offset] = 0x01;
+    status_data_offset++;
     //ble
     //simple_ble_init(&ble_config);
 
@@ -804,15 +895,9 @@ int main (void) {
     app_watchdog_set_kernel_timeout(60000);
     app_watchdog_start();
 
-    join_lora_network();
-
-    for(uint8_t i = 0; i < QUEUE_SIZE; i++) {
-        for(uint8_t j = 0; j < BUFFER_SIZE; j++) {
-            data_queue[i][j] = 0;
-        }
-    }
-
-        //setup timer
+    //setup timer
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
+
+    join_lora_network();
 }
