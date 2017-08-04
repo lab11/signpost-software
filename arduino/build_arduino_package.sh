@@ -1,9 +1,10 @@
 #!/bin/bash
 #Syntax: ./build_arduino_package [-d] SKETCHBOOK_PATH
-#Adding -d builds a developer package by creating hardlinks to the original files instead of copies
+#Adding -d builds a developer package by creating symlinks to the original files instead of copies
 #SKETCHBOOK_PATH is the path to the sketchbook for your Arduino IDE installation
 #On Linux this is usually ~/Arduino/
 #On Windows this is usually ~/Documents/Arduino/
+#NOTE: Script will not execute properly if any file paths have any spaces in them
 
 #Set paths to source files
 CONFIG_PATH="config"
@@ -14,7 +15,7 @@ MBEDTLS_PATH="../apps/support/mbedtls/mbedtls"
 #Process command line arguments
 case "$#" in
 	"1")
-		if [ ! -d "$1" ]; then
+		if [ ! -d "$1" ] ; then
 			echo "${1} is a not a directory, exiting..."
 			exit 1
 		fi
@@ -38,17 +39,21 @@ case "$#" in
 			fi
 			exit 1
 		fi
-		DEVELOPER="--link"
-		echo "Buidling developer package"
+		DEVELOPER="-sR"
+		echo "Building developer package"
 		;;
 	*)
 		echo "Invalid number of arguments, exiting..."
 		exit 1
 		;;
 esac
+#If last character of SKETCHBOOK_PATH is not a '/', then add one
+if [ ! "${SKETCHBOOK_PATH: -1}" = "/" ] ; then
+	SKETCHBOOK_PATH=${SKETCHBOOK_PATH}/
+fi
 
 #Set build paths
-PACKAGE_BUILD_PATH=${SKETCHBOOK_PATH}/hardware/signpost/samd
+PACKAGE_BUILD_PATH=${SKETCHBOOK_PATH}hardware/signpost/samd
 LIBSIGNPOST_BUILD_PATH=${PACKAGE_BUILD_PATH}/libraries/Signpost
 
 #Echo all commands
@@ -65,22 +70,22 @@ cp -r ${PACKAGE_PATH}/* ${PACKAGE_BUILD_PATH}/
 
 #Copy/link config files
 mkdir -p ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${CONFIG_PATH}/platform.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${CONFIG_PATH}/boards.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${CONFIG_PATH}/programmers.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${CONFIG_PATH}/library.properties ${LIBSIGNPOST_BUILD_PATH}/
+cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/platform.txt ${PACKAGE_BUILD_PATH}/
+cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/boards.txt ${PACKAGE_BUILD_PATH}/
+cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/programmers.txt ${PACKAGE_BUILD_PATH}/
+cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/library.properties ${LIBSIGNPOST_BUILD_PATH}/
 
 #Copy/link signpost files
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/signpost_api.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/signbus_app_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/signbus_protocol_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/signbus_io_interface.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/port_signpost.h ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/port_signpost_arduino.cpp ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/signpost_entropy.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${LIBSIGNPOST_PATH}/CRC16.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signpost_api.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_app_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_protocol_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_io_interface.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost.h ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost_arduino.cpp ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signpost_entropy.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/CRC16.* ${LIBSIGNPOST_BUILD_PATH}/src/
 
 #Copy/link mbedtls files
 mkdir ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls
-cp -r ${DEVELOPER} ${MBEDTLS_PATH}/library/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
-cp -r ${DEVELOPER} ${MBEDTLS_PATH}/include/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
+cp -r ${DEVELOPER} ${PWD}/${MBEDTLS_PATH}/library/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
+cp -r ${DEVELOPER} ${PWD}/${MBEDTLS_PATH}/include/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
