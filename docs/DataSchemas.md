@@ -33,6 +33,7 @@ All data packets include a `_meta` section like the following:
 
 ### Audio Frequency Module
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_audio_frequency
+
 MQTT Topic: signpost/lab11/audio
 
 Fields represent the average amplitude of the corresponding frequency band in db
@@ -56,6 +57,7 @@ over the second following the reported timestamp.
 
 ### GPS Data
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_gps
+
 MQTT Topic: signpost/lab11/gps
 
 ```
@@ -72,6 +74,7 @@ MQTT Topic: signpost/lab11/gps
 
 ### Signpost Energy
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_energy
+
 MQTT Topic: signpost/lab11/energy
 
 ```
@@ -103,6 +106,7 @@ MQTT Topic: signpost/lab11/energy
 
 ### Radio Status
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_radio_status
+
 MQTT Topic: signpost/lab11/radio-status
 
 ```
@@ -119,12 +123,11 @@ MQTT Topic: signpost/lab11/radio-status
 }
 ```
 
-The following packet structures are less finalized. We will continue to update this page.
-----------------------------------------------------------------------------------------
 
 ### Microwave Radar Module
 
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_microwave_radar_
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_microwave_radar
+
 MQTT Topic: signpost/lab11/radar
 
 ```
@@ -132,11 +135,15 @@ MQTT Topic: signpost/lab11/radar
 	"device": "signpost_microwave_radar",
 	"motion": <boolean>,
 	"velocity_m/s": <float>,
+	"motion_confidence": <uint32_t>,
 }
 ```
 
 
 ### Ambient Sensing Module
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_ambient
+
+MQTT Topic: signpost/lab11/ambient
 
 ```
 {
@@ -149,46 +156,22 @@ MQTT Topic: signpost/lab11/radar
 ```
 
 
-### 2.4GHz RF Spectrum Sensing Module
-
-```
-{
-	"device": "signpost_2.4ghz_spectrum",
-	"channel_11": <int>,
-	"channel_12": <int>,
-	"channel_13": <int>,
-	"channel_14": <int>,
-	"channel_15": <int>,
-	"channel_16": <int>,
-	"channel_17": <int>,
-	"channel_18": <int>,
-	"channel_19": <int>,
-	"channel_20": <int>,
-	"channel_21": <int>,
-	"channel_22": <int>,
-	"channel_23": <int>,
-	"channel_24": <int>,
-	"channel_25": <int>,
-	"channel_26": <int>
-}
-```
-
-
-
 ### UCSD Air Quality
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_ucsd_air_quality
+
+MQTT Topic: signpost/lab11/aqm
 
 ```
 {
 	device:              'signpost_ucsd_air_quality',
-	co2_ppm:             <uint>,
-	VOC_PID_ppb:         <uint>,
-	VOC_IAQ_ppb:         <uint>,
-	barometric_millibar: <uint>,
-	humidity_percent:    <uint>,
+	co2_ppm:             <uint16_t>,
+	VOC_PID_ppb:         <uint32_t>,
+	VOC_IAQ_ppb:         <uint32_t>,
+	barometric_millibar: <uint16_t>,
+	humidity_percent:    <uint16_t>,
 }
 ```
-
-
+<!--
 
 I2C Message Structure
 ---------------------
@@ -198,7 +181,6 @@ I2C Message Structure
 ```
 18 bytes:
 
-u8 : 0x31
 u8 : 0x01
 i8 : Channel 11 RSSI
 i8 : Channel 12 RSSI
@@ -223,7 +205,6 @@ i8 : Channel 26 RSSI
 ```
 10 bytes:
 
-u8  : 0x32
 u8  : 0x01
 u16 : temperature (1/100 degree c)
 u16 : humidity (1/100 %)
@@ -239,7 +220,6 @@ Energy & status
 ```
 19 bytes:
 
-u8  : 0x20
 u8  : 0x01
 u16 : Module0 Energy (mAh)
 u16 : Module1 Energy (mAh)
@@ -249,14 +229,6 @@ u16 : Linux Energy (mAh)
 u16 : Module5 Energy (mAh)
 u16 : Module6 Energy (mAh)
 u16 : Module7 Energy (mAh)
-u1  : Module0 Enabled
-u1  : Module1 Enabled
-u1  : Module2 Enabled
-u1  : reserved
-u1  : Linux Enabled
-u1  : Module5 Enabled
-u1  : Module6 Enabled
-u1  : Module7 Enabled
 ```
 
 GPS
@@ -319,3 +291,4 @@ u16 : microwave radar packets sent
 u16 : ucsd air quality packets sent
 u16 : radio status packets sent
 ```
+-->
