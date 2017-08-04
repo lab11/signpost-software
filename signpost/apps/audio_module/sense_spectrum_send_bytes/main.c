@@ -130,7 +130,7 @@ static void timer_callback (
     //and pack them into the send buf
 
     for(uint8_t j = 0; j < 7; j++) {
-        send_buf[6+count*7+j] = (uint8_t)((bands_total[j]/bands_num[j]) & 0xff);
+        send_buf[5+count*7+j] = (uint8_t)((bands_total[j]/bands_num[j]) & 0xff);
     }
 
     //reset all the variables for the next period
@@ -145,8 +145,7 @@ static void timer_callback (
 
     if(count == 10) {
         printf("About to send data to radio\n");
-        rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,6+count*7);
-        send_buf[1]++;
+        rc = signpost_networking_send("lab11/audio",send_buf,5+count*7);
         printf("Sent data with return code %d\n\n\n",rc);
 
         if(rc >= 0 && still_sampling == true) {
@@ -171,10 +170,10 @@ static void timer_callback (
             current_time.tm_sec = stime.seconds;
             current_time.tm_isdst = 0;
             utime = mktime(&current_time);
-            send_buf[2] = (uint8_t)((utime & 0xff000000) >> 24);
-            send_buf[3] = (uint8_t)((utime & 0xff0000) >> 16);
-            send_buf[4] = (uint8_t)((utime & 0xff00) >> 8);
-            send_buf[5] = (uint8_t)((utime & 0xff));
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
         }
     }
 }
@@ -209,7 +208,6 @@ int main (void) {
     gpio_clear(9);
 
     send_buf[0] = 0x02;
-    send_buf[1] = 0x00;
 
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);
