@@ -1015,7 +1015,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint16_t data_len
     memcpy(buf+1, topic, slen);
     buf[slen+1] = (uint8_t)((data_len & 0xff00) >> 8);
     buf[slen+2] = (uint8_t)((data_len & 0xff));
-    memcpy(buf+1+slen+2, &data, data_len);
+    memcpy(buf+1+slen+2, data, data_len);
 
 
     incoming_active_callback = signpost_networking_callback;
