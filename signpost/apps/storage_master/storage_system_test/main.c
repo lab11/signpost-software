@@ -15,6 +15,7 @@
 #include "signpost_api.h"
 #include "signpost_storage.h"
 #include "storage_master.h"
+#include "port_signpost.h"
 
 #define UNUSED_PARAMETER(x) (void)(x)
 
@@ -26,7 +27,7 @@ static void storage_api_callback(uint8_t source_address,
   UNUSED_PARAMETER(message);
 
   if (api_type != StorageApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
     return;
   }
 
