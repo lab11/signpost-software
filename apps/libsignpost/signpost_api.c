@@ -1006,9 +1006,10 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint16_t data_len
         return SB_PORT_ENOMEM;
     }
 
-    memcpy(buf, &slen, 1);
+    buf[0] = slen;
     memcpy(buf+1, topic, slen);
-    memcpy(buf+1+slen, &data_len, 2);
+    buf[slen+1] = (uint8_t)((data_len & 0xff00) >> 8);
+    buf[slen+2] = (uint8_t)((data_len & 0xff));
     memcpy(buf+1+slen+2, &data, data_len);
 
 
