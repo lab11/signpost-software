@@ -180,7 +180,7 @@ static int protocol_encrypted_buffer_received(
     message_digest(key, protocol_buf, protocol_buflen-SHA256_LEN, hmac_or_hash);
     if (memcmp(hmac_or_hash, protocol_buf+(protocol_buflen-SHA256_LEN), SHA256_LEN) != 0) {
         // TODO: Meaningful return codes. Let's at least try to be unique
-        return SB_PORT_ENOMEM;
+        return SB_PORT_ECRYPT;
     }
 
     // decrypt if needed

@@ -38,6 +38,7 @@ for each platform*/
 #define SB_PORT_ENOMEM       -9
 #define SB_PORT_ENOACK       -13
 #define SB_PORT_EI2C_WRITE   -100
+#define SB_PORT_ECRYPT       -101
 
 typedef struct module_struct {
     uint32_t                magic;

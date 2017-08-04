@@ -143,8 +143,9 @@ static void signpost_api_recv_callback(int len_or_rc) {
         } else {
             port_printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
             // XXX trip watchdog reset or s/t?
-            return;
+            //volatile int crash = *(int*)0;
         }
+        signpost_api_start_new_async_recv();
     }
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
         api_handler_t** handler = module_api.api_handlers;
