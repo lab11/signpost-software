@@ -105,13 +105,21 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
 // TODO add parameter for which modules to isolate
 int signpost_initialization_request_isolation(void);
 
-// Send a key exchange request to another module
+// Initialize with another module
+// Will first arrange isolation between controller and other module,
+// then complete a key exchange with the module
+//
+// params:
+//  module_address: i2c address of module to initialize with
+int signpost_initialization_initialize_with_module(uint8_t module_address);
+
+// Send a exchange request to another module
 // Assumes controller has already isolated source and target
 //
 // params:
 //  destination_address - The I2C address of the module to exchange keys with
-__attribute__((warn_unused_result))
-int signpost_initialization_key_exchange_send(uint8_t destination_address);
+//__attribute__((warn_unused_result))
+//int signpost_initialization_key_exchange_send(uint8_t destination_address);
 
 // Send a response to a registration request if module key already stored
 //
