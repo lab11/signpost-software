@@ -128,16 +128,11 @@ static void timer_callback (
     //printf("About to send data to radio\n");
 
     for(uint8_t j = 0; j < 7; j++) {
-        send_buf[2+j*2] = (uint8_t)((bands_max[j] >> 8) & 0xff);
-        send_buf[2+j*2+1] = (uint8_t)(bands_max[j] & 0xff);
+        send_buf[1+j*2] = (uint8_t)((bands_max[j] >> 8) & 0xff);
+        send_buf[1+j*2+1] = (uint8_t)(bands_max[j] & 0xff);
     }
 
-    rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,16);
-    rc = 1;
-    //something randomish
-    send_buf[1] = send_buf[11];
-    //printf("Sent data with return code %d\n\n\n",rc);
-
+    rc = signpost_networking_send("lab11/audio",send_buf,16);
 
     //reset all the variables for the next period
     for(uint8_t j = 0; j < 7; j++) {
@@ -222,8 +217,6 @@ int main (void) {
     gpio_clear(9);
 
     send_buf[0] = 0x01;
-    send_buf[1] = 0x00;
-
 
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);

@@ -64,7 +64,7 @@ static void timer_callback (
 
     // set data
     // boolean, motion since last transmission
-    send_buf[2] = (motion_since_last_transmit & 0xFF);
+    send_buf[1] = (motion_since_last_transmit & 0xFF);
     // uint32_t, max speed in milli-meters per second detected since last transmission
     send_buf[3] = ((max_speed_since_last_transmit >> 24) & 0xFF);
     send_buf[4] = ((max_speed_since_last_transmit >> 16) & 0xFF);
@@ -81,8 +81,7 @@ static void timer_callback (
 
 
     // write data
-    int rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,15);
-    send_buf[1]++;
+    int rc = signpost_networking_send("lab11/radar",send_buf,15);
     if(rc >= 0) {
         app_watchdog_tickle_kernel();
         motion_since_last_transmit = 0;
@@ -112,7 +111,6 @@ int main (void) {
     mr_init();
 
     send_buf[0] = 0x01;
-    send_buf[1] = 0x00;
 
     // setup two timers. One every 500ms to check for motion and
     // one to send data every 5s summarizing that motion
