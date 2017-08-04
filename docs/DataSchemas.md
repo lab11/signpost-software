@@ -26,7 +26,7 @@ All data packets include a `_meta` section like the following:
 		"receiver":         <lora_or_http>,
 		"gateway_id":       <gateway_id>
 		"geohash":          <most_recent_geohash>
-		"sequence_number":  <0-255>
+		"sequence_number":  <uint8_t>
 	}
 }
 ```
@@ -99,7 +99,7 @@ MQTT Topic: signpost/lab11/energy
     module6_energy_average_mW: <uint16_t>,
     module7_energy_average_mW: <uint16_t>,
 }
-
+```
 
 ### Radio Status
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_radio_status
