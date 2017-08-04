@@ -558,7 +558,7 @@ static bool currently_sending = false;
 #define SUCCESS 0
 #define FAILURE 1
 
-static int track_failures(bool fail) {
+static void track_failures(bool fail) {
     static int fail_counter = 0;
 
     if(fail) {
@@ -575,15 +575,12 @@ static int track_failures(bool fail) {
 
     if(fail_counter == 10) {
         //try reseting the xdot and rejoining the network
-        lora_state = LORA_ERROR;
         printf("20 straight failures. soft reset!\n");
         xdot_reset();
         delay_ms(500);
-
-        return join_lora_network();
+        lora_state = LORA_ERROR;
     } else if(fail_counter == 40) {
         //hard reset the xdot using the power pin and rejoin the network
-        lora_state = LORA_ERROR;
         printf("40 straight failures. Hard reset!\n");
         gpio_set(LORA_POWER);
         delay_ms(1000);
@@ -592,11 +589,8 @@ static int track_failures(bool fail) {
 
         xdot_reset();
         delay_ms(500);
-
-        return join_lora_network();
+        lora_state = LORA_ERROR;
     }
-
-    return -1;
 }
 
 
@@ -832,7 +826,7 @@ static int join_lora_network(void) {
         rc = xdot_join_network(appEUI, appKey);
         if(rc < 0) {
             printf("Failed to join network\n");
-            rc = track_failures(FAILURE);
+            track_failures(FAILURE);
             delay_ms(5000);
         }
         app_watchdog_tickle_kernel();
@@ -899,5 +893,9 @@ int main (void) {
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
 
-    join_lora_network();
+    while(true) {
+        if(lora_state != LORA_JOINED) {
+            join_lora_network();
+        }
+    }
 }
