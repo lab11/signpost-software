@@ -346,7 +346,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     return 0;
 }
 
-int signpost_initialization_key_exchange_send(uint8_t destination_address) {
+static int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
     port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
     // set callback for handling response from controller/modules
@@ -500,32 +500,11 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     return SB_PORT_SUCCESS;
 }
 
-int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
+static int signpost_initialization_initialize_loop(void) {
     int rc;
-    bool keys_exist;
     module_state_t check_state;
+    bool keys_exist;
 
-    rc = signpost_initialization_common(i2c_address, api_handlers);
-    if (rc < SB_PORT_SUCCESS) return rc;
-
-    // setup interrupts for changes in isolated state
-    rc = port_signpost_mod_in_enable_interrupt_rising(signpost_initialization_lost_isolation_callback);
-    if (rc != SB_PORT_SUCCESS) return rc;
-
-    rc = port_signpost_mod_in_enable_interrupt_falling(signpost_initialization_isolation_callback);
-    if (rc != SB_PORT_SUCCESS) return rc;
-
-
-    // Begin listening for replies
-    signpost_api_start_new_async_recv();
-
-    // Initialize Mod Out/In GPIO
-    // both are active low
-    port_signpost_mod_out_set();
-    port_signpost_debug_led_off();
-
-
-    init_state = CheckKeys;
     while(1) {
         switch(init_state) {
           case CheckKeys:
@@ -656,7 +635,39 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             break;
         }
     }
-    return 0;
+    return SB_PORT_SUCCESS;
+
+}
+
+int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
+    int rc;
+
+    rc = signpost_initialization_common(i2c_address, api_handlers);
+    if (rc < SB_PORT_SUCCESS) return rc;
+
+    // Begin listening for replies
+    signpost_api_start_new_async_recv();
+
+    // Initialize Mod Out/In GPIO
+    // both are active low
+    port_signpost_mod_out_set();
+    port_signpost_debug_led_off();
+
+    // setup interrupts for changes in isolated state
+    rc = port_signpost_mod_in_enable_interrupt_rising(signpost_initialization_lost_isolation_callback);
+    if (rc != SB_PORT_SUCCESS) return rc;
+
+    rc = port_signpost_mod_in_enable_interrupt_falling(signpost_initialization_isolation_callback);
+    if (rc != SB_PORT_SUCCESS) return rc;
+
+    init_state = CheckKeys;
+    return signpost_initialization_initialize_loop();
+}
+
+int signpost_initialization_initialize_with_module(uint8_t module_address) {
+    init_state = RequestIsolation;
+    mod_addr_init = module_address;
+    return signpost_initialization_initialize_loop();
 }
 
 /**************************************************************************/
