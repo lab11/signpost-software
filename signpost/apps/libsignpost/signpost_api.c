@@ -1023,6 +1023,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint16_t data_len
     int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
                         NetworkingSendMessage, len, buf);
 
+    free(buf);
     if(rc < SB_PORT_SUCCESS) {
         return rc;
     }
