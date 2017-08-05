@@ -20,7 +20,7 @@ int main (void) {
 
     sara_u260_init();
 
-    delay_ms(1000);
+    delay_ms(10000);
 
     uint8_t buf[5] = {'L','a','b','1','1'};
     printf("Posting...\n");
