@@ -158,9 +158,13 @@ static void timer_callback (
         //okay now try to get the time from the controller
         signpost_timelocation_time_t stime;
         rc = signpost_timelocation_get_time(&stime);
-        if(rc < 0 && stime.satellite_count > 2) {
-            printf("Failed to get time - report zero time\n");
-            utime = 0;
+        if(rc < 0 || stime.satellite_count < 2) {
+            printf("Failed to get time - assuming 10 seconds\n");
+            utime += 10;
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
         } else {
             current_time.tm_year = stime.year;
             current_time.tm_mon = stime.month;
