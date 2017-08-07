@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
-//#include <math.h>
+#include <math.h>
 #include <time.h>
 
 #include <tock.h>
@@ -40,10 +40,11 @@ bool still_sampling = false;
 //vpp to rms conversion
 //microphone sensitivity
 #define MAGIC_NUMBER 43.75
+#define OTHER_MAGIC 35.5
 
-/*static uint16_t convert_to_dB(uint16_t output) {
-    return (uint16_t)(((20*log10(output/MAGIC_NUMBER)) + SPL - PREAMP_GAIN - MSGEQ7_GAIN)*10);
-}*/
+static uint16_t convert_to_db(uint16_t output) {
+    return (uint8_t)(((20*log10(output/MAGIC_NUMBER)) + OTHER_MAGIC));
+}
 
 static void delay(void) {
     for(volatile uint16_t i = 0; i < 2000; i++);
@@ -65,11 +66,13 @@ static void adc_callback (
 
     static uint8_t i = 0;
 
-    bands_total[i] += sample;
+    int db = convert_to_db(sample);
+
+    bands_total[i] += db;
     if(sample > bands_max[i]) {
-        bands_max[i] = sample;
+        bands_max[i] = db;
     }
-    bands_now[i] = sample;
+    bands_now[i] = db;
     bands_num[i]++;
     delay();
     gpio_set(STROBE);
@@ -78,13 +81,13 @@ static void adc_callback (
 
     if(i == 6) {
 
-        if(bands_now[3] > 400) {
+        if(bands_now[3] > 60) {
             //turn on green LED
             led_on(GREEN_LED);
         } else {
             led_off(GREEN_LED);
         }
-        if(bands_now[3] > 3500) {
+        if(bands_now[3] > 60) {
             //turn on red LED
             led_on(RED_LED);
         } else {
@@ -130,7 +133,7 @@ static void timer_callback (
     //and pack them into the send buf
 
     for(uint8_t j = 0; j < 7; j++) {
-        send_buf[5+count*7+j] = (uint8_t)((bands_total[j]/bands_num[j]) & 0xff);
+        send_buf[5+count*7+j] = (uint8_t)(((uint8_t)(bands_total[j]/(float)bands_num[j])) & 0xff);
     }
 
     //reset all the variables for the next period
@@ -158,6 +161,7 @@ static void timer_callback (
         //okay now try to get the time from the controller
         signpost_timelocation_time_t stime;
         rc = signpost_timelocation_get_time(&stime);
+        printf("Got time with %d satellites\n",stime.satellite_count);
         if(rc < 0 || stime.satellite_count < 2) {
             printf("Failed to get time - assuming 10 seconds\n");
             utime += 10;
