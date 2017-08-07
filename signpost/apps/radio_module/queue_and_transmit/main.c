@@ -56,7 +56,7 @@
 
 //array of the data we're going to send on the radios
 //make a queue of 30 deep
-#define QUEUE_SIZE 6
+#define QUEUE_SIZE 30
 uint8_t data_queue[QUEUE_SIZE][BUFFER_SIZE];
 uint8_t data_length[QUEUE_SIZE];
 uint8_t data_address[QUEUE_SIZE];
@@ -622,6 +622,7 @@ static void timer_callback (
 
         if(calc_queue_length() > QUEUE_SIZE*0.66 && cellular_state == SARA_U260_SUCCESS) {
             printf("Attempting to send data with cellular radio\n");
+            printf("Queue size is %d\n", calc_queue_length());
 
             //do we have cell service?
             int ret = sara_u260_check_connection();
@@ -676,7 +677,7 @@ static void timer_callback (
                         printf("SARA U260 Post Successful\n");
                         queue_head = temp_head;
                     } else {
-                        printf("SARA U260 Post Failed - Bad Response\n");
+                        printf("SARA U260 Post Failed - Bad Response of %.*s\n",6,&(rbuf[9]));
                     }
                 } else {
                     printf("SARA U260 Post Failed - No Response\n");
