@@ -22,7 +22,7 @@
 #include "ridgeTracker.h"
 #include "common.h"
 
-static int freqAnalyze(kiss_fft_scalar *frame, kiss_fft_scalar *spec);
+volatile uint16_t temp;
 
 int main (void) {
     printf("[Audio Module] FFT Speed Test\n");
@@ -56,6 +56,7 @@ int main (void) {
             spec[k] = MAG(out[k].r,out[k].i);
         }
     }
+    temp = spec[0];
 
     free(cfg);
 
