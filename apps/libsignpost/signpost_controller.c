@@ -90,7 +90,7 @@ static void initialization_api_callback(uint8_t source_address,
       signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
       return;
     }
-    uint8_t req_mod_num;
+    uint8_t req_mod_num = MODOUT_pin_to_mod_name(mod_isolated_out);
     int rc;
     switch (frame_type) {
         case NotificationFrame:
@@ -98,21 +98,23 @@ static void initialization_api_callback(uint8_t source_address,
             break;
         case CommandFrame:
             switch (message_type) {
-                case InitializationRegister:
-                    rc = signpost_initialization_register_respond(source_address);
-                    if (rc < 0) {
-                      printf(" - %d: Error responding to initialization register request for address 0x%02x. Dropping.\n",
-                          __LINE__, source_address);
-                    }
+                case InitializationRevoke:
+                    signpost_api_revoke_key(signpost_api_addr_to_mod_num(source_address));
 
+                    rc = signpost_api_send(source_address,
+                        ResponseFrame, InitializationApiType,
+                        InitializationRevoke, 0, NULL);
+
+                    if (rc < 0) {
+                      printf(" - %d: Error responding to initialization revoke request for module %d at address 0x%02x. Dropping.\n",
+                          __LINE__, req_mod_num, source_address);
+                    }
+                    break;
                 case InitializationDeclare: {
 
                     // only if we have a module isolated
                     if (mod_isolated_out < 0) {
                         return;
-                    }
-                    else {
-                        req_mod_num = MODOUT_pin_to_mod_name(mod_isolated_out);
                     }
 
                     //TODO add limit to number of times a module can request isolation

@@ -55,6 +55,12 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
     return signpost_api_addr_to_mod_num(appid);
 }
 
+void signpost_api_revoke_key(uint8_t module_number) {
+    printf("WARN: Revoking key for module %d\n", module_number);
+    module_info.haskey[module_number] = false;
+    memset(module_info.keys[module_number], 0 , ECDH_KEY_LENGTH);
+}
+
 int signpost_api_error_reply(uint8_t destination_address,
         signbus_api_type_t api_type, uint8_t message_type, int error_code) {
     return signpost_api_send(destination_address,
@@ -138,7 +144,10 @@ static void signpost_api_recv_callback(int len_or_rc) {
     if (len_or_rc < 0) {
         if (len_or_rc == SB_PORT_ECRYPT) {
             port_printf("Dropping message with HMAC/HASH failure\n");
-            //signpost_api_error_reply_repeating(incoming_source_address, incoming_api_type, incoming_message_type, SB_PORT_ECRYPT, true, true, 1);
+            // Unable to decrypt this message, we should revoke our key
+            signpost_api_revoke_key(signpost_api_addr_to_mod_num(incoming_source_address));
+            // TODO and reinit with module
+
             signpost_api_start_new_async_recv();
             return;
         } else {
@@ -186,8 +195,9 @@ static void signpost_api_recv_callback(int len_or_rc) {
 static initialization_state_t init_state;
 
 // waiting variables
-static bool register_module_complete;
+//static bool register_module_complete;
 static bool request_isolation_complete;
+static bool revoke_complete;
 static bool declare_controller_complete;
 static bool key_send_complete;
 
@@ -208,15 +218,15 @@ static uint8_t ecdh_buf[ECDH_BUF_LEN];
 /* Initialization Callbacks           */
 /**************************************/
 
-static void signpost_initialization_register_callback(int len_or_rc) {
-    // Flip waiting variable, change state if well-formed message
-    register_module_complete = true;
-    if (len_or_rc < SB_PORT_SUCCESS) return;
-    if (incoming_api_type != InitializationApiType || incoming_message_type !=
-            InitializationRegister) return;
-
-    init_state = ConfirmChallenge;
-}
+//static void signpost_initialization_register_callback(int len_or_rc) {
+//    // Flip waiting variable, change state if well-formed message
+//    register_module_complete = true;
+//    if (len_or_rc < SB_PORT_SUCCESS) return;
+//    if (incoming_api_type != InitializationApiType || incoming_message_type !=
+//            InitializationRegister) return;
+//
+//    init_state = ConfirmChallenge;
+//}
 
 static void signpost_initialization_declare_callback(int len_or_rc) {
     // Flip waiting variable, change state if well-formed message
@@ -237,11 +247,20 @@ static void signpost_initialization_key_exchange_callback(int len_or_rc) {
     init_state = FinishExchange;
 }
 
+static void signpost_initialization_revoke_callback(int len_or_rc) {
+    revoke_complete = true;
+    if (len_or_rc < SB_PORT_SUCCESS) return;
+    if (incoming_api_type != InitializationApiType || incoming_message_type !=
+            InitializationRevoke) return;
+
+    init_state = Declare;
+}
+
 static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
     is_isolated = 1;
     if (init_state != RequestIsolation) return;
     // update state and flip waiting variable
-    init_state = Isolated;
+    init_state = Revoke;
     request_isolation_complete = true;
 }
 
@@ -257,35 +276,65 @@ static void signpost_initialization_lost_isolation_callback(int unused __attribu
 /**************************************/
 
 // TODO should change to using appids
-static int signpost_initialization_register_with_key(uint8_t address) {
+//static int signpost_initialization_register_with_key(uint8_t address) {
+//    int rc;
+//    int modnum;
+//
+//    if ((modnum = signpost_api_addr_to_mod_num(address)) < 0) {
+//      return SB_PORT_EINVAL;
+//    }
+//
+//    // set callback for handling response from controller/modules
+//    if (incoming_active_callback != NULL) {
+//        return SB_PORT_EBUSY;
+//    }
+//
+//    incoming_active_callback = signpost_initialization_register_callback;
+//
+//    // get random nonce for challenge
+//    uint16_t nonce;
+//    rc = port_rng_sync((uint8_t*) &nonce, sizeof(nonce), sizeof(nonce));
+//    if (rc == SB_PORT_FAIL) return rc;
+//
+//    if (signpost_api_send(ModuleAddressController, CommandFrame,
+//          InitializationApiType, InitializationRegister, sizeof(nonce),
+//          (uint8_t*) &nonce) >= SB_PORT_SUCCESS) {
+//        return SB_PORT_SUCCESS;
+//    }
+//
+//    return SB_PORT_FAIL;
+//}
+
+int signpost_initialization_request_isolation(void) {
     int rc;
-    int modnum;
+    // Pull Mod_Out Low to signal controller
+    // Wait on controller interrupt on MOD_IN
+    rc = port_signpost_mod_out_clear();
+    if (rc != SB_PORT_SUCCESS) return rc;
+    rc = port_signpost_debug_led_on();
+    if (rc != SB_PORT_SUCCESS) return rc;
 
-    if ((modnum = signpost_api_addr_to_mod_num(address)) < 0) {
-      return SB_PORT_EINVAL;
-    }
+    return SB_PORT_SUCCESS;
+}
 
+static int signpost_initialization_revoke_controller(void) {
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
     }
 
-    incoming_active_callback = signpost_initialization_register_callback;
-
-    // get random nonce for challenge
-    uint16_t nonce;
-    rc = port_rng_sync((uint8_t*) &nonce, sizeof(nonce), sizeof(nonce));
-    if (rc == SB_PORT_FAIL) return rc;
+    incoming_active_callback = signpost_initialization_revoke_callback;
 
     if (signpost_api_send(ModuleAddressController, CommandFrame,
-          InitializationApiType, InitializationRegister, sizeof(nonce),
-          (uint8_t*) &nonce) >= SB_PORT_SUCCESS) {
+          InitializationApiType, InitializationRevoke, 0,
+          NULL) >= SB_PORT_SUCCESS) {
         return SB_PORT_SUCCESS;
     }
 
     return SB_PORT_FAIL;
 }
 
+<<<<<<< 3079ec2ff131efa4dc414bd96844f75fc3eae1c8
 int signpost_initialization_request_isolation(void) {
     int rc;
     // Pull Mod_Out Low to signal controller
@@ -299,6 +348,8 @@ int signpost_initialization_request_isolation(void) {
     return SB_PORT_SUCCESS;
 }
 
+=======
+>>>>>>> Add automatic revoke of keys
 static int signpost_initialization_declare_controller(uint8_t mod_addr) {
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
@@ -310,8 +361,8 @@ static int signpost_initialization_declare_controller(uint8_t mod_addr) {
     // XXX also report APIs supported
     // XXX dynamic i2c address allocation
     if (signpost_api_send(ModuleAddressController, CommandFrame,
-          InitializationApiType, InitializationDeclare, mod_addr,
-          &module_info.i2c_address) >= SB_PORT_SUCCESS) {
+          InitializationApiType, InitializationDeclare, 1,
+          &mod_addr) >= SB_PORT_SUCCESS) {
         return SB_PORT_SUCCESS;
     }
 
@@ -381,21 +432,21 @@ static int signpost_initialization_key_exchange_send(uint8_t destination_address
     else return SB_PORT_FAIL;
 }
 
-int signpost_initialization_register_respond(uint8_t source_address) {
-    uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
-    if (!module_info.haskey[module_number]) {
-        printf("INIT: Do not have key for module %d, dropping registration request\n", module_number);
-        return SB_PORT_EINVAL;
-    }
-
-    uint16_t nonce = *((uint16_t*) incoming_message);
-    SIGNBUS_DEBUG("nonce: 0x%x\n", nonce);
-
-
-    printf("INIT: Registered module %d at address 0x%x with existing key\n", module_number, source_address);
-
-    return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationRegister, sizeof(uint16_t), (uint8_t*) &nonce);
-}
+//int signpost_initialization_register_respond(uint8_t source_address) {
+//    uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
+//    if (!module_info.haskey[module_number]) {
+//        printf("INIT: Do not have key for module %d, dropping registration request\n", module_number);
+//        return SB_PORT_EINVAL;
+//    }
+//
+//    uint16_t nonce = *((uint16_t*) incoming_message);
+//    SIGNBUS_DEBUG("nonce: 0x%x\n", nonce);
+//
+//
+//    printf("INIT: Registered module %d at address 0x%x with existing key\n", module_number, source_address);
+//
+//    return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationRegister, sizeof(uint16_t), (uint8_t*) &nonce);
+//}
 
 int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number, uint8_t other_module_number) {
     //int ret = SB_PORT_SUCCESS;
@@ -589,29 +640,29 @@ static int signpost_initialization_initialize_loop(void) {
               init_state = RequestIsolation;
             }
             break;
-          case RegisterWithKeys:
-            for(int i = 0; i < NUM_MODULES; i++) {
-              if (module_info.haskey[i]) {
-                register_module_complete = false;
-                printf("INIT: Attempting to register with module %d\n", i);
-                signpost_initialization_register_with_key(module_info.i2c_address_mods[i]);
+          //case RegisterWithKeys:
+          //  for(int i = 0; i < NUM_MODULES; i++) {
+          //    if (module_info.haskey[i]) {
+          //      register_module_complete = false;
+          //      printf("INIT: Attempting to register with module %d\n", i);
+          //      signpost_initialization_register_with_key(module_info.i2c_address_mods[i]);
 
-                rc = port_signpost_wait_for_with_timeout(&register_module_complete, 100);
-                if (rc == SB_PORT_FAIL) {
-                  printf("INIT: Timed out waiting for registering with module %d, continuing\n", i);
-                  continue;
-                };
-                // check to see that the return message is the nonce+1, if not,
-                // set the haskey to false
-                if (*((uint16_t *) incoming_message) != module_info.nonces[i] + 1) {
-                  module_info.haskey[i] = false;
-                }
-              }
-            }
-            // if we do not have a key with the controller
-            if (!module_info.haskey[3]) init_state = RequestIsolation;
-            else init_state = Done;
-            break;
+          //      rc = port_signpost_wait_for_with_timeout(&register_module_complete, 100);
+          //      if (rc == SB_PORT_FAIL) {
+          //        printf("INIT: Timed out waiting for registering with module %d, continuing\n", i);
+          //        continue;
+          //      };
+          //      // check to see that the return message is the nonce+1, if not,
+          //      // set the haskey to false
+          //      if (*((uint16_t *) incoming_message) != module_info.nonces[i] + 1) {
+          //        module_info.haskey[i] = false;
+          //      }
+          //    }
+          //  }
+          //  // if we do not have a key with the controller
+          //  if (!module_info.haskey[3]) init_state = RequestIsolation;
+          //  else init_state = Done;
+          //  break;
           case RequestIsolation:
             printf("INIT: Requested I2C isolation with controller\n");
             request_isolation_complete = false;
@@ -627,12 +678,30 @@ static int signpost_initialization_initialize_loop(void) {
             };
 
             break;
-          case Isolated:
+          case Revoke:
             // check that mod_in is still low after delay
             port_signpost_delay_ms(50);
             if(!is_isolated && port_signpost_mod_in_read() != 0) {
               init_state = RequestIsolation;
               break;
+            }
+
+            printf("INIT: Requested I2C isolation with controller\n");
+            revoke_complete = false;
+            rc = signpost_initialization_revoke_controller();
+            if (rc != SB_PORT_SUCCESS) {
+              break;
+            }
+
+            rc = port_signpost_wait_for_with_timeout(&revoke_complete, 200);
+            if (rc == SB_PORT_FAIL) {
+              printf("INIT: Timed out waiting for revoke response\n");
+              init_state = RequestIsolation;
+            };
+            break;
+          case Declare:
+            if(!is_isolated) {
+              init_state = RequestIsolation;
             }
             // Now declare self to controller
             declare_controller_complete = false;
@@ -646,7 +715,6 @@ static int signpost_initialization_initialize_loop(void) {
               port_printf("INIT: Timed out waiting for controller declare response\n");
               init_state = RequestIsolation;
             };
-
             break;
           case KeyExchange: {
             // controller responded with own module number - lets save it

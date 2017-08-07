@@ -49,6 +49,13 @@ uint8_t* signpost_api_addr_to_key(uint8_t addr);
 int signpost_api_addr_to_mod_num(uint8_t addr);
 uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 
+// Revoke the key of a module
+//
+// params:
+//  module_number: the module number corresponding to the key to revoke
+void signpost_api_revoke_key(uint8_t module_number);
+
+
 /**************************************************************************/
 /* INITIALIZATION API                                                     */
 /**************************************************************************/
@@ -61,20 +68,22 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 
 typedef enum initialization_state {
     RequestIsolation = 0,
-    Isolated,
+    Declare,
     KeyExchange,
     FinishExchange,
     Done,
     CheckKeys,
-    RegisterWithKeys,
-    ConfirmChallenge,
+    //RegisterWithKeys,
+    //ConfirmChallenge,
+    Revoke,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
    InitializationDeclare = 0,
    InitializationKeyExchange,
    InitializationGetMods,
-   InitializationRegister,
+   //InitializationRegister,
+   InitializationRevoke,
 } initialization_message_type_t;
 
 typedef enum module_address {
