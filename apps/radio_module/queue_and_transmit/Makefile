@@ -6,8 +6,8 @@ APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Which files to compile.
 C_SRCS := $(wildcard *.c)
 
-STACK_SIZE=10000
-APP_HEAP_SIZE=6000
+STACK_SIZE=8000
+APP_HEAP_SIZE=5000
 
 # Set a default address for CI builds
 ifeq ($(CI),true)
