@@ -506,7 +506,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A800DD;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
@@ -547,6 +547,10 @@ int signpost_controller_init (void) {
     // setup hardware watchdog
     gpio_enable_output(PIN_WATCHDOG);
     gpio_set(PIN_WATCHDOG);
+
+    //we want a delay to prevent from accidentally initializing energy
+    //during programming
+    delay_ms(3000);
 
     //configure FRAM
     printf("Configuring FRAM\n");
