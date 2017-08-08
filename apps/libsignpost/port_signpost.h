@@ -41,9 +41,12 @@ for each platform*/
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 //These are the callback definitions
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+//These are the callback definitions
 //This is the typedef of the callback you should call when you get an i2c slave write
-//You can either return the (positive) length or an error code
+//You can either pass in the (positive) length or an error code
 typedef void (*port_signpost_callback)(int len_or_rc);
 
 //This function is called upon signpost initialization
@@ -107,3 +110,12 @@ int port_rng_init(void);
  */
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num);
 
+/* port_printf
+ * Platform specific implementation of printf
+ * This is usually implemented using vprintf and stdarg.h
+ */
+int port_printf(const char *fmt, ...) __attribute__ ((format (gnu_printf, 1, 2)));
+
+#ifdef __cplusplus
+}
+#endif

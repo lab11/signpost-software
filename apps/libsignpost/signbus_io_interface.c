@@ -116,7 +116,7 @@ void signbus_io_init(uint8_t address) {
 
 // synchronous send call
 int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
-    SIGNBUS_DEBUG("dest %02x data %packet len %d\n", dest, data, len);
+    SIGNBUS_DEBUG("dest %02x data %p packet len %d\n", dest, data, len);
 
     sequence_number++;
     Packet packet = {0};
@@ -188,7 +188,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
         }
     }
 
-    SIGNBUS_DEBUG("dest %02x data %packet len %d -- COMPLETE\n", dest, data, len);
+    SIGNBUS_DEBUG("dest %02x data %p packet len %d -- COMPLETE\n", dest, data, len);
     return len;
 }
 
@@ -238,7 +238,7 @@ static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src)
                 continue;
             }
         }
-
+        SIGNBUS_DEBUG("packet.header.src: 0x%x\n", packet.header.src);
         *src = packet.header.src;
 
         //are there more fragments?

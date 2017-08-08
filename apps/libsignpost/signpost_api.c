@@ -1,14 +1,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "CRC16.h"
-#include "erpc_client_setup.h"
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "port_signpost.h"
-#include "tock.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -33,7 +30,7 @@ uint8_t* signpost_api_addr_to_key(uint8_t addr) {
     for (size_t i = 0; i < NUM_MODULES; i++) {
         if (addr == module_info.i2c_address_mods[i] && module_info.haskey[i]) {
             uint8_t* key = module_info.keys[i];
-            printf("key: %p: 0x%02x%02x%02x...%02x\n", key,
+            port_printf("key: %p: 0x%02x%02x%02x...%02x\n", key,
                     key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
             return key;
         }
@@ -49,7 +46,7 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
             return i;
         }
     }
-    printf("WARN: Do not have module registered to address 0x%x\n", addr);
+    port_printf("WARN: Do not have module registered to address 0x%x\n", addr);
     return SB_PORT_FAIL;
 }
 
@@ -64,16 +61,16 @@ void signpost_api_error_reply_repeating(uint8_t destination_address,
         bool print_warnings, bool print_on_first_send, unsigned tries) {
    int rc;
    if (print_warnings && print_on_first_send) {
-      printf(" - Sending API Error reply to 0x%02x for api 0x%02x and message 0x%02x.\n",
+      port_printf(" - Sending API Error reply to 0x%02x for api 0x%02x and message 0x%02x.\n",
             destination_address, api_type, message_type);
    }
    do {
       rc = signpost_api_error_reply(destination_address, api_type, message_type);
       if (rc < 0) {
          tries--;
-         printf(" - Error sending API Error reply to 0x%02x (code: %d).\n",
+         port_printf(" - Error sending API Error reply to 0x%02x (code: %d).\n",
                destination_address, rc);
-         printf(" - Sleeping 1s. Tries remaining %d\n", tries);
+         port_printf(" - Sleeping 1s. Tries remaining %d\n", tries);
          port_signpost_delay_ms(1000);
       }
    } while ( (tries > 0) && (rc < 0) );
@@ -90,7 +87,7 @@ int signpost_api_send(uint8_t destination_address,
 }
 
 /**************************************************************************/
-/* INCOMING MESSAGE / ASYNCHRONOUS DISPATCH                                */
+/* INCOMING MESSAGE / ASYNCHRONOUS DISPATCH                               */
 /**************************************************************************/
 
 // We can only have one active receive call at a time, which means providing
@@ -126,26 +123,24 @@ static void signpost_api_start_new_async_recv(void) {
             &incoming_message_type, &incoming_message_length, &incoming_message,
             INCOMING_MESSAGE_BUFFER_LENGTH, incoming_message_buffer);
     if (rc != 0) {
-        printf("%s:%d UNKNOWN ERROR %d\n", __FILE__, __LINE__, rc);
-        printf("*** NO MORE MESSAGES WILL BE RECEIVED ***\n");
+        port_printf("%s:%d UNKNOWN ERROR %d\n", __FILE__, __LINE__, rc);
+        port_printf("*** NO MORE MESSAGES WILL BE RECEIVED ***\n");
     }
 }
 
 static void signpost_api_recv_callback(int len_or_rc) {
     SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
-
     if (len_or_rc < 0) {
         if (len_or_rc == -94) {
             // These return codes are a hack
-            printf("Dropping message with HMAC/HASH failure\n");
+            port_printf("Dropping message with HMAC/HASH failure\n");
             signpost_api_start_new_async_recv();
         } else {
-            printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
+            port_printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
             // XXX trip watchdog reset or s/t?
             return;
         }
     }
-
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
         api_handler_t** handler = module_info.api_handlers;
         while (*handler != NULL) {
@@ -158,7 +153,7 @@ static void signpost_api_recv_callback(int len_or_rc) {
             handler++;
         }
         if (handler == NULL) {
-            printf("Warn: Unsolicited message for api %d. Dropping\n", incoming_api_type);
+            port_printf("Warn: Unsolicited message for api %d. Dropping\n", incoming_api_type);
         }
     } else if ( (incoming_frame_type == ResponseFrame) || (incoming_frame_type == ErrorFrame) ) {
         if (incoming_active_callback != NULL) {
@@ -167,10 +162,10 @@ static void signpost_api_recv_callback(int len_or_rc) {
             incoming_active_callback = NULL;
             temp(len_or_rc);
         } else {
-            printf("Warn: Unsolicited response/error. Dropping\n");
+            port_printf("Warn: Unsolicited response/error. Dropping\n");
         }
     } else {
-        printf("Invalid frame type: %d. Dropping message\n", incoming_frame_type);
+        port_printf("Invalid frame type: %d. Dropping message\n", incoming_frame_type);
     }
 
     signpost_api_start_new_async_recv();
@@ -245,7 +240,7 @@ int signpost_initialization_request_isolation(void) {
     rc = port_signpost_debug_led_on();
     if (rc != SB_PORT_SUCCESS) return rc;
 
-    printf("INIT: Requested I2C isolation with controller\n");
+    port_printf("INIT: Requested I2C isolation with controller\n");
     return SB_PORT_SUCCESS;
 }
 
@@ -272,8 +267,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     // read params from contacted module
     if (mbedtls_ecdh_read_public(&ecdh, incoming_message,
                 incoming_message_length) < 0) {
-
-        //printf("failed to read public parameters\n");
+        //port_printf("failed to read public parameters\n");
         return SB_PORT_FAIL;
     }
 
@@ -284,7 +278,7 @@ static int signpost_initialization_key_exchange_finish(void) {
     // generate key
     if(mbedtls_ecdh_calc_secret(&ecdh, &keylen, key, ECDH_KEY_LENGTH,
                 mbedtls_ctr_drbg_random, &ctr_drbg_context) < 0) {
-        //printf("failed to calculate secret\n");
+        //port_printf("failed to calculate secret\n");
         return SB_PORT_FAIL;
     }
     module_info.haskey[signpost_api_addr_to_mod_num(incoming_source_address)] =
@@ -293,13 +287,13 @@ static int signpost_initialization_key_exchange_finish(void) {
     SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
             key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
 
-    printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
+    port_printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
     return 0;
 }
 
 int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
-    printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
+    port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
@@ -332,14 +326,14 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
     module_info.i2c_address_mods[module_number] = source_address;
     module_info.haskey[module_number] = false;
 
-    printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
+    port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
     // Just ack, eventually will send new address
     return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
 }
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
     int ret = SB_PORT_SUCCESS;
 
-    printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
+    port_printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
     // init ecdh struct for key exchange
     mbedtls_ecdh_free(&ecdh);
     mbedtls_ecdh_init(&ecdh);
@@ -382,10 +376,8 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     signbus_io_init(i2c_address);
     rc = port_rng_init();
     if (rc < 0) return rc;
-
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
-
     // Clear keys
     for (int i=0; i < NUM_MODULES; i++) {
         module_info.haskey[i] = false;
@@ -447,7 +439,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller isolation\n");
+              port_printf("INIT: Timed out waiting for controller isolation\n");
               init_state = RequestIsolation;
             };
 
@@ -473,7 +465,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller declare response\n");
+              port_printf("INIT: Timed out waiting for controller declare response\n");
               init_state = RequestIsolation;
             };
 
@@ -490,7 +482,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
             rc = port_signpost_wait_for_with_timeout(&key_send_complete, 5000);
             if (rc == SB_PORT_FAIL) {
-              printf("INIT: Timed out waiting for controller key exchange response\n");
+              port_printf("INIT: Timed out waiting for controller key exchange response\n");
               init_state = RequestIsolation;
             };
             break;
@@ -519,10 +511,8 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
             break;
         }
     }
-
     return 0;
 }
-
 
 /**************************************************************************/
 /* STORAGE API                                                            */
@@ -540,7 +530,7 @@ static void signpost_storage_callback(int len_or_rc) {
         storage_result = len_or_rc;
     } else if (len_or_rc != sizeof(Storage_Record_t)) {
         // invalid response length
-        printf("%s:%d - Error: bad len, got %d, want %d\n",
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
                 __FILE__, __LINE__, len_or_rc, sizeof(Storage_Record_t));
         storage_result = SB_PORT_FAIL;
     } else {
@@ -575,7 +565,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
     }
 
     // wait for response
-    yield_for(&storage_ready);
+    port_signpost_wait_for(&storage_ready);
     return storage_result;
 }
 
@@ -594,8 +584,6 @@ static void signpost_processing_callback(__attribute__((unused)) int result){
 }
 
 int signpost_processing_init(const char* path) {
-    erpc_client_init(NULL);
-
     //form the sending message
     uint16_t size = strlen(path);
     uint16_t crc  = CRC16_Calc((uint8_t*)path,size,0xFFFF);
@@ -616,7 +604,7 @@ int signpost_processing_init(const char* path) {
     if (rc < 0) return rc;
 
     //wait for a response
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     if(incoming_message_length >= 5) {
         //this byte should be the return code
@@ -649,7 +637,7 @@ int signpost_processing_oneway_send(uint8_t* buf, uint16_t len) {
     processing_ready = false;
     //wait for a response
     //the response is just an ack that it got there
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     return incoming_message[0];
 }
@@ -680,7 +668,7 @@ int signpost_processing_twoway_send(uint8_t* buf, uint16_t len) {
 
 int signpost_processing_twoway_receive(uint8_t* buf, uint16_t* len) {
 
-    yield_for(&processing_ready);
+    port_signpost_wait_for(&processing_ready);
 
     //get the header and confirm it matches
     uint16_t size;
@@ -822,7 +810,7 @@ int signpost_networking_post(const char* url, http_request request, http_respons
     if (rc < 0) return rc;
 
     //wait for a response
-    yield_for(&networking_ready);
+    port_signpost_wait_for(&networking_ready);
 
     //parse the response
     //deserialize
@@ -905,7 +893,7 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
                         NetworkingPostMessage, response_len, response);
    if (rc < 0) {
-      printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
+      port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
             NetworkingPostMessage, true, true, 1);
    }
@@ -936,7 +924,7 @@ int signpost_energy_query(signpost_energy_information_t* energy) {
         }
     }
 
-    yield_for(&energy_query_ready);
+    port_signpost_wait_for(&energy_query_ready);
 
     return energy_query_result;
 }
@@ -945,7 +933,7 @@ static void energy_query_async_callback(int len_or_rc) {
     SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
 
     if (len_or_rc != sizeof(signpost_energy_information_t)) {
-        printf("%s:%d - Error: bad len, got %d, want %d\n",
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
                 __FILE__, __LINE__, len_or_rc, sizeof(signpost_energy_information_t));
     } else {
         if (energy_cb_data != NULL) {
@@ -1025,7 +1013,7 @@ static int signpost_timelocation_sync(signpost_timelocation_message_type_e messa
     if (rc < 0) return rc;
 
     // Wait for a response message to come back
-    yield_for(&timelocation_query_answered);
+    port_signpost_wait_for(&timelocation_query_answered);
 
     // Check the response message type
     if (incoming_message_type != message_type) {
@@ -1115,7 +1103,7 @@ int signpost_watchdog_start(void) {
 
     incoming_active_callback = signpost_watchdog_cb;
 
-    yield_for(&watchdog_reply);
+    port_signpost_wait_for(&watchdog_reply);
 
     return 1;
 }
@@ -1131,7 +1119,7 @@ int signpost_watchdog_tickle(void) {
 
     incoming_active_callback = signpost_watchdog_cb;
 
-    yield_for(&watchdog_reply);
+    port_signpost_wait_for(&watchdog_reply);
 
     return 1;
 }

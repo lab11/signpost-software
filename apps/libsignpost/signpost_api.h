@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef __cplusplus
+#include <assert.h>
 extern "C" {
 #endif
 
@@ -277,8 +278,11 @@ typedef struct __attribute__((packed)) energy_information {
     uint8_t     energy_limit_warning_threshold;
     uint8_t     energy_limit_critical_threshold;
 } signpost_energy_information_t;
-
+#ifdef __cplusplus //{}
+static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure size");
+#else
 _Static_assert(sizeof(signpost_energy_information_t) == 14, "On-wire structure size");
+#endif
 
 // Query the controller for energy information
 //

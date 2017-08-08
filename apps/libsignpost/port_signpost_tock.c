@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "gpio.h"
 #include "console.h"
@@ -203,5 +204,13 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
     else bytes_to_request = num;
     rc = signpost_entropy_rand(buf, bytes_to_request);
     if (rc < 0) return SB_PORT_FAIL;
+    return rc;
+}
+
+int port_printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int rc = vprintf(fmt, args);
+    va_end(args);
     return rc;
 }
