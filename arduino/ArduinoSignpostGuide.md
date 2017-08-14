@@ -21,10 +21,11 @@ Run the `build_arduino_package` bash script
 
 #### Arguments:
 ##### -d
-- Builds a developer package
+- Builds optional developer package
 - Creates symlinks to original files in repo instead of making copies of them
 - Any changes made to files in repo will immediately propogate to the Arduino Signpost library
-- Not supported on Windows
+- Script will not work if PATH_TO_ARDUINO_SKETCHBOOK has any spaces in it (Adding '\ ' doesn't work either)
+- Only supported on Linux
 ##### PATH_TO_ARDUINO_SKETCHBOOK
 - Specifies path to the sketchbook for the Arduino IDE
 - This is where the Signpost library will be installed
@@ -69,8 +70,8 @@ MKRZero | Signpost Backplane
 ------------ | -------------
 Pin 11 | SDA
 Pin 12 | SCL
-Pin 4 | IN
-Pin 5 | OUT
+Pin 4  | IN
+Pin 5  | OUT
 
 ## Test It
 

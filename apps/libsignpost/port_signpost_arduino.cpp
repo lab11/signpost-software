@@ -1,17 +1,18 @@
 #include <stdarg.h>
+
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <Wire.h>
-#include "signbus_io_interface.h"
+
 #include "port_signpost.h"
 #include "signpost_entropy.h"
 
 //Defines for Arduino pins
 //Current values are defined for the Arduino MKRZero
-#define ARDUINO_MOD_IN 			4
-#define ARDUINO_MOD_OUT 		5
-#define ARDUINO_PPS				3 //placeholder pin
-#define DEBUG_LED 				LED_BUILTIN
+#define ARDUINO_MOD_IN 	4
+#define ARDUINO_MOD_OUT	5
+#define ARDUINO_PPS		3 //placeholder pin
+#define DEBUG_LED 		LED_BUILTIN
 
 #define SIGNPOST_I2C_SPEED 		400000
 #define _PRINTF_BUFFER_LENGTH_	512
@@ -21,7 +22,7 @@
 
 //TODO: Add error handling and error codes
 //Callback helper functions
-//Function protypes for Arduino callbacks and signpost callbacks differ,
+//Function prototypes for Arduino callbacks and signpost callbacks differ,
 //so helper functions are used as an interface between the two.
 //The arduino hardware interrupt calls the helper function, which then calls the 
 //signpost callback.
@@ -69,8 +70,8 @@ int port_signpost_init(uint8_t i2c_address) {
 }
 
 int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
-	if (len == 0) {
-		return -1;
+	if (len == 0 || len > 256) {
+		return SB_PORT_ESIZE;
 	}
 	//Initialize i2c as master
 	Wire.begin();
@@ -82,7 +83,28 @@ int port_signpost_i2c_master_write(uint8_t addr, uint8_t* buf, size_t len) {
 	int rc = Wire.endTransmission();
 	//Put Arduino back into i2c slave mode
 	Wire.begin(g_arduino_i2c_address);
-	return num_written;
+	//Check for errors or return number of bytes written if no errors are present
+	//Below code unverified on hardware
+	switch (rc) {
+		case 0:
+			return num_written;
+		break;
+		case 1:
+			return SB_PORT_ESIZE;
+		break;
+		case 2:
+			return SB_PORT_ENOACK;
+		break;
+		case 3:
+			return SB_PORT_ENOACK;
+		break;
+		case 4:
+			return SB_PORT_FAIL;
+		break;
+		default:
+			return SB_PORT_FAIL;
+		break;
+	}
 }
 
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
@@ -177,8 +199,8 @@ int port_signpost_debug_led_off() {
 }
 
 int port_rng_init() {
-    if (signpost_entropy_init() < 0) return SB_PORT_FAIL;
-    return SB_PORT_SUCCESS;
+	if (signpost_entropy_init() < 0) return SB_PORT_FAIL;
+	return SB_PORT_SUCCESS;
 }
 
 //Uses pseudo-random number generation 
@@ -198,11 +220,13 @@ int port_printf(const char *fmt, ...) {
 	#ifdef ENABLE_ARDUINO_PORT_PRINTF
 		va_list args;
 		va_start(args, fmt);
-		vsnprintf(g_port_printf_buf, _PRINTF_BUFFER_LENGTH_, fmt, args);
+		int rc = vsnprintf(g_port_printf_buf, _PRINTF_BUFFER_LENGTH_, fmt, args);
 		Serial.print(g_port_printf_buf);
 		va_end(args);
+		return rc;
+	#else
+		return 0;
 	#endif
-	return 0;
 }
 
 static void mod_in_callback_falling_helper() {

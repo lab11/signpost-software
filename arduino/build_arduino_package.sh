@@ -5,8 +5,12 @@
 #On Linux this is usually ~/Arduino/
 #On Windows this is usually ~/Documents/Arduino/
 #To run on windows, use a bash emulator. This script was tested using git bash
-#NOTE: Script will not execute properly if any file paths have any spaces in them
-#NOTE: The developer build option does not work on Windows
+#NOTE: Script will not execute properly if any file paths have spaces in them
+#NOTE: The developer build option does not work on Windows or Mac
+#TODO: Add developer package compatibility for Mac using ln command
+#TODO: Add developer package compatibility for Windows using mklink 
+#      command in a windows batch script
+
 #Set paths to source files
 CONFIG_PATH="config"
 PACKAGE_PATH="packages/1.6.15"
@@ -21,7 +25,7 @@ case "$#" in
 			exit 1
 		fi
 		SKETCHBOOK_PATH="$1"
-		DEVELOPER=
+		CP_FLAGS=
 		echo "Building consumer package"
 		;;
 	"2")
@@ -40,7 +44,8 @@ case "$#" in
 			fi
 			exit 1
 		fi
-		DEVELOPER="-sR"
+		#If the -d flag is set, add flags to cp to create symlinks instead of copies
+		CP_FLAGS="-sR"
 		echo "Building developer package"
 		;;
 	*)
@@ -71,22 +76,22 @@ cp -r ${PACKAGE_PATH}/* ${PACKAGE_BUILD_PATH}/
 
 #Copy/link config files
 mkdir -p ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/platform.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/boards.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/programmers.txt ${PACKAGE_BUILD_PATH}/
-cp ${DEVELOPER} ${PWD}/${CONFIG_PATH}/library.properties ${LIBSIGNPOST_BUILD_PATH}/
+cp ${CP_FLAGS} ${PWD}/${CONFIG_PATH}/platform.txt ${PACKAGE_BUILD_PATH}/
+cp ${CP_FLAGS} ${PWD}/${CONFIG_PATH}/boards.txt ${PACKAGE_BUILD_PATH}/
+cp ${CP_FLAGS} ${PWD}/${CONFIG_PATH}/programmers.txt ${PACKAGE_BUILD_PATH}/
+cp ${CP_FLAGS} ${PWD}/${CONFIG_PATH}/library.properties ${LIBSIGNPOST_BUILD_PATH}/
 
 #Copy/link signpost files
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signpost_api.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_app_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_protocol_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signbus_io_interface.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost.h ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost_arduino.cpp ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/signpost_entropy.* ${LIBSIGNPOST_BUILD_PATH}/src/
-cp ${DEVELOPER} ${PWD}/${LIBSIGNPOST_PATH}/CRC16.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/signpost_api.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/signbus_app_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/signbus_protocol_layer.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/signbus_io_interface.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost.h ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/port_signpost_arduino.cpp ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/signpost_entropy.* ${LIBSIGNPOST_BUILD_PATH}/src/
+cp ${CP_FLAGS} ${PWD}/${LIBSIGNPOST_PATH}/CRC16.* ${LIBSIGNPOST_BUILD_PATH}/src/
 
 #Copy/link mbedtls files
 mkdir ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls
-cp -r ${DEVELOPER} ${PWD}/${MBEDTLS_PATH}/library/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
-cp -r ${DEVELOPER} ${PWD}/${MBEDTLS_PATH}/include/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
+cp -r ${CP_FLAGS} ${PWD}/${MBEDTLS_PATH}/library/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/
+cp -r ${CP_FLAGS} ${PWD}/${MBEDTLS_PATH}/include/ ${LIBSIGNPOST_BUILD_PATH}/src/mbedtls/

@@ -1,16 +1,15 @@
-#include <Arduino.h>
+#include <stdint.h>
 
 #include <Wire.h>
-#include <stdint.h>
-#include "signpost_api.h"
 
+#include "signpost_api.h"
+//This is an example i2c address. It can be modified to fit whatever you application happens to be.
 #define ARDUINO_MODULE_I2C_ADDRESS 0x48
 
-int rc = -1;
 void setup() {
   Serial.begin(9600);
   Serial.print("Program Start\n");
-  rc = signpost_initialization_module_init(ARDUINO_MODULE_I2C_ADDRESS, NULL);
+  int rc = signpost_initialization_module_init(ARDUINO_MODULE_I2C_ADDRESS, NULL);
   while (rc != 0) {
     char msg[100];
     sprintf(msg, " - Error initializing bus (code %d). Sleeping for 5s\n", rc);
