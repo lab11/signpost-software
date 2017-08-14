@@ -300,11 +300,11 @@ int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     }
     incoming_active_callback = signpost_initialization_key_exchange_callback;
 
-
     // Prepare for ECDH key exchange
     mbedtls_ecdh_init(&ecdh);
     rc = mbedtls_ecp_group_load(&ecdh.grp,MBEDTLS_ECP_DP_SECP256R1);
     if (rc < 0) return rc;
+
     rc = mbedtls_ecdh_make_params(&ecdh, &ecdh_param_len, ecdh_buf,
             ECDH_BUF_LEN, mbedtls_ctr_drbg_random, &ctr_drbg_context);
     if (rc < 0) return rc;
