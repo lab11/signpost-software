@@ -6,6 +6,7 @@
 #include "mbedtls/cipher.h"
 
 #include "port_signpost.h"
+#include "signpost_entropy.h"
 #include "signbus_app_layer.h"
 #include "signbus_io_interface.h"
 #include "signbus_protocol_layer.h"
@@ -41,7 +42,7 @@ static int cipher(
 
     if (operation == MBEDTLS_ENCRYPT) {
         // Get 16 random bits for IV
-        ret = port_rng_sync(ivenc, MBEDTLS_MAX_IV_LENGTH, MBEDTLS_MAX_IV_LENGTH);
+        ret = signpost_entropy_rand(ivenc, MBEDTLS_MAX_IV_LENGTH, MBEDTLS_MAX_IV_LENGTH);
         if (ret < 0) return SB_PORT_FAIL;
         // copy to iv, to send with encrypted content
         memcpy(iv, ivenc, MBEDTLS_MAX_IV_LENGTH);
