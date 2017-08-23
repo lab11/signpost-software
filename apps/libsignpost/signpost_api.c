@@ -6,6 +6,7 @@
 #include "signbus_io_interface.h"
 #include "signpost_api.h"
 #include "port_signpost.h"
+#include "signpost_entropy.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
@@ -374,7 +375,7 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
 
     // Initialize the lower layers
     signbus_io_init(i2c_address);
-    rc = port_rng_init();
+    rc = signpost_entropy_init();
     if (rc < 0) return rc;
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
