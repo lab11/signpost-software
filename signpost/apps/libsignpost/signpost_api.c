@@ -68,7 +68,7 @@ int signpost_api_error_reply(uint8_t destination_address,
 }
 
 void signpost_api_error_reply_repeating(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type,
+        signbus_api_type_t api_type, uint8_t message_type, int error_code,
         bool print_warnings, bool print_on_first_send, unsigned tries) {
    int rc;
    if (print_warnings && print_on_first_send) {
@@ -76,7 +76,7 @@ void signpost_api_error_reply_repeating(uint8_t destination_address,
             destination_address, api_type, message_type);
    }
    do {
-      rc = signpost_api_error_reply(destination_address, api_type, message_type);
+      rc = signpost_api_error_reply(destination_address, api_type, message_type, error_code);
       if (rc < 0) {
          tries--;
          port_printf(" - Error sending API Error reply to 0x%02x (code: %d).\n",
@@ -305,18 +305,6 @@ static void signpost_initialization_lost_isolation_callback(int unused __attribu
 //    return SB_PORT_FAIL;
 //}
 
-int signpost_initialization_request_isolation(void) {
-    int rc;
-    // Pull Mod_Out Low to signal controller
-    // Wait on controller interrupt on MOD_IN
-    rc = port_signpost_mod_out_clear();
-    if (rc != SB_PORT_SUCCESS) return rc;
-    rc = port_signpost_debug_led_on();
-    if (rc != SB_PORT_SUCCESS) return rc;
-
-    return SB_PORT_SUCCESS;
-}
-
 static int signpost_initialization_revoke_controller(void) {
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
@@ -334,7 +322,6 @@ static int signpost_initialization_revoke_controller(void) {
     return SB_PORT_FAIL;
 }
 
-<<<<<<< 3079ec2ff131efa4dc414bd96844f75fc3eae1c8
 int signpost_initialization_request_isolation(void) {
     int rc;
     // Pull Mod_Out Low to signal controller
@@ -348,8 +335,6 @@ int signpost_initialization_request_isolation(void) {
     return SB_PORT_SUCCESS;
 }
 
-=======
->>>>>>> Add automatic revoke of keys
 static int signpost_initialization_declare_controller(uint8_t mod_addr) {
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
@@ -399,12 +384,9 @@ static int signpost_initialization_key_exchange_finish(void) {
 
 static int signpost_initialization_key_exchange_send(uint8_t destination_address) {
     int rc;
-<<<<<<< 165a1e3087212addc8dce15125d53894ce5f8bd3
-    port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", signpost_api_addr_to_mod_num(destination_address));
-=======
     uint8_t module_number = signpost_api_addr_to_mod_num(destination_address);
-    printf("INIT: Granted I2C isolation and started initialization with module %d\n", module_number);
->>>>>>> Add commented out wip api callback
+    port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", module_number);
+
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
@@ -468,16 +450,8 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
     int ret = SB_PORT_SUCCESS;
     uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
 
-<<<<<<< 165a1e3087212addc8dce15125d53894ce5f8bd3
-<<<<<<< d9c7f9034686f8f6efd29778c54be5a3537f8fdc
-    port_printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
-=======
-    printf("INIT: Performing key exchange with module %d\n", signpost_api_addr_to_mod_num(source_address));
-=======
-    printf("INIT: Performing key exchange with module %d\n", module_number);
->>>>>>> Add commented out wip api callback
+    port_printf("INIT: Performing key exchange with module %d\n", module_number);
 
->>>>>>> Add return message for error messages
     // init ecdh struct for key exchange
     mbedtls_ecdh_free(&ecdh);
     mbedtls_ecdh_init(&ecdh);
@@ -1353,7 +1327,7 @@ int signpost_energy_query_async(
         return rc;
     };
 
-    return TOCK_SUCCESS;
+    return SB_PORT_SUCCESS;
 }
 
 int signpost_energy_duty_cycle(uint32_t time_ms) {
@@ -1369,7 +1343,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     uint8_t report_buf_size = reports_size + 1;
     uint8_t* report_buf = malloc(report_buf_size);
     if(!report_buf) {
-        return TOCK_ENOMEM;
+        return SB_PORT_ENOMEM;
     }
 
     report_buf[0] = report->num_reports;
@@ -1393,7 +1367,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     // There is an integer in the incoming message that should be
     // sent back as the return code.
     if(energy_report_result < 0) {
-        return TOCK_FAIL;
+        return SB_PORT_FAIL;
     } else {
         return *incoming_message;
     }
