@@ -142,7 +142,7 @@ static int sara_u260_del_file(const char* fname) {
     }
 }
 
-static int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
+int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len) {
 
     int ret = at_send(SARA_CONSOLE, "AT+UDWNFILE=\"");
     if (ret < 0) return SARA_U260_ERROR;
