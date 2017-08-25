@@ -235,7 +235,7 @@ int sara_u260_basic_http_post(const char* url, const char* path, uint8_t* buf, s
     }
 }
 
-static int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len) {
+int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len) {
 
     int ret = at_send(SARA_CONSOLE,"AT+URDBLOCK=\"");
     if (ret < 0) return SARA_U260_ERROR;

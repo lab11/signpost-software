@@ -29,6 +29,9 @@ int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_
 //writes to a file the the internal FS
 int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len);
 
+//reads from a file in the interal FS
+int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len);
+
 //Attempts to perform HTTP GET
 int sara_u260_basic_http_get(const char* url, const char* path);
 
