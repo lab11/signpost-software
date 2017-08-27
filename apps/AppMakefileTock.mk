@@ -16,7 +16,7 @@ SIGNPOST_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR))
 TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)/../kernel/tock/userland/)
 
 # Include the libsignpost makefile. Adds rules that will rebuild library when needed
-include $(SIGNPOST_USERLAND_BASE_DIR)/libsignpost/Makefile
+include $(SIGNPOST_USERLAND_BASE_DIR)/libsignpost-tock/Makefile
 include $(SIGNPOST_USERLAND_BASE_DIR)/support/mbedtls/Makefile
 
 

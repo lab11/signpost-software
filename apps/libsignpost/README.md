@@ -1,8 +1,12 @@
 Signpost Library Code
 =====================
 
-Library code that may be useful to various Signpost modules. This includes
-drivers for interacting with hardware such as sensors and GPS units, encryption
-tools and CRC tools, code for managing Signpost bus access (`signbus_*`), and
-code to handle various Signpost APIs (`signpost_*`).
+This folder contains libraries that are portable across
+platforms. This primarily includes the core signpost API, but also has some
+generic libraries (such as CRC).
 
+To port the signpost API to a new platform:
+ - Create a new directory apps/libsignpost-platform
+ - Implement port_signpost.h in this directory
+ - Add a makefile for your platform that builds the signpost port implementation
+ with the core signpost libraries. Apps that use the new platform will use this makefile.

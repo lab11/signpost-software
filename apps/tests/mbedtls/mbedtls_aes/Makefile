@@ -25,5 +25,5 @@ C_SRCS   := $(wildcard *.c)
 C_SRCS   += $(notdir $(APP_SRCS))
 
 # include makefile settings that are shared between applications
-include ../../../AppMakefile.mk
+include ../../../AppMakefileTock.mk
 

@@ -10,5 +10,5 @@ APP_HEAP_SIZE=4096
 C_SRCS   := main.c
 
 # include makefile settings that are shared between applications
-include ../../AppMakefile.mk
+include ../../AppMakefileTock.mk
 
