@@ -39,7 +39,10 @@ int signpost_entropy_init (void) {
 
 int signpost_entropy_rand(uint8_t* buf, size_t len, size_t num) {
     size_t bytes_to_request;
-    if (len < num) bytes_to_request = len;
-    else bytes_to_request = num;
+    if (len < num) {
+        bytes_to_request = len;
+    } else {
+        bytes_to_request = num;
+    }
     return mbedtls_ctr_drbg_random(&ctr_drbg_context, buf, bytes_to_request);
 }
