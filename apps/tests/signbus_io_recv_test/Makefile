@@ -9,5 +9,5 @@ LIBS_DIR := ../libs/
 C_SRCS   := $(wildcard *.c)
 
 # include makefile settings that are shared between applications
-include ../../AppMakefile.mk
+include ../../AppMakefileTock.mk
 

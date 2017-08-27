@@ -5,13 +5,21 @@
 TOCK_USERLAND_BASE_DIR ?= ../../kernel/tock/userland
 SIGNPOST_USERLAND_BASE_DIR ?= ..
 LIBNAME := libsignpost
+LIBNAMETOCK := libsignpost-tock
 $(LIBNAME)_DIR=$(SIGNPOST_USERLAND_BASE_DIR)/$(LIBNAME)
+$(LIBNAMETOCK)_DIR=$(SIGNPOST_USERLAND_BASE_DIR)/$(LIBNAMETOCK)
 
 # Grab all source files
 $(LIBNAME)_SRCS += $(wildcard $($(LIBNAME)_DIR)/*.s)
 $(LIBNAME)_SRCS += $(wildcard $($(LIBNAME)_DIR)/*.c)
 $(LIBNAME)_SRCS += $(wildcard $($(LIBNAME)_DIR)/*.cc)
 $(LIBNAME)_SRCS += $(wildcard $($(LIBNAME)_DIR)/*.cpp)
+
+# Grab all source files
+$(LIBNAME)_SRCS += $(wildcard $($(LIBNAMETOCK)_DIR)/*.s)
+$(LIBNAME)_SRCS += $(wildcard $($(LIBNAMETOCK)_DIR)/*.c)
+$(LIBNAME)_SRCS += $(wildcard $($(LIBNAMETOCK)_DIR)/*.cc)
+$(LIBNAME)_SRCS += $(wildcard $($(LIBNAMETOCK)_DIR)/*.cpp)
 
 # External libraries
 override CPPFLAGS += -I$(TOCK_USERLAND_BASE_DIR)/libtock

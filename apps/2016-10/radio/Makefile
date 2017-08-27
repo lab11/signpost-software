@@ -43,7 +43,7 @@ TOCK_USERLAND_BASE_DIR := ../../../kernel/tock/userland
 include $(TOCK_USERLAND_BASE_DIR)/libnrfserialization/Makefile.app
 
 # include makefile settings that are shared between applications
-include ../../AppMakefile.mk
+include ../../AppMakefileTock.mk
 
 $(BUILDDIR)/main.o: .address
 

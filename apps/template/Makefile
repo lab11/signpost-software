@@ -17,5 +17,5 @@ CXX_SRCS := $(wildcard *.cc) $(wildcard *.cpp) $(wildcard *.cxx)
 # If your app requires additional search paths for header files, add them here
 
 # include makefile settings that are shared between applications
-include ../AppMakefile.mk
+include ../AppMakefileTock.mk
 

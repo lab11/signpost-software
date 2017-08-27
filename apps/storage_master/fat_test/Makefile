@@ -16,7 +16,7 @@ vpath %.c fatfs/option
 C_SRCS   += unicode.c
 
 # include makefile settings that are shared between applications
-include ../../AppMakefile.mk
+include ../../AppMakefileTock.mk
 
 # To see the generated rules, run:
 # $(info $(foreach arch,$(TOCK_ARCHS),$(call FATFS_RULES,$(arch))))

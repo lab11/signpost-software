@@ -12,5 +12,5 @@ APP_HEAP_SIZE=2048
 STACK_SIZE=4096
 
 # include makefile settings that are shared between applications
-include ../../AppMakefile.mk
+include ../../AppMakefileTock.mk
 
