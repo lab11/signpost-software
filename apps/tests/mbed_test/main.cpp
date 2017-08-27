@@ -1,16 +1,14 @@
 #include "mbed.h"
 #include <stdio.h>
-
-PortOut Led1(PortB, 0x01);
-Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
+#include "port_signpost.h"
 
 int main(void) {
     printf("Testing mbed\n");
 
     while(1) {
-        Led1 = 1;
+        port_signpost_debug_led_on();
         wait(0.5);
-        Led1 = 0;
+        port_signpost_debug_led_off();
         wait(0.5);
     }
 }
