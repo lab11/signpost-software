@@ -8,6 +8,8 @@ DigitalOut ModOut(MOD_OUT);
 InterruptIn ModIn(MOD_IN);
 DigitalIn pps(PPS);
 Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
+I2C I2Cwriter(I2C_MASTER_SDA, I2C_MASTER_SCL);
+I2CSlave I2Creader(I2C_SLAVE_SDA, I2C_SLAVE_SCL);
 
 //All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
@@ -16,6 +18,7 @@ char port_print_buf[80];
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
     ModIn.mode(PullUp);
+    I2Creader.address(i2c_address);
     return SB_PORT_SUCCESS;
 }
 
@@ -24,7 +27,33 @@ int port_signpost_init(uint8_t i2c_address) {
 //If the bus returns an error, use the appropriate error code
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
+    int rc = I2Cwriter.write(dest, (const char*)buf,len);
+    if(rc != 0) {
+        return SB_PORT_FAIL;
+    } else {
+        return SB_PORT_SUCCESS;
+    }
+}
 
+static port_signpost_callback listen_cb;
+static uint8_t* listen_buf;
+static size_t listen_len;
+static uint8_t* read_buf;
+static size_t read_len;
+
+static void i2c_listen_loop() {
+    while(1) {
+        int i = I2Creader.receive();
+        switch (i) {
+        case I2CSlave::ReadAddressed:
+            I2Creader.write((const char*)read_buf, read_len); // Includes null char
+        break;
+        case I2CSlave::WriteAddressed:
+            I2Creader.read((char*)listen_buf, listen_len);
+            listen_cb(listen_len);
+        break;
+        }
+    }
 }
 
 //This function sets up the asynchronous i2c receive interface
@@ -32,11 +61,25 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
 //The address specified in init
 //Place data in the buffer no longer than the max len
 int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size_t max_len) {
+    listen_cb = cb;
+    listen_buf = buf;
+    listen_len = max_len;
 
+    //spawn a listener thread that sends callbacks through the port_signpost_callback
+    //declare a thread
+    static Thread listenerThread;
+    listenerThread.set_priority(osPriorityBelowNormal);
+    if(listenerThread.start(i2c_listen_loop) == osOK) {
+        return SB_PORT_SUCCESS;
+    } else {
+        return SB_PORT_FAIL;
+    }
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
-
+    read_buf = buf;
+    read_len = len;
+    return SB_PORT_SUCCESS;
 }
 
 //These functions are used to control gpio outputs
@@ -71,6 +114,7 @@ int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb) {
     ModIn.fall(&in_falling);
     falling_cb = cb;
     ModIn.enable_irq();
+    return SB_PORT_SUCCESS;
 }
 
 //This function is used to get the input interrupt for the rising edge of
@@ -87,12 +131,14 @@ int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb) {
     ModIn.rise(&in_rising);
     rising_cb = cb;
     ModIn.enable_irq();
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_mod_in_disable_interrupt(void) {
     ModIn.disable_irq();
     falling_cb = NULL;
     rising_cb = NULL;
+    return SB_PORT_SUCCESS;
 }
 
 void port_signpost_wait_for(void* wait_on_true){
@@ -126,10 +172,12 @@ void port_signpost_delay_ms(unsigned ms) {
 
 int port_signpost_debug_led_on(void) {
     Debug = 1;
+    return SB_PORT_SUCCESS;
 }
 
 int port_signpost_debug_led_off(void){
     Debug = 0;
+    return SB_PORT_SUCCESS;
 }
 
 int port_rng_init(void) {
