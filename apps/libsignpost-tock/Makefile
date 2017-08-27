@@ -4,8 +4,8 @@
 # Base folder definitions
 TOCK_USERLAND_BASE_DIR ?= ../../kernel/tock/userland
 SIGNPOST_USERLAND_BASE_DIR ?= ..
-LIBNAME := libsignpost
-LIBNAMETOCK := libsignpost-tock
+LIBNAME := libsignpost-tock
+LIBNAMETOCK := libsignpost
 $(LIBNAME)_DIR=$(SIGNPOST_USERLAND_BASE_DIR)/$(LIBNAME)
 $(LIBNAMETOCK)_DIR=$(SIGNPOST_USERLAND_BASE_DIR)/$(LIBNAMETOCK)
 
