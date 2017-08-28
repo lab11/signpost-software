@@ -1,15 +1,24 @@
-#include "mbed.h"
-#include "port_signpost.h"
-#include "board.h"
+//stdlib
 #include <stdio.h>
 
-DigitalOut Debug(DEBUG_LED);
-DigitalOut ModOut(MOD_OUT);
-InterruptIn ModIn(MOD_IN);
-DigitalIn pps(PPS);
-Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
-I2C I2Cwriter(I2C_MASTER_SDA, I2C_MASTER_SCL);
-I2CSlave I2Creader(I2C_SLAVE_SDA, I2C_SLAVE_SCL);
+//mbed os
+#include "mbed.h"
+
+//signpost port layer
+#include "port_signpost.h"
+
+//pin definitions from each board
+#include "board.h"
+
+//Global definitions for hardware interfaces
+//We define a serial so that print works
+static DigitalOut Debug(DEBUG_LED);
+static DigitalOut ModOut(MOD_OUT);
+static InterruptIn ModIn(MOD_IN);
+static DigitalIn pps(PPS);
+static Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
+static I2C I2Cwriter(I2C_MASTER_SDA, I2C_MASTER_SCL);
+static I2CSlave I2Creader(I2C_SLAVE_SDA, I2C_SLAVE_SCL);
 
 //All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
@@ -37,6 +46,7 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
     }
 }
 
+//global variables related to listening for i2c transactions
 static port_signpost_callback listen_cb = NULL;
 static uint8_t* listen_buf;
 static size_t listen_len;
@@ -165,6 +175,7 @@ void port_signpost_wait_for(void* wait_on_true){
 
 static Timeout waiter;
 static bool timed_out = false;
+
 static void timeout_cb() {
     timed_out = true;
 }
@@ -202,8 +213,7 @@ int port_rng_init(void) {
 
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
     //for right now mbed doesn't have an RNG implemented (sigh)
-    //it's technically insecure not to return random values
-    //...but this is just a seed, and the key is calculated with ECDH so...
+    //we will just use rand for now
 
     for(uint32_t i = 0; i < num && i < len; i++) {
         buf[i] = (rand() & 0xff);
