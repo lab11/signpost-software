@@ -1,7 +1,7 @@
 #This makefile is a supporting makefile for mbed apps
 #It sets up variables so that it can call the Linux-specific JLinkMakefile
 
-OUTPUT_PATH = $(APP_DIR)/BUILD/$(TARGET)/$(TOOLCHAIN)/
+OUTPUT_PATH = $(APP_DIR)/build/$(TARGET)/$(TOOLCHAIN)/
 OUTPUT_BIN :=  libsignpost-mbed.bin
 
 CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -11,6 +11,7 @@ MBED_LIB = $(SIGNPOST_APP_DIR)/libsignpost-mbed
 SIGNPOST_LIB = $(SIGNPOST_APP_DIR)/libsignpost
 MBEDTLS_INC = $(SIGNPOST_APP_DIR)/support/mbedtls/mbedtls/include
 MBEDTLS_SRC = $(SIGNPOST_APP_DIR)/support/mbedtls/mbedtls/library
+BUILD_PROFILE = $(SIGNPOST_APP_DIR)/support/mbed/build_profile.json
 
 ifeq ($(TARGET),NUCLEO_L432KC)
 FLASH_START_ADDRESS = 0x08000000
@@ -25,7 +26,7 @@ all:
 ifndef MBED_CHECK
 	$(error You must install the mbed-cli tools (try pip install mbed-cli))
 else
-	mbed compile -m $(TARGET) --source $(MBED_LIB) --source $(APP_DIR) --source $(SIGNPOST_LIB) --source $(MBEDTLS_INC) --source $(MBEDTLS_SRC) -t $(TOOLCHAIN)
+	mbed compile -m $(TARGET) --source $(MBED_LIB) --source $(APP_DIR) --source $(SIGNPOST_LIB) --source $(MBEDTLS_INC) --source $(MBEDTLS_SRC) -t $(TOOLCHAIN) --build $(OUTPUT_PATH) --profile $(BUILD_PROFILE)
 endif
 
 JLINK_OPTIONS = -device $(JLINK_DEVICE) -if swd -speed 1000

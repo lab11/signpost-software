@@ -18,6 +18,7 @@ char port_print_buf[80];
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
     ModIn.mode(PullUp);
+    i2c_address <<= 1;
     I2Creader.address(i2c_address);
     return SB_PORT_SUCCESS;
 }
@@ -27,6 +28,7 @@ int port_signpost_init(uint8_t i2c_address) {
 //If the bus returns an error, use the appropriate error code
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
+    dest = dest << 1;
     int rc = I2Cwriter.write(dest, (const char*)buf,len);
     if(rc != 0) {
         return SB_PORT_FAIL;
@@ -35,7 +37,7 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
     }
 }
 
-static port_signpost_callback listen_cb;
+static port_signpost_callback listen_cb = NULL;
 static uint8_t* listen_buf;
 static size_t listen_len;
 static uint8_t* read_buf;
@@ -46,11 +48,18 @@ static void i2c_listen_loop() {
         int i = I2Creader.receive();
         switch (i) {
         case I2CSlave::ReadAddressed:
-            I2Creader.write((const char*)read_buf, read_len); // Includes null char
+            I2Creader.write((const char*)read_buf, read_len);
+            Thread::signal_wait(0x01);
         break;
         case I2CSlave::WriteAddressed:
             I2Creader.read((char*)listen_buf, listen_len);
-            listen_cb(listen_len);
+            uint16_t len = (listen_buf[4] << 8) + listen_buf[5];
+            if(len < listen_len) {
+                listen_cb(len);
+            } else {
+                listen_cb(SB_PORT_FAIL);
+            }
+            Thread::signal_wait(0x01);
         break;
         }
     }
@@ -68,11 +77,18 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
     //spawn a listener thread that sends callbacks through the port_signpost_callback
     //declare a thread
     static Thread listenerThread;
-    listenerThread.set_priority(osPriorityBelowNormal);
-    if(listenerThread.start(i2c_listen_loop) == osOK) {
-        return SB_PORT_SUCCESS;
+    if(listenerThread.get_state() == Thread::Inactive
+            || listenerThread.get_state() == Thread::Ready
+            || listenerThread.get_state() == Thread::Deleted) {
+        listenerThread.set_priority(osPriorityBelowNormal);
+        if(listenerThread.start(i2c_listen_loop) == osOK) {
+            return SB_PORT_SUCCESS;
+        } else {
+            return SB_PORT_FAIL;
+        }
     } else {
-        return SB_PORT_FAIL;
+        listenerThread.signal_set(0x01);
+        return SB_PORT_SUCCESS;
     }
 }
 
@@ -188,7 +204,12 @@ int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
     //for right now mbed doesn't have an RNG implemented (sigh)
     //it's technically insecure not to return random values
     //...but this is just a seed, and the key is calculated with ECDH so...
-    return SB_PORT_SUCCESS;
+
+    for(uint32_t i = 0; i < num && i < len; i++) {
+        buf[i] = (rand() & 0xff);
+    }
+
+    return num;
 }
 
 int port_printf(const char *fmt, ...) {
