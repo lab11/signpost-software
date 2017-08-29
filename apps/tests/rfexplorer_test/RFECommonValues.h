@@ -56,15 +56,15 @@
 #define	_RFE_BUZZER                 
 #define	_RFE_GPIO0                  
 #define	_RFE_GPIO1                  
-#define	_RFE_GPIO2                  
+#define	_RFE_GPIO2                  PA_15
+#define	_RFE_GPIO3                  PA_1
 #define	_RFE_GPIO4                  
 #define	_RFE_GPIO5                  
 #define	_RFE_GPIO6                  
 #define	_RFE_GPIO7                  
 #define	_RFE_RFGPIO0                
 #define	_RFE_RFGPIO1                
-#define	_RFE_RFGPIO2                PA_15
-#define	_RFE_RFGPIO3                PA_1
+#define	_RFE_RFGPIO2                
 #define _RFE_TX                     PB_7
 #define _RFE_RX                     PB_6
 
