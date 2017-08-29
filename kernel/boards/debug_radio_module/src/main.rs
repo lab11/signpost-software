@@ -12,6 +12,7 @@ extern crate sam4l;
 extern crate signpost_drivers;
 extern crate signpost_hil;
 
+use capsules::console::{self, Console};
 use signpost_drivers::gps_console;
 use capsules::timer::TimerDriver;
 use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
@@ -43,8 +44,10 @@ static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, Non
  ******************************************************************************/
 
 struct DebugRadioModule {
+    console: &'static Console<'static, usart::USART>,
     gps_console: &'static signpost_drivers::gps_console::Console<'static, usart::USART>,
     gpio: &'static capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
+    led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
     timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
@@ -59,9 +62,10 @@ impl Platform for DebugRadioModule {
     {
 
         match driver_num {
-            0 => f(Some(self.gps_console)),
+            0 => f(Some(self.console)),
             1 => f(Some(self.gpio)),
             3 => f(Some(self.timer)),
+            8 => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
             30 => f(Some(self.app_flash)),
@@ -81,9 +85,13 @@ unsafe fn set_pin_primary_functions() {
 
     PA[11].configure(Some(A)); // Radio RX
     PA[12].configure(Some(A)); // Radio TX
+    PA[15].configure(Some(A)); // Debug RX
+    PA[16].configure(Some(A)); // Debug TX
     PA[18].configure(None);    // PPS
     PA[19].configure(None);    // MOD_OUT
     PA[20].configure(None);    // MOD_IN
+    PA[21].configure(None);    // Debug GPIO 1
+    PA[22].configure(None);    // Debug GPIO 2
     PA[23].configure(Some(B)); // SDA
     PA[24].configure(Some(B)); // SCL
     PA[25].configure(Some(A)); // USB
@@ -108,6 +116,17 @@ pub unsafe fn reset_handler() {
     sam4l::bpm::set_ck32source(sam4l::bpm::CK32Source::RC32K);
 
     set_pin_primary_functions();
+
+    //
+    // UART console
+    //
+    let console = static_init!(
+        Console<usart::USART>,
+        Console::new(&usart::USART1,
+                     115200,
+                     &mut console::WRITE_BUF,
+                     kernel::Container::create()));
+    hil::uart::UART::set_client(&usart::USART1, console);
 
     //as a hack we are going to use gps console because it can receive bytes
     let gps_console = static_init!(
@@ -177,11 +196,10 @@ pub unsafe fn reset_handler() {
     // Remaining GPIO pins
     //
     let gpio_pins = static_init!(
-        [&'static sam4l::gpio::GPIOPin; 4],
+        [&'static sam4l::gpio::GPIOPin; 3],
         [&sam4l::gpio::PA[19], // MOD_OUT
          &sam4l::gpio::PA[20], // MOD_IN
-         &sam4l::gpio::PA[18], // PPS
-         &sam4l::gpio::PA[05]]
+         &sam4l::gpio::PA[18]] // PPS
     );
     let gpio = static_init!(
         capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
@@ -189,6 +207,15 @@ pub unsafe fn reset_handler() {
     for pin in gpio_pins.iter() {
         pin.set_client(gpio);
     }
+
+    let led_pins = static_init!(
+        [(&'static sam4l::gpio::GPIOPin, capsules::led::ActivationMode); 2],
+          [(&sam4l::gpio::PA[21], capsules::led::ActivationMode::ActiveHigh), //DBG_GPIO1
+           (&sam4l::gpio::PA[22], capsules::led::ActivationMode::ActiveHigh)] //DBG_GPIO2
+           );
+    let led = static_init!(
+        capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
+        capsules::led::LED::new(led_pins));
 
     //
     // App Watchdog
@@ -226,8 +253,10 @@ pub unsafe fn reset_handler() {
     // Actual platform object
     //
     let module = DebugRadioModule {
+        console: console,
         gps_console: gps_console,
         gpio: gpio,
+        led: led,
         timer: timer,
         i2c_master_slave: i2c_modules,
         app_watchdog: app_watchdog,
