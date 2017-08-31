@@ -31,7 +31,7 @@ int main(void) {
     RF.init();
     RF_gpio2 = 1;
     wait_ms(1000);
-    RF.sendNewConfig(882300,930300);
+    RF.sendNewConfig(902300,914300);
     
     while(1) {
         unsigned short int nProcessResult = RF.processReceivedString(); 
