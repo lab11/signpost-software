@@ -38,17 +38,10 @@
 
 //------------------------- Array Length - This depends on board used----------
 
-#if defined(_SAM3XA_)
-    //Max number of steps in Spectrum Analyzer
-    #define MAX_SPECTRUM_STEPS          512
-    //Max size of String that storage complete message received
-    #define STRING_SIZE                 520
-#else
-    //Max number of steps in Spectrum Analyzer
-    #define MAX_SPECTRUM_STEPS          240 
-    //Max size of String that storage complete message received
-    #define STRING_SIZE                 248 
-#endif
+//Max number of steps in Spectrum Analyzer
+#define MAX_SPECTRUM_STEPS          240 
+//Max size of String that storage complete message received
+#define STRING_SIZE                 512
 
 //------------------------- 3G+ IoT connections with Arduino -----------------------------
 
@@ -65,8 +58,8 @@
 #define	_RFE_RFGPIO0                
 #define	_RFE_RFGPIO1                
 #define	_RFE_RFGPIO2                
-#define _RFE_TX                     PB_7
-#define _RFE_RX                     PB_6
+#define _RFE_TX                     PB_6
+#define _RFE_RX                     PB_7
 
 //------------------------- Messages - See getLastMessage()--------------------
 

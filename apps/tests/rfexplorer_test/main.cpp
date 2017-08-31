@@ -29,19 +29,11 @@ int main(void) {
     wait_ms(5000);
     printf("Calling Init\n");
     RF.init();
-    printf("Change Baud Rate\n");
-    RF.changeBaudrate(115200);
-    wait_ms(1000);
-    printf("Change Baud Rate\n");
     RF_gpio2 = 1;
-
-    printf("Done Initializing\n");
-    printf("Requesting Configuration\n");
-    RF.requestConfig();
-
-    printf("Starting receive loop\n");
+    wait_ms(1000);
+    RF.sendNewConfig(882300,930300);
+    
     while(1) {
-        RF.updateBuffer();
         unsigned short int nProcessResult = RF.processReceivedString(); 
         
         //If received data processing was correct, we can use it
@@ -53,9 +45,11 @@ int main(void) {
                 //We show new Start/Stop KHZ range here from the new configuration
                 printf("New Config\n");
                 printf("StartKHz: "); 
-                printf("%lu", RF.getConfiguration()->getStartKHZ());
+                printf("%lu ", RF.getConfiguration()->getStartKHZ());
                 printf("StopKHz:  "); 
-                printf("%lu", RF.getConfiguration()->getEndKHZ());  
+                printf("%lu ", RF.getConfiguration()->getEndKHZ());  
+                printf("StepHz:  "); 
+                printf("%lu \n", RF.getConfiguration()->getStepHZ());  
             }
             else if((RF.getLastMessage() == _SWEEP_MESSAGE) && RF.isValid()) 
             {
@@ -66,10 +60,10 @@ int main(void) {
                 if (RF.getPeak(&nFreqPeakKHZ, &nPeakDBM) ==_RFE_SUCCESS)           
                 {
                     //Display frequency and amplitude of the signal peak
-                    printf("%lu", nFreqPeakKHZ);
-                    printf(" KHz to ");
+                    printf("%lu ", nFreqPeakKHZ);
+                    printf(" KHz at ");
                     printf("%d", nPeakDBM);
-                    printf(" dBm"); 
+                    printf(" dBm\n"); 
                 }
             }
         }
@@ -82,7 +76,7 @@ int main(void) {
                 //Other error codes were received, report for information
                 //Check library error codes for more details
                 printf("Error: ");
-                printf("%d", nProcessResult);
+                printf("%d\n", nProcessResult);
             }
         }
     }
