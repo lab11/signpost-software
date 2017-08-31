@@ -1,8 +1,10 @@
 #include "mbed.h"
 #include <stdio.h>
+
 #include "port_signpost.h"
 #include "signpost_api.h"
 #include "signbus_io_interface.h"
+
 #include "RFExplorer_3GP_IoT.h"
 #include "RFECommonValues.h"
 
@@ -11,7 +13,8 @@ DigitalOut RF_gpio2(_RFE_GPIO2);
 
 int main(void) {
     printf("Testing mbed Initialization\n");
-
+    
+    //signpost initialization
     int rc;
     do {
         rc = signpost_initialization_module_init(SIGNBUS_TEST_RECEIVER_I2C_ADDRESS, SIGNPOST_INITIALIZATION_NO_APIS);
@@ -22,15 +25,24 @@ int main(void) {
     } while (rc < 0);
     
     printf("Initializing RF Explorer...\n");
+
+    //set GPIO2 to 0 before reset for 2400 baud
     RF_gpio2 = 0;
-    
+   
+    //reset
     printf("Resetting Hardware\n");
     RF.resetHardware();
     wait_ms(5000);
+
+    //initialize
     printf("Calling Init\n");
     RF.init();
+
+    //after init we can pull this back up
     RF_gpio2 = 1;
     wait_ms(1000);
+
+    //configure the module to scan the US LoRa frequency bands
     RF.sendNewConfig(902300,914300);
     
     while(1) {
