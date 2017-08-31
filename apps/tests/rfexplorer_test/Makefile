@@ -4,7 +4,7 @@
 # the current directory
 APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-APP_COMPILE_FLAGS := --source $(APP_DIR)/../../support/RFExplorer_3GP_Iot_Arduino/src
+APP_COMPILE_FLAGS := --source $(APP_DIR)/../../support/RFExplorer_3GP_IoT_Arduino/src
 
 #you must define a valid ARM MBed Target
 TARGET = NUCLEO_L432KC
