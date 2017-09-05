@@ -13,3 +13,6 @@
 [submodule "apps/support/mbed/mbed-os"]
     path = apps/support/mbed/mbed-os
     url = https://github.com/armmbed/mbed-os
+[submodule "apps/support/RFExplorer_3GP_IoT_Arduino"]
+	path = apps/support/RFExplorer_3GP_IoT_Arduino
+	url = https://github.com/lab11/RFExplorer_3GP_IoT_Arduino.git

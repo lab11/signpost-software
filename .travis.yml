@@ -6,6 +6,7 @@ cache:
   directories:
     - $HOME/gcc-arm-none-eabi-6_2-2016q4
     - $HOME/uncrustify-uncrustify-0.65
+  pip: true
 
 os:
   - linux

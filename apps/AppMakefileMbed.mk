@@ -26,7 +26,7 @@ all:
 ifndef MBED_CHECK
 	$(error You must install the mbed-cli tools (try pip install mbed-cli))
 else
-	mbed compile -m $(TARGET) --source $(MBED_LIB) --source $(APP_DIR) --source $(SIGNPOST_LIB) --source $(MBEDTLS_INC) --source $(MBEDTLS_SRC) -t $(TOOLCHAIN) --build $(OUTPUT_PATH) --profile $(BUILD_PROFILE)
+	mbed compile -m $(TARGET) --source $(MBED_LIB) --source $(APP_DIR) $(APP_COMPILE_FLAGS) --source $(SIGNPOST_LIB) --source $(MBEDTLS_INC) --source $(MBEDTLS_SRC) -t $(TOOLCHAIN) --build $(OUTPUT_PATH) --profile $(BUILD_PROFILE)
 endif
 
 JLINK_OPTIONS = -device $(JLINK_DEVICE) -if swd -speed 1000
