@@ -10,10 +10,13 @@
 
 RFExplorer_3GP_IoT RF;
 DigitalOut RF_gpio2(_RFE_GPIO2);
+DigitalOut Antenna1(PA_4);
+DigitalOut Antenna2(PA_5);
+DigitalOut Antenna3(PA_6);
 
 int main(void) {
     printf("Testing mbed Initialization\n");
-    
+
     //signpost initialization
     int rc;
     do {
@@ -23,12 +26,16 @@ int main(void) {
             port_signpost_delay_ms(5000);
         }
     } while (rc < 0);
-    
+
     printf("Initializing RF Explorer...\n");
+
+    Antenna1 = 1;
+    Antenna2 = 0;
+    Antenna3 = 0;
 
     //set GPIO2 to 0 before reset for 2400 baud
     RF_gpio2 = 0;
-   
+
     //reset
     printf("Resetting Hardware\n");
     RF.resetHardware();
@@ -42,40 +49,45 @@ int main(void) {
     RF_gpio2 = 1;
     wait_ms(1000);
 
+    //change the baud rate
+    printf("Changing baud rate\n");
+    RF.changeBaudrate(115200);
+    wait_ms(1000);
+
     //configure the module to scan the US LoRa frequency bands
     RF.sendNewConfig(902300,914300);
-    
+
     while(1) {
-        unsigned short int nProcessResult = RF.processReceivedString(); 
-        
+        unsigned short int nProcessResult = RF.processReceivedString();
+
         //If received data processing was correct, we can use it
-        if (nProcessResult == _RFE_SUCCESS) 
+        if (nProcessResult == _RFE_SUCCESS)
         {
-            if ((RF.getLastMessage() == _CONFIG_MESSAGE)) 
+            if ((RF.getLastMessage() == _CONFIG_MESSAGE))
             {
                 //Message received is a new configuration from 3G+
                 //We show new Start/Stop KHZ range here from the new configuration
                 printf("New Config\n");
-                printf("StartKHz: "); 
+                printf("StartKHz: ");
                 printf("%lu ", RF.getConfiguration()->getStartKHZ());
-                printf("StopKHz:  "); 
-                printf("%lu ", RF.getConfiguration()->getEndKHZ());  
-                printf("StepHz:  "); 
-                printf("%lu \n", RF.getConfiguration()->getStepHZ());  
+                printf("StopKHz:  ");
+                printf("%lu ", RF.getConfiguration()->getEndKHZ());
+                printf("StepHz:  ");
+                printf("%lu \n", RF.getConfiguration()->getStepHZ());
             }
-            else if((RF.getLastMessage() == _SWEEP_MESSAGE) && RF.isValid()) 
+            else if((RF.getLastMessage() == _SWEEP_MESSAGE) && RF.isValid())
             {
                 //Message received was actual sweep data, we can now use internal functions
                 //to get sweep data parameters
-                unsigned long int nFreqPeakKHZ=0;                                      
+                unsigned long int nFreqPeakKHZ=0;
                 int16_t nPeakDBM=0;
-                if (RF.getPeak(&nFreqPeakKHZ, &nPeakDBM) ==_RFE_SUCCESS)           
+                if (RF.getPeak(&nFreqPeakKHZ, &nPeakDBM) ==_RFE_SUCCESS)
                 {
                     //Display frequency and amplitude of the signal peak
                     printf("%lu ", nFreqPeakKHZ);
                     printf(" KHz at ");
                     printf("%d", nPeakDBM);
-                    printf(" dBm\n"); 
+                    printf(" dBm\n");
                 }
             }
         }
