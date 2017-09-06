@@ -17,7 +17,6 @@ static DigitalOut ModOut(MOD_OUT);
 static InterruptIn ModIn(MOD_IN);
 static DigitalIn pps(PPS);
 static Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
-static I2C* I2Cwriter = NULL;
 static I2CSlave* I2Creader = NULL;
 static uint8_t address;
 static Mutex slaveMutex;
@@ -49,7 +48,7 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
         delete I2Creader;
     }
 
-    I2Cwriter = new I2C(I2C_MASTER_SDA, I2C_MASTER_SCL);
+    I2C* I2Cwriter = new I2C(I2C_MASTER_SDA, I2C_MASTER_SCL);
     int rc = I2Cwriter->write(dest, (const char*)buf,len);
     delete I2Cwriter;
 
