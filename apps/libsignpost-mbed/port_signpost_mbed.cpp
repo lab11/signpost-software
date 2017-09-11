@@ -250,3 +250,20 @@ int port_printf(const char *fmt, ...) {
     va_end(args);
     return rc;
 }
+
+/* port_signpost_save_state
+ * Save a struct to a nonvolatile storage
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_save_state(module_state_t* state) {
+    return SB_PORT_FAIL;
+}
+
+/* port_signpost_load_state
+ * Load a struct from nonvolatile storage
+ *  returns SB_PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_load_state(module_state_t* state) {
+    return SB_PORT_FAIL;
+}
+
