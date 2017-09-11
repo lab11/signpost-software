@@ -17,8 +17,9 @@ static DigitalOut ModOut(MOD_OUT);
 static InterruptIn ModIn(MOD_IN);
 static DigitalIn pps(PPS);
 static Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
-static I2C I2Cwriter(I2C_MASTER_SDA, I2C_MASTER_SCL);
-static I2CSlave I2Creader(I2C_SLAVE_SDA, I2C_SLAVE_SCL);
+static I2CSlave* I2Creader = NULL;
+static uint8_t address;
+static Mutex slaveMutex;
 
 //All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
@@ -26,9 +27,10 @@ char port_print_buf[80];
 //This function is called upon signpost initialization
 //You should use it to set up the i2c interface
 int port_signpost_init(uint8_t i2c_address) {
+    address = i2c_address << 1;
     ModIn.mode(PullUp);
-    i2c_address <<= 1;
-    I2Creader.address(i2c_address);
+    I2Creader = new I2CSlave(I2C_MASTER_SDA, I2C_MASTER_SCL);
+    I2Creader->address(address);
     return SB_PORT_SUCCESS;
 }
 
@@ -38,7 +40,24 @@ int port_signpost_init(uint8_t i2c_address) {
 //defined in this file
 int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
     dest = dest << 1;
-    int rc = I2Cwriter.write(dest, (const char*)buf,len);
+
+    slaveMutex.lock();
+
+    //delete the I2CSlave if it exists
+    if(I2Creader != NULL){
+        delete I2Creader;
+    }
+
+    I2C* I2Cwriter = new I2C(I2C_MASTER_SDA, I2C_MASTER_SCL);
+    int rc = I2Cwriter->write(dest, (const char*)buf,len);
+    delete I2Cwriter;
+
+    //create the reader again
+    I2Creader = new I2CSlave(I2C_MASTER_SDA, I2C_MASTER_SCL);
+    I2Creader->address(address);
+
+    slaveMutex.unlock();
+
     if(rc != 0) {
         return SB_PORT_FAIL;
     } else {
@@ -55,14 +74,15 @@ static size_t read_len;
 
 static void i2c_listen_loop() {
     while(1) {
-        int i = I2Creader.receive();
+        slaveMutex.lock();
+        int i = I2Creader->receive();
         switch (i) {
         case I2CSlave::ReadAddressed:
-            I2Creader.write((const char*)read_buf, read_len);
+            I2Creader->write((const char*)read_buf, read_len);
             Thread::signal_wait(0x01);
         break;
         case I2CSlave::WriteAddressed:
-            I2Creader.read((char*)listen_buf, listen_len);
+            I2Creader->read((char*)listen_buf, listen_len);
             uint16_t len = (listen_buf[4] << 8) + listen_buf[5];
             if(len < listen_len) {
                 listen_cb(len);
@@ -72,6 +92,7 @@ static void i2c_listen_loop() {
             Thread::signal_wait(0x01);
         break;
         }
+        slaveMutex.unlock();
     }
 }
 
