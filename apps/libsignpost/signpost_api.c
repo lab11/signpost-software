@@ -475,7 +475,7 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 
     module_info.haskey[module_number] = true;
 
-    port_signpost_save_state(&module_info);
+    //port_signpost_save_state(&module_info);
     return ret;
 }
 
@@ -575,8 +575,8 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     int rc = signpost_initialization_common(ModuleAddressController, api_handlers);
     if (rc < 0) return rc;
 
-    port_signpost_load_state(&check_state);
-    printf("magic: 0x%lx\n", check_state.magic);
+    //port_signpost_load_state(&check_state);
+    //printf("magic: 0x%lx\n", check_state.magic);
     if (check_state.magic == MOD_STATE_MAGIC) {
       memcpy(&module_info, &check_state, sizeof(module_state_t));
     }
@@ -597,9 +597,10 @@ static int signpost_initialization_initialize_loop(void) {
         switch(init_state) {
           case CheckKeys:
             // Load state
-            port_signpost_load_state(&check_state);
-            printf("magic: 0x%lx\n", check_state.magic);
-            keys_exist = check_state.magic == MOD_STATE_MAGIC;
+            //port_signpost_load_state(&check_state);
+            //printf("magic: 0x%lx\n", check_state.magic);
+            //keys_exist = check_state.magic == MOD_STATE_MAGIC;
+            keys_exist = false;
             if (keys_exist) {
               // TODO Load keys and fill out module_info struct
               init_state = Done;//RegisterWithKeys;
@@ -729,7 +730,7 @@ static int signpost_initialization_initialize_loop(void) {
             break;
           case Done:
             // Save module state
-            port_signpost_save_state(&module_info);
+            //port_signpost_save_state(&module_info);
             // Completed Init
             port_signpost_mod_out_set();
             port_signpost_debug_led_off();
