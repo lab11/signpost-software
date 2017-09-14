@@ -53,7 +53,11 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 //
 // params:
 //  module_number: the module number corresponding to the key to revoke
-void signpost_api_revoke_key(uint8_t module_number);
+//
+// returns SB_PORT_SUCCESS if module number is within number of modules on
+// system (NUM_MODULES), and SB_PORT_EINVAL otherwise
+//
+int signpost_api_revoke_key(uint8_t module_number);
 
 
 /**************************************************************************/
@@ -75,7 +79,6 @@ typedef enum initialization_state {
     CheckKeys,
     //RegisterWithKeys,
     //ConfirmChallenge,
-    Revoke,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
@@ -146,7 +149,7 @@ int signpost_initialization_register_respond(uint8_t source_address);
 //  source_address  - The I2C address of the module that sent a declare request
 //  module_number   - The module slot that is currently isolated
 __attribute__((warn_unused_result))
-int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number, uint8_t other_module_number);
+int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number);
 
 // Send a response to a key exchange request
 // Assumes controller has already isolated source and target

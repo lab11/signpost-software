@@ -98,18 +98,6 @@ static void initialization_api_callback(uint8_t source_address,
             break;
         case CommandFrame:
             switch (message_type) {
-                case InitializationRevoke:
-                    signpost_api_revoke_key(signpost_api_addr_to_mod_num(source_address));
-
-                    rc = signpost_api_send(source_address,
-                        ResponseFrame, InitializationApiType,
-                        InitializationRevoke, 0, NULL);
-
-                    if (rc < 0) {
-                      printf(" - %d: Error responding to initialization revoke request for module %d at address 0x%02x. Dropping.\n",
-                          __LINE__, req_mod_num, source_address);
-                    }
-                    break;
                 case InitializationDeclare: {
 
                     // only if we have a module isolated
@@ -117,13 +105,13 @@ static void initialization_api_callback(uint8_t source_address,
                         return;
                     }
 
-                    //TODO add limit to number of times a module can request isolation
-                    // enable i2c for requested module
-                    uint8_t mod_num_to_isolate = signpost_api_addr_to_mod_num((uint8_t) message[0]);
-                    if (mod_num_to_isolate < NUM_MODULES && mod_num_to_isolate != 3) {
-                      controller_module_enable_i2c(mod_num_to_isolate);
-                    }
-                    rc = signpost_initialization_declare_respond(source_address, req_mod_num, mod_num_to_isolate);
+                    //uint8_t mod_num_to_isolate = signpost_api_addr_to_mod_num((uint8_t) message[0]);
+
+                    //if (mod_num_to_isolate != 3) {
+                    //  controller_module_enable_i2c(mod_num_to_isolate);
+                    //}
+
+                    rc = signpost_initialization_declare_respond(source_address, req_mod_num);
 
                     if (rc < 0) {
                       printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
