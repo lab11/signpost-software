@@ -6,6 +6,7 @@
 #include "signbus_io_interface.h"
 
 #include "RFExplorer_3GP_IoT.h"
+#include "RFESweepData.h"
 #include "RFECommonValues.h"
 
 RFExplorer_3GP_IoT RF;
@@ -14,9 +15,31 @@ DigitalOut Antenna1(PA_4);
 DigitalOut Antenna2(PA_5);
 DigitalOut Antenna3(PA_6);
 
-static uint8_t bin_max[80] = {0};
+static int8_t bin_max[80] = {0};
 static int bin_accumulator[80] = {0};
 static int std_accumulator[80] = {0};
+static int8_t bin_std[80] = {0};
+static int8_t bin_mean[80] = {0};
+
+static void send_packets(void) {
+    static uint8_t send_buf[81];
+    int ret;
+
+    send_buf[0] = 0x01;
+    memcpy(send_buf+1,bin_max,80);
+    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    if(ret < 0 ) printf("Sending max error!\n");
+
+    send_buf[0] = 0x02;
+    memcpy(send_buf+1,bin_mean,80);
+    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    if(ret < 0 ) printf("Sending mean error!\n");
+
+    send_buf[0] = 0x03;
+    memcpy(send_buf+1,bin_std,80);
+    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    if(ret < 0 ) printf("Sending std error!\n");
+}
 
 int main(void) {
     printf("Testing mbed Initialization\n");
@@ -83,13 +106,14 @@ int main(void) {
                 //Message received was actual sweep data, we can now use internal functions
                 //loop through the sweep data adding to the accumulators
                 //go by three so we get the 6MHZ tv channel binning
+                RFESweepData* data = RF.getSweepData();
                 for(int i = 0; i < 240; i += 3) {
                     int16_t one;
                     int16_t two;
                     int16_t three;
-                    one = RF.getAmplitudeDBM(i);
-                    two = RF.getAmplitudeDBM(i+1);
-                    three = RF.getAmplitudeDBM(i+2);
+                    one = data->getAmplitudeDBM(i);
+                    two = data->getAmplitudeDBM(i+1);
+                    three = data->getAmplitudeDBM(i+2);
                     int16_t av = (one+two+three)/3;
                     int16_t imax = ((one) > (two) ? (one):(two));
                     int16_t max = ((imax) > (three) ? (imax):(three));
@@ -112,13 +136,25 @@ int main(void) {
 
                 if(sweep_counter > 150) {
                     //calculate the metrics
+                    for(int i = 0; i < 80; i++) {
+                        bin_mean[i] = bin_accumulator[i]/sweep_counter;
+                        bin_std[i] = sqrt(std_accumulator[i]/(sweep_counter*3) - bin_mean[i]);
+                    }
+
                     //send the data
+                    send_packets();
+
                     //go to sleep for some period of time
+                    int ret;
+                    do {
+                        ret = signpost_energy_duty_cycle(240000);
+                        if(ret < 0) {
+                            wait_ms(5000);
+                        }
+                    } while(ret < 0);
                 }
             }
-        }
-        else
-        {
+        } else {
             //Message or Data was not received, or was wrong. Note:
             // _RFE_IGNORE or _RFE_NOT_MESSAGE are not errors, it just mean a new message was not available
             if ((nProcessResult != _RFE_IGNORE) && (nProcessResult != _RFE_NOT_MESSAGE))
