@@ -151,10 +151,10 @@ int main (void) {
 
     } while(post_to_radio_successful == false);
 
-  //tell the controlelr to duty cycle for 60s
+  //tell the controlelr to duty cycle for 3minutes
   printf("requesting duty cycle\n");
   while(true) {
-    signpost_energy_duty_cycle(600000);
+    signpost_energy_duty_cycle(180000);
     delay_ms(1000);
   }
 }
