@@ -811,8 +811,7 @@ static int join_lora_network(void) {
     xdot_wake();
     delay_ms(1000);
 
-    int rc = xdot_init();
-    if(rc < 0) printf("xDot Init Error!\n");
+    xdot_init();
 
     //setup lora
     uint8_t appEUI[8] = {0};
