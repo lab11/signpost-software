@@ -81,7 +81,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_send(LORA_CONSOLE,"\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3,500);
+    ret = at_wait_for_response(LORA_CONSOLE,6,500);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"AT+PN=1\n");
