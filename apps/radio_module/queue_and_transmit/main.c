@@ -816,7 +816,7 @@ static int join_lora_network(void) {
     //setup lora
     uint8_t appEUI[8] = {0};
 
-    rc  = xdot_set_ack(1);
+    int rc = xdot_set_ack(1);
     rc |= xdot_set_txpwr(20);
     rc |= xdot_set_txdr(3);
     rc |= xdot_set_adr(0);
