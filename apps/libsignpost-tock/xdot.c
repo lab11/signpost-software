@@ -60,7 +60,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_send(LORA_CONSOLE,"\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3,500);
+    ret = at_wait_for_response(LORA_CONSOLE,6,500);
     if(ret < 0) return XDOT_ERROR;
 
 
@@ -223,7 +223,8 @@ int xdot_reset(void) {
     ret = at_send(LORA_CONSOLE, "AT\n");
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3,500);
+    //return at_wait_for_response(LORA_CONSOLE,6,500);
+    return XDOT_SUCCESS;
 }
 
 static void buf_to_hex_string(char* dest_buf, uint32_t dest_len, uint8_t* source_buf, uint32_t source_len) {
