@@ -105,7 +105,7 @@ static void post_to_radio (void) {
   post_to_radio_successful = true;
 
   //send radio the data
-  printf("--Sendinging data--\n");
+  printf("--Sending data--\n");
   int response = signpost_networking_send("lab11/ambient", message_buf, 10);
   if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
@@ -140,8 +140,9 @@ int main (void) {
 
   // sample from onboard sensors
   sample_sensors();
-
   printf("Done sampling sensors\n");
+  delay_ms(2000);
+
   // send HTTP POST over Signpost API
     do {
         post_to_radio();
