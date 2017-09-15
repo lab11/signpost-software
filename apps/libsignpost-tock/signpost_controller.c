@@ -587,7 +587,7 @@ int signpost_controller_init (void) {
     timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
 
     static tock_timer_t check_init_timer;
-    timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
+    timer_every(500, check_module_init_cb, NULL, &check_init_timer);
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
