@@ -160,7 +160,8 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
 
     if (mod_isolated_out < 0) {
         for (size_t i = 0; i < NUM_MOD_IO; i++) {
-            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i]) {
+            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i] &&
+                                                module_state[MODOUT_pin_to_mod_name(MOD_OUTS[i])].isolation_state == ModuleEnabled) {
 
                 printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
                 // module requesting isolation
@@ -587,7 +588,7 @@ int signpost_controller_init (void) {
     timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
 
     static tock_timer_t check_init_timer;
-    timer_every(500, check_module_init_cb, NULL, &check_init_timer);
+    timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
