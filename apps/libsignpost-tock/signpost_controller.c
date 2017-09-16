@@ -229,12 +229,15 @@ static void duty_cycle_timer_cb( __attribute__ ((unused)) int now,
                             __attribute__ ((unused)) int unused,
                             void* ud) {
     duty_cycle_struct_t* dc = ud;
+    printf("Got duty cycle timer callback\n");
 
     if(signpost_energy_policy_get_module_energy_remaining_uwh(dc->mod_num) > 0) {
+        printf("Turning module %d back on\n",dc->mod_num);
         module_state[dc->mod_num].isolation_state = ModuleEnabled;
         controller_module_enable_power(dc->mod_num);
         controller_module_enable_i2c(dc->mod_num);
     } else {
+        printf("Module %d has used too much energy - leaving off\n",dc->mod_num);
         module_state[dc->mod_num].isolation_state = ModuleDisabledEnergy;
     }
 
@@ -275,7 +278,7 @@ static void energy_api_callback(uint8_t source_address,
         module_state[mod].isolation_state = ModuleDisabledDutyCycle;
 
         //turn it off
-        printf("CALLBACK_ENERGY: Turning off module %d\n", mod);
+        printf("CALLBACK_ENERGY: Turning off module %d for %lums\n", mod, time);
         controller_module_disable_power(mod);
         controller_module_disable_i2c(mod);
       }
