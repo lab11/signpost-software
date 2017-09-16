@@ -170,14 +170,15 @@ static void timer_callback (
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
             send_buf[4] = (uint8_t)((utime & 0xff));
         } else {
-            current_time.tm_year = stime.year;
-            current_time.tm_mon = stime.month;
+            current_time.tm_year = stime.year - 1900;
+            current_time.tm_mon = stime.month - 1;
             current_time.tm_mday = stime.day;
             current_time.tm_hour = stime.hours;
             current_time.tm_min = stime.minutes;
             current_time.tm_sec = stime.seconds;
             current_time.tm_isdst = 0;
             utime = mktime(&current_time);
+            printf("Sending utime %d\n",utime);
             send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
             send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
