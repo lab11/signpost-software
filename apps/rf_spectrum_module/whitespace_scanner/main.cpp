@@ -106,6 +106,7 @@ int main(void) {
                 //Message received was actual sweep data, we can now use internal functions
                 //loop through the sweep data adding to the accumulators
                 //go by three so we get the 6MHZ tv channel binning
+                printf("Got sweep\n");
                 RFESweepData* data = RF.getSweepData();
                 for(int i = 0; i < 240; i += 3) {
                     int16_t one;
@@ -134,7 +135,8 @@ int main(void) {
                 }
                 sweep_counter++;
 
-                if(sweep_counter > 150) {
+                if(sweep_counter > 30) {
+                    printf("Got 30 sweeps\n");
                     //calculate the metrics
                     for(int i = 0; i < 80; i++) {
                         bin_mean[i] = bin_accumulator[i]/sweep_counter;
@@ -142,9 +144,11 @@ int main(void) {
                     }
 
                     //send the data
+                    printf("Sending packets\n");
                     send_packets();
 
                     //go to sleep for some period of time
+                    printf("Duty cycling\n");
                     int ret;
                     do {
                         ret = signpost_energy_duty_cycle(240000);
