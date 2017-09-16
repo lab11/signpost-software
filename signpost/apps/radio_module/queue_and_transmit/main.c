@@ -787,8 +787,7 @@ static void timer_callback (
         }
 
         uint8_t status_len = 2+number_of_modules*2+1;
-        status_send_buf[status_length_offset] = (uint8_t)((status_len&0xff00) >> 8);
-        status_send_buf[status_length_offset+1] = (uint8_t)((status_len&0xff));
+        status_send_buf[status_length_offset+1] = status_len;
 
         //put it in the send buffer
         add_buffer_to_queue(0x22, status_send_buf, status_data_offset+1+number_of_modules*2+1);
