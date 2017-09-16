@@ -63,6 +63,11 @@ int main(void) {
     //set GPIO2 to 0 before reset for 2400 baud
     RF_gpio2 = 0;
 
+    //initialize bin_max
+    for(uint8_t i = 0; i < 80; i++) {
+        bin_max[i] = -127;
+    }
+
     //reset
     printf("Resetting Hardware\n");
     RF.resetHardware();
@@ -140,7 +145,7 @@ int main(void) {
                     //calculate the metrics
                     for(int i = 0; i < 80; i++) {
                         bin_mean[i] = bin_accumulator[i]/sweep_counter;
-                        bin_std[i] = sqrt(std_accumulator[i]/(sweep_counter*3) - bin_mean[i]);
+                        bin_std[i] = sqrt(std_accumulator[i]/(sweep_counter*3) - bin_mean[i]*bin_mean[i]);
                     }
 
                     //send the data
