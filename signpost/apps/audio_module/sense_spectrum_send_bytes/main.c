@@ -178,7 +178,6 @@ static void timer_callback (
             current_time.tm_sec = stime.seconds;
             current_time.tm_isdst = 0;
             utime = mktime(&current_time);
-            printf("Sending utime %d\n",utime);
             send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
             send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
