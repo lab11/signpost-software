@@ -39,7 +39,7 @@ int console_read(int console_num, uint8_t* buf, size_t max_len) {
 }
 
 int console_read_with_timeout(int console_num, uint8_t* buf, size_t max_len, uint32_t timeout_ms) {
-    static console_callback_struct c;
+    console_callback_struct c;
     c.fired = false;
     int ret = subscribe(console_num, 2, console_callback, &c);
     if(ret < 0) return ret;

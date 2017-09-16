@@ -53,12 +53,12 @@ int at_send_buf(int console_num, uint8_t* buf, size_t len) {
 }
 
 int at_wait_for_response(int console_num, uint8_t max_tries, uint32_t timeout_ms) {
-    static uint8_t buf[200];
+    uint8_t buf[200];
     return at_get_response(console_num, max_tries, timeout_ms, buf, 200);
 }
 
 int at_wait_for_custom_response(int console_num, uint8_t max_tries, uint32_t timeout_ms, const char* rstring, int position) {
-    static uint8_t buf[200];
+    uint8_t buf[200];
     return at_get_custom_response(console_num, max_tries, timeout_ms, buf, 200, rstring, position);
 }
 
