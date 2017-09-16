@@ -36,7 +36,9 @@ static void send_gps_update (__attribute__((unused)) int now,
 
   gps_buf[1] = time.day;
   gps_buf[2] = time.month;
-  gps_buf[3] = time.year;
+  //currently represented as a full year (i.e. uint16_t: 2017)
+  //convert to uint8_t by subtracting 2000
+  gps_buf[3] = (time.year - 2000);
   gps_buf[4] = time.hours;
   gps_buf[5] = time.minutes;
   gps_buf[6] = time.seconds;
