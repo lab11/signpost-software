@@ -1143,7 +1143,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
 
     buf[0] = slen;
     memcpy(buf+1, topic, slen);
-    buf[slen] = data_len;
+    buf[slen+1] = data_len;
     memcpy(buf+1+slen+1, data, data_len);
 
 
