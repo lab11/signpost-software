@@ -144,6 +144,7 @@ static void timer_callback (
         bands_num[j] = 0;
     }
 
+    printf("Got timer\n");
     count++;
 
     if(count == 10) {
@@ -226,6 +227,7 @@ int main (void) {
     gpio_clear(RESET);
 
     // start up the app watchdog
+    printf("Starting watchdog\n");
     app_watchdog_set_kernel_timeout(60000);
     app_watchdog_start();
 
@@ -233,6 +235,7 @@ int main (void) {
     adc_set_callback(adc_callback, NULL);
 
     //start timer
+    printf("Starting timer\n");
     static tock_timer_t send_timer;
     timer_every(1000, timer_callback, NULL, &send_timer);
 
