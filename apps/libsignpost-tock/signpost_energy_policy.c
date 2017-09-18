@@ -444,6 +444,14 @@ void signpost_energy_policy_update_energy_from_report(uint8_t source_module_slot
         uint8_t mod_num = signpost_api_appid_to_mod_num(report->reports[j].application_id);
         printf("Usage Report for mod %02X in slot %d:\n",report->reports[j].application_id,mod_num);
         //take the energy since last report, add/subtract it from all the totals
+        if(report->reports[j].energy_used_uWh > 100000) {
+            //this is not a reasonable report - probably a bug
+            //we should probably fix the bug, but drop the report for now
+            printf("\tUsed %lu uWh\n",report->reports[j].energy_used_uWh);
+            printf("\tFaulty report: Not Recording!\n");
+            continue;
+        }
+
         if(mod_num == 3) {
             printf("\tUsed %lu uWh\n",report->reports[j].energy_used_uWh);
             printf("\t\t%d uWh was remaining\n",energy_remaining.controller_energy_remaining);
