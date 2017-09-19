@@ -294,6 +294,10 @@ static void energy_api_callback(uint8_t source_address,
       info.time_since_reset_s = (int)(signpost_energy_policy_get_time_since_module_reset_ms(mod_num)/1000.0);
       info.energy_limit_warning_threshold = (info.energy_limit_uWh < 1000000);
       info.energy_limit_critical_threshold = (info.energy_limit_uWh < 200000);
+      printf("Got energy query:\n");
+      printf("\tLimit: %lu uWh\n",info.energy_limit_uWh);
+      printf("\tUsed: %lu uWh\n",info.energy_used_since_reset_uWh);
+      printf("\tTime: %lu s\n",info.time_since_reset_s);
 
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
@@ -500,7 +504,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A8000E;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
