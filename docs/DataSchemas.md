@@ -9,8 +9,14 @@ MQTT username and password.
 
 ### Stream/Log Naming
 
-MQTT: signpost/lab11/<device_short_name> (i.e. signpost/lab11/gps)
-GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version> (i.e. edu.berkeley.eecs.c098e5120003.signpost_energy.v0-0-1)
+MQTT: signpost/lab11/<device_short_name> 
+
+(i.e. signpost/lab11/gps)
+
+
+GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version> 
+
+(i.e. edu.berkeley.eecs.c098e5120003.signpost_energy.v0-0-1)
 
 ### Deployed Signposts
 
@@ -19,7 +25,7 @@ Signpost will also report data based on their currently installed modules.
 Installed and working modules are listed below next to the signpost mac address.
 
 Currently the following signposts are deployed:
-  - c098e5120001 (microwave radar, audio, rf_spectrum, ambient)
+  - c098e5120001 (microwave radar, audio, rf spectrum, ambient)
   - c098e5120003 (audio)
   - c098e5120004 (audio, rf spectrum, ambient)
 
