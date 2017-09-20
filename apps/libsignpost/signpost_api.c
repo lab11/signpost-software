@@ -623,6 +623,8 @@ static int signpost_initialization_initialize_loop(void) {
             rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
             if (rc == SB_PORT_FAIL) {
               port_printf("INIT: Timed out waiting for controller isolation\n");
+              port_signpost_mod_out_set();
+              port_signpost_delay_ms(3000);
               init_state = RequestIsolation;
             };
 
