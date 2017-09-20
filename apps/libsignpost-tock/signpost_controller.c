@@ -45,6 +45,7 @@ int mod_isolated_in = -1;
 int last_mod_isolated_out = -1;
 size_t isolated_count = 0;
 size_t isolation_timeout_seconds = 10;
+uint8_t last_mod_out_state[NUM_MOD_IO] = {0};
 
 //time and location local
 static signpost_timelocation_time_t current_time;
@@ -160,7 +161,7 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
 
     if (mod_isolated_out < 0) {
         for (size_t i = 0; i < NUM_MOD_IO; i++) {
-            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i] &&
+            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i] && last_mod_out_state[i] == 1 &&
                                                 module_state[MODOUT_pin_to_mod_name(MOD_OUTS[i])].isolation_state == ModuleEnabled) {
 
                 printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
@@ -168,6 +169,7 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
                 mod_isolated_out = MOD_OUTS[i];
                 mod_isolated_in = MOD_INS[i];
                 last_mod_isolated_out = MOD_OUTS[i];
+                last_mod_out_state[i] = 0;
                 isolated_count = 0;
 
                 // create private channel for this module
@@ -212,6 +214,13 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
             enable_all_enabled_i2c();
         } else {
           isolated_count++;
+        }
+    }
+
+    //this give a module another chance if they pull their isolation pin up;
+    for(size_t i = 0; i < NUM_MOD_IO; i++) {
+        if(last_mod_out_state[i] == 0 && gpio_read(MOD_OUTS[i]) == 1) {
+            last_mod_out_state[i] = 1;
         }
     }
 
@@ -504,7 +513,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A8000E;
+    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
@@ -589,6 +598,9 @@ int signpost_controller_init (void) {
     controller_gpio_enable_all_MODINs();
     controller_gpio_enable_all_MODOUTs(PullUp);
     controller_gpio_set_all();
+
+    //make sure that we give modules a chance to initialize
+    memset(last_mod_out_state, 1, NUM_MOD_IO);
 
     //setup timer callbacks to service the various signpost components
     static tock_timer_t energy_update_timer;
