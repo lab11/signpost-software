@@ -7,8 +7,21 @@ Lab11 Influx database, the [Global Data Plane (GDP)](https://swarmlab.eecs.berke
 and can be subscribed to using MQTT. Please contact us to set up an
 MQTT username and password.
 
+### Stream/Log Naming
+
+MQTT: signpost/lab11/<device_short_name> (i.e. signpost/lab11/gps)
+GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version> (i.e. edu.berkeley.eecs.c098e5120003.signpost_energy.v0-0-1)
+
+### Deployed Signposts
+
+All signpost will report energy, gps, and radio status data.
+Signpost will also report data based on their currently installed modules.
+Installed and working modules are listed below next to the signpost mac address.
+
 Currently the following signposts are deployed:
-  - c098e5120002
+  - c098e5120001 (microwave radar, audio, rf_spectrum, ambient)
+  - c098e5120003 (audio)
+  - c098e5120004 (audio, rf spectrum, ambient)
 
 Schemas
 -------
@@ -32,7 +45,7 @@ All data packets include a `_meta` section like the following:
 ```
 
 ### Audio Frequency Module
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_audio_frequency
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_audio_frequency.v0-0-1
 
 MQTT Topic: signpost/lab11/audio
 
@@ -56,7 +69,7 @@ over the second following the reported timestamp.
 
 
 ### GPS Data
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_gps
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_gps.v0-0-1
 
 MQTT Topic: signpost/lab11/gps
 
@@ -73,7 +86,7 @@ MQTT Topic: signpost/lab11/gps
 
 
 ### Signpost Energy
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_energy
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_energy.v0-0-1
 
 MQTT Topic: signpost/lab11/energy
 
@@ -105,7 +118,7 @@ MQTT Topic: signpost/lab11/energy
 ```
 
 ### Radio Status
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_radio_status
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_radio_status.v0-0-1
 
 MQTT Topic: signpost/lab11/radio-status
 
@@ -126,7 +139,7 @@ MQTT Topic: signpost/lab11/radio-status
 
 ### Microwave Radar Module
 
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_microwave_radar
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_microwave_radar.v0-0-1
 
 MQTT Topic: signpost/lab11/radar
 
@@ -141,7 +154,7 @@ MQTT Topic: signpost/lab11/radar
 
 
 ### Ambient Sensing Module
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_ambient
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_ambient.v0-0-1
 
 MQTT Topic: signpost/lab11/ambient
 
@@ -155,9 +168,51 @@ MQTT Topic: signpost/lab11/ambient
 }
 ```
 
+### RF Spectrum Sensing Module (currently TV whitespace channels)
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum.v0-0-1
+
+MQTT Topic: signpost/lab11/spectrum
+
+```
+{
+    "device": "signpost_rf_spectrum",
+    "470MHz-476MHz_max":    <int8_t>,
+    "476MHz-482MHz_max":    <int8_t>,
+    .
+    .
+    .
+    "944MHz-950MHz_max":    <int8_t>,
+}
+```
+and
+
+```
+{
+    "device": "signpost_rf_spectrum",
+    "470MHz-476MHz_stddev":    <int8_t>,
+    "476MHz-482MHz_stddev":    <int8_t>,
+    .
+    .
+    .
+    "944MHz-950MHz_stddev":    <int8_t>,
+}
+```
+and
+
+```
+{
+    "device": "signpost_rf_spectrum",
+    "470MHz-476MHz_mean":    <int8_t>,
+    "476MHz-482MHz_mean":    <int8_t>,
+    .
+    .
+    .
+    "944MHz-950MHz_mean":    <int8_t>,
+}
+```
 
 ### UCSD Air Quality
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.v0-0-1.signpost_ucsd_air_quality
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_ucsd_air_quality.v0-0-1
 
 MQTT Topic: signpost/lab11/aqm
 
