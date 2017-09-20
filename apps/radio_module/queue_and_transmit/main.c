@@ -745,39 +745,42 @@ static void timer_callback (
 
         printf("Sending energy query\n");
         signpost_energy_information_t info;
-        int rc = signpost_energy_query(&info);
-        if(rc < 0) printf("ERROR: Energy query failed\n");
+        int energy_failed = signpost_energy_query(&info);
+        if(energy_failed < 0) printf("ERROR: Energy query failed\n");
 
-        printf("Used %lu uWh since last reset\n",info.energy_used_since_reset_uWh);
-        //now figure out the percentages for each module
-        for(i = 0; i < NUMBER_OF_MODULES; i++){
-            if(module_num_map[i] != 0) {
-                reps[i].energy_used_uWh =
-                        (uint32_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_uWh);
-                printf("Module %d used %lu uWh since last reset\n",module_num_map[i],reps[i].energy_used_uWh);
+        if(energy_failed >= 0) {
+            printf("Used %lu uWh since last reset\n",info.energy_used_since_reset_uWh);
+            //now figure out the percentages for each module
+            for(i = 0; i < NUMBER_OF_MODULES; i++){
+                if(module_num_map[i] != 0) {
+                    reps[i].energy_used_uWh =
+                            (uint32_t)((module_packet_count[i]/(float)packets_total)*info.energy_used_since_reset_uWh);
+                    printf("Module %d used %lu uWh since last reset\n",module_num_map[i],reps[i].energy_used_uWh);
+                } else {
+                    break;
+                }
+            }
+
+            //now pack it into an energy report structure
+            energy_report.num_reports = number_of_modules;
+            energy_report.reports = reps;
+
+            //send it to the controller
+            printf("Sending energy report\n");
+            int rc = signpost_energy_report(&energy_report);
+            if(rc < 0) {
+                printf("Energy report failed\n");
             } else {
-                break;
+                rc = signpost_energy_reset();
+                if(rc < 0) printf("ERROR: Energy reset failed\n");
+
+                //reset_packet_send_bufs
+                for(i = 0; i < NUMBER_OF_MODULES; i++) {
+                    module_packet_count[i] = 0;
+                }
             }
         }
 
-        //now pack it into an energy report structure
-        energy_report.num_reports = number_of_modules;
-        energy_report.reports = reps;
-
-        //send it to the controller
-        printf("Sending energy report\n");
-        rc = signpost_energy_report(&energy_report);
-        if(rc < 0) {
-            printf("Energy report failed\n");
-        } else {
-            rc = signpost_energy_reset();
-            if(rc < 0) printf("ERROR: Energy reset failed\n");
-
-            //reset_packet_send_bufs
-            for(i = 0; i < NUMBER_OF_MODULES; i++) {
-                module_packet_count[i] = 0;
-            }
-        }
 
         //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
@@ -878,7 +881,7 @@ int main (void) {
     status_send_buf[0] = strlen("lab11/radio-status");
     memcpy(status_send_buf+1,"lab11/radio-status",strlen("lab11/radio-status"));
     status_length_offset = 1 + strlen("lab11/radio-status");
-    status_data_offset = status_length_offset+2;
+    status_data_offset = status_length_offset+1;
     status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;
     //ble
