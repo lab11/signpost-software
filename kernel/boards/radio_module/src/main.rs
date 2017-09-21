@@ -1,7 +1,7 @@
 #![crate_name = "radio_module"]
 #![no_std]
 #![no_main]
-#![feature(compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
+#![feature(asm,compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
 
 extern crate capsules;
 extern crate compiler_builtins;
