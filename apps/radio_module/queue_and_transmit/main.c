@@ -820,7 +820,7 @@ static int join_lora_network(void) {
 
     int rc = xdot_set_ack(1);
     rc |= xdot_set_txpwr(20);
-    rc |= xdot_set_txdr(3);
+    rc |= xdot_set_txdr(2);
     rc |= xdot_set_adr(0);
     if(rc < 0)  printf("XDot settings error!\n");
 
