@@ -5,7 +5,7 @@
 #include <sdcard.h>
 #include <tock.h>
 
-#include "fatfs/ff.h"
+#include "ff.h"
 
 static FRESULT scan_files (const char* path) {
     FRESULT res;
