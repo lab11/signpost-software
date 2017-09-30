@@ -624,7 +624,7 @@ static int signpost_initialization_initialize_loop(void) {
               break;
             }
 
-            printf("INIT: Requested I2C isolation with controller\n");
+            port_printf("INIT: Requested I2C isolation with controller\n");
             rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
             if (rc == SB_PORT_FAIL) {
               port_printf("INIT: Timed out waiting for controller isolation\n");
@@ -641,6 +641,7 @@ static int signpost_initialization_initialize_loop(void) {
               init_state = RequestIsolation;
               break;
             }
+            port_printf("INIT: Granted I2C isolation and started initialization with Controller\n");
 
             // Now declare self to controller
             declare_controller_complete = false;
@@ -704,7 +705,7 @@ static int signpost_initialization_initialize_loop(void) {
             // Completed Init
             port_signpost_mod_out_set();
             port_signpost_debug_led_off();
-            SIGNBUS_DEBUG("INIT: complete\n");
+            port_printf("INIT: Completed Initialization with Controller\n");
             return SB_PORT_SUCCESS;
 
           default:
