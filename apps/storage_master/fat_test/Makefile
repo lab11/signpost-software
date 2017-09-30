@@ -5,15 +5,15 @@ TOCK_BOARD = storage_master
 # the current directory
 APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+VPATH_DIRS += $(APP_DIR)../../support/fatfs
+VPATH_DIRS += $(APP_DIR)../../support/fatfs/option
+
 # files needed for this code
 C_SRCS   := main.c mmc_io.c
+C_SRCS   += ff.c unicode.c
 
-# handle complex paths
-vpath %.c fatfs
-C_SRCS   += ff.c
-
-vpath %.c fatfs/option
-C_SRCS   += unicode.c
+override CFLAGS += -I$(APP_DIR)/../../support/fatfs
+override CFLAGS += -I$(APP_DIR)/../../support/fatfs/option
 
 # include makefile settings that are shared between applications
 include ../../AppMakefileTock.mk

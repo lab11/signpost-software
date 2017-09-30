@@ -1,6 +1,6 @@
 #include <sdcard.h>
-#include "fatfs/diskio.h"
-#include "fatfs/ff.h"
+#include "diskio.h"
+#include "ff.h"
 
 static uint32_t block_size;
 static uint32_t card_kb;
