@@ -39,14 +39,22 @@
 
 #define UMICH_COMPANY_IDENTIFIER 0x02E0
 
-/*static simple_ble_config_t ble_config = {
+uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
+
+static simple_ble_config_t ble_config = {
     .platform_id        = 0x00,
     .device_id          = DEVICE_ID_DEFAULT,
     .adv_name           = (char *)DEVICE_NAME,
     .adv_interval       = MSEC_TO_UNITS(300, UNIT_0_625_MS),
     .min_conn_interval  = MSEC_TO_UNITS(500, UNIT_1_25_MS),
     .max_conn_interval  = MSEC_TO_UNITS(1250, UNIT_1_25_MS),
-};*/
+};
+
+// short uuid is 0x6F00
+static simple_ble_service_t signpost_service = {
+    .uuid128 = {{0x5C, 0xC2, 0x0D, 0x14, 0x6D, 0x28, 0x49, 0x7A,
+                 0x8F, 0x56, 0x66, 0xB7, 0x6F, 0x00, 0xE9, 0x75}}
+};
 
 //definitions for the i2c
 #define BUFFER_SIZE 100
@@ -110,6 +118,12 @@ static int join_lora_network(void);
         i = 0;
     }
 }*/
+
+static void ble_init(void) {
+    conn_handle = simple_ble_init(&ble_config)->conn_handle;
+    simple_ble_add_service(&signpost_service);
+    simple_adv_only_name();
+}
 
 static void count_module_packet(uint8_t module_address) {
 
@@ -519,6 +533,7 @@ static void update_api_callback(uint8_t source_address,
     }
 }
 
+__attribute__ ((const))
 void ble_address_set(void) {
     static ble_gap_addr_t gap_addr;
 
@@ -884,16 +899,15 @@ int main (void) {
     status_data_offset = status_length_offset+1;
     status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;
-    //ble
-    //simple_ble_init(&ble_config);
 
-    //setup a tock timer to
-    //eddystone_adv((char *)PHYSWEB_URL,NULL);
-    //
+    //ble
+    ble_init();
+
+    // setup watchdog
     app_watchdog_set_kernel_timeout(60000);
     app_watchdog_start();
 
-    //setup timer
+    // setup timer
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
 
