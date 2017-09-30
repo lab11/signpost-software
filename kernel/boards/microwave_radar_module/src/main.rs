@@ -91,21 +91,30 @@ unsafe fn set_pin_primary_functions() {
 
     PA[04].configure(Some(A)); // amplified analog signal
     PA[05].configure(Some(A)); // MSGEQ7 output. Should be analog
+    PA[06].configure(None); // Power gate high side
     PA[08].configure(None); // PPS
     PA[09].configure(None); // MOD_IN
     PA[10].configure(None); // MOD_OUT
+    PA[11].configure(None); // DBG GPIO1
+    PA[12].configure(None); // DBG GPIO2
     PA[14].configure(None); // MSGEQ7 strobe
     PA[15].configure(None); // MSGEQ7 reset
     PA[17].configure(None); // Blink LED
+    PA[19].configure(Some(A)); // USART2 RX
+    PA[20].configure(Some(A)); // USART2 TX
     PA[23].configure(Some(B)); // I2C SDA
     PA[24].configure(Some(B)); // I2C SCL
-    PA[25].configure(Some(B)); // USART2 RX
-    PA[26].configure(Some(B)); // USART2 TX
+    PA[25].configure(Some(A)); // USB
+    PA[26].configure(Some(A)); // USB
 
     // Configure LEDs to be off
     sam4l::gpio::PA[17].enable();
     sam4l::gpio::PA[17].enable_output();
     sam4l::gpio::PA[17].clear();
+
+    sam4l::gpio::PA[06].enable();
+    sam4l::gpio::PA[06].enable_output();
+    sam4l::gpio::PA[06].set();
 }
 
 /*******************************************************************************
@@ -243,8 +252,10 @@ pub unsafe fn reset_handler() {
     // LEDs
     //
     let led_pins = static_init!(
-        [(&'static sam4l::gpio::GPIOPin, capsules::led::ActivationMode); 1],
-           [(&sam4l::gpio::PA[17], capsules::led::ActivationMode::ActiveLow)]);
+        [(&'static sam4l::gpio::GPIOPin, capsules::led::ActivationMode); 3],
+           [(&sam4l::gpio::PA[11], capsules::led::ActivationMode::ActiveHigh),
+            (&sam4l::gpio::PA[12], capsules::led::ActivationMode::ActiveHigh),
+            (&sam4l::gpio::PA[17], capsules::led::ActivationMode::ActiveLow)]);
     let led = static_init!(
         capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
         capsules::led::LED::new(led_pins));
