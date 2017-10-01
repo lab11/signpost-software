@@ -170,7 +170,9 @@ enum storage_message_type {
 };
 
 typedef struct {
-   uint8_t value[8];
+  char filename[8];
+  size_t offset;
+  size_t length;
 } Storage_Record_t;
 
 // Write data to the Storage Master
@@ -182,13 +184,30 @@ typedef struct {
 __attribute__((warn_unused_result))
 int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_pointer);
 
+// Read data from the Storage Master
+//
+// params:
+//  data            - Pointer to buffer to read to
+//  len             - Length of data to read
+//  record_pointer  - Record that will indicate location of stored data
+__attribute__((warn_unused_result))
+int signpost_storage_read (uint8_t* data, size_t len, Storage_Record_t record_pointer);
+
 // Storage master response to write request
 //
 // params:
 //  destination_address - Address to reply to
 //  record_pointer      - Data at record
 __attribute__((warn_unused_result))
-int signpost_storage_write_reply (uint8_t destination_address, uint8_t* record_pointer);
+int signpost_storage_write_reply (uint8_t destination_address, Storage_Record_t* record_pointer);
+
+// Storage master response to read request
+//
+// params:
+//  destination_address - Address to reply to
+//  record_pointer      - Data at record
+__attribute__((warn_unused_result))
+int signpost_storage_read_reply (uint8_t destination_address, uint8_t* data);
 
 /**************************************************************************/
 /* NETWORKING API                                                         */
