@@ -11,27 +11,27 @@
 
 FATFS fs;           /* File system object */
 
-//static FRESULT scan_files (const char* path) {
-//    FRESULT res;
-//    DIR dir;
-//    static FILINFO fno;
-//
-//    res = f_opendir(&dir, path);                       // Open the directory
-//    if (res == FR_OK) {
-//      while(1) {
-//        res = f_readdir(&dir, &fno);                   // Read a directory item
-//        if (res != FR_OK || fno.fname[0] == 0) break;  // Break on error or end of dir
-//        if (fno.fattrib & AM_DIR) {                    // It's a directory
-//          printf("+ %s/\n", fno.fname);
-//        } else {                                       // It's a file
-//          printf("  %s\n", fno.fname);
-//        }
-//      }
-//      f_closedir(&dir);
-//    }
-//
-//    return res;
-//}
+static FRESULT scan_files (const char* path) {
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+
+    res = f_opendir(&dir, path);                       // Open the directory
+    if (res == FR_OK) {
+      while(1) {
+        res = f_readdir(&dir, &fno);                   // Read a directory item
+        if (res != FR_OK || fno.fname[0] == 0) break;  // Break on error or end of dir
+        if (fno.fattrib & AM_DIR) {                    // It's a directory
+          printf("+ %s/\n", fno.fname);
+        } else {                                       // It's a file
+          printf("  %s\n", fno.fname);
+        }
+      }
+      f_closedir(&dir);
+    }
+
+    return res;
+}
 
 int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, size_t bytes_to_write, size_t* bytes_written)
 {
@@ -39,10 +39,10 @@ int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, 
   FIL fp;
   FRESULT res = f_open(&fp, filename, FA_OPEN_APPEND);
   if (res != FR_OK) return TOCK_FAIL;
-
+  res = f_open(&fp, filename, FA_WRITE);
+  if (res != FR_OK) return TOCK_FAIL;
   res = f_write(&fp, buf, len, bytes_written);
   if (res != FR_OK) return TOCK_FAIL;
-
   res = f_close(&fp);
   if (res != FR_OK) return TOCK_FAIL;
 
@@ -107,6 +107,11 @@ int32_t storage_initialize (void) {
         return TOCK_FAIL;
     }
   }
+
+  printf("=== Mounted! Scanning root directory...\n");
+  scan_files("");
+  printf("=== Done.\n");
+
   return TOCK_SUCCESS;
 }
 
