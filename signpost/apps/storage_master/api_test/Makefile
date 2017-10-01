@@ -10,4 +10,4 @@ C_SRCS   := main.c
 
 # include makefile settings that are shared between applications
 include ../../AppMakefileTock.mk
-
+include ../../support/fatfs/Makefile
