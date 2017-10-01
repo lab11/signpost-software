@@ -35,7 +35,7 @@
 //definitions for the ble
 #define DEVICE_NAME "Signpost"
 #define PHYSWEB_URL "j2x.us/signp"
-#define POST_ADDRESS "ec2-35-162-1-106.us-west-2.compute.amazonaws.com"
+#define POST_ADDRESS "ec2-35-166-179-172.us-west-2.compute.amazonaws.com"
 
 #define UMICH_COMPANY_IDENTIFIER 0x02E0
 
