@@ -409,7 +409,7 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
     if (module_info.i2c_address_mods[module_number] != source_address) {
       module_info.i2c_address_mods[module_number] = source_address;
       module_info.haskey[module_number] = false;
-      printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
+      port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
     }
 
     // Just ack, TODO eventually will send new address
@@ -1227,7 +1227,7 @@ void signpost_networking_send_reply(uint8_t src_addr, int return_code) {
                         NetworkingSendMessage, 4, (uint8_t*)(&return_code));
 
    if (rc < 0) {
-      printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
+      port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
             NetworkingSendMessage, rc, true, true, 1);
    }
@@ -1685,56 +1685,56 @@ int signpost_fetch_update(const char* url,
         //we got the message, is it a done or a xfer message?
         if(incoming_message_type == UpdateTransferMessage) {
             //take the message, unpack it, do a flash write, then respond
-            printf("Received transfer message\n");
+            port_printf("Received transfer message\n");
             uint32_t data_len;
             uint32_t offset;
 
             memcpy(&data_len, incoming_message, 4);
             uint8_t* data = malloc(data_len);
             if(!data) {
-                printf("Memory error, returning\n");
+                port_printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
             memcpy(data, incoming_message+4, data_len);
             memcpy(&offset, incoming_message+4+data_len, 4);
 
             if(offset+data_len > flash_scratch_length) {
-                printf("Memory error, returning\n");
+                port_printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
 
-            printf("Writing to flash\n");
+            port_printf("Writing to flash\n");
             ret = port_signpost_flash_write(flash_scratch_start + offset, data, data_len);
 
             free(data);
             if(ret < 0) {
-                printf("Error writing to flash\n");
+                port_printf("Error writing to flash\n");
                 return ret;
             }
 
             //send response message so radio can proceed
-            printf("Sending response message to get more data\n");
+            port_printf("Sending response message to get more data\n");
             ret = signpost_api_send(ModuleAddressRadio,
                 CommandFrame, UpdateApiType, UpdateResponseMessage,
                 0, NULL);
 
             if(ret < 0)  {
-                printf("Error sending response message\n");
+                port_printf("Error sending response message\n");
                 return ret;
             };
         } else if (incoming_message_type == UpdateResponseMessage) {
-            printf("Received update done message!\n");
+            port_printf("Received update done message!\n");
             signpost_update_done_t resp;
             memcpy(&resp, incoming_message, sizeof(signpost_update_done_t));
 
             if(resp.response_code == UpdateUpToDate) {
-                printf("Returning - up to date\n");
+                port_printf("Returning - up to date\n");
                 return UpdateUpToDate;
             } else if(resp.response_code == UpdateFetched) {
                 //copy the crc and length and return update fetched
-                printf("Got an update of length: %lu and crc: %lu\n",resp.total_length, resp.crc);
-                memcpy(&update_length, &resp.total_length, 4);
-                memcpy(&crc, &resp.crc, 4);
+                port_printf("Got an update of length: %lu and crc: %lu\n",resp.total_length, resp.crc);
+                memcpy(update_length, &resp.total_length, 4);
+                memcpy(crc, &resp.crc, 4);
 
                 return UpdateFetched;
             } else {
@@ -1755,7 +1755,7 @@ int signpost_apply_update(uint32_t flash_dest_address,
                             uint32_t update_length,
                             uint32_t crc) {
 
-    printf("Calling to port apply update\n");
+    port_printf("Calling to port apply update\n");
     int ret = port_signpost_apply_update(flash_dest_address,
                                          flash_scratch_start,
                                          update_length,
