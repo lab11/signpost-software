@@ -4,13 +4,8 @@ Deployment Software
 This is the deployment folder, where we store application 
 binaries and info files for over the air update.
 
-Standard workflow is to push the binaries first to the "deployment-test" branch
-which modules inside the office are set to fetch from.
+To do an OTA update run the deploy.py script:
+```deploy.py /path/to/app.bin version_string output_folder```
 
-If that works, then we can put those binaries on master for the rest
-of the signposts to fetch.
-
-Binaries are accessed directly using rawgit. An info.txt file in the
-same directory as the binary stores version, length and CRC information.
-
-Use the deployment python script to generate the info.txt file
+Then commit your changes and pull them own the AWS instance that we are
+fetching updates from. The app will eventually check and fetch the update.
