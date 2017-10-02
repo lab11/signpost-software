@@ -165,12 +165,16 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 /* STORAGE API                                                            */
 /**************************************************************************/
 
+#define STORAGE_LOG_LEN 255
+
 enum storage_message_type {
    StorageWriteMessage = 0,
+   StorageReadMessage= 1,
+   StorageDeleteMessage= 2,
 };
 
 typedef struct {
-  char filename[8];
+  char logname[STORAGE_LOG_LEN+1]; //+1 for null char
   size_t offset;
   size_t length;
 } Storage_Record_t;
@@ -191,7 +195,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 //  len             - Length of data to read
 //  record_pointer  - Record that will indicate location of stored data
 __attribute__((warn_unused_result))
-int signpost_storage_read (uint8_t* data, size_t len, Storage_Record_t record_pointer);
+int signpost_storage_read (uint8_t* data, Storage_Record_t* record_pointer);
 
 // Storage master response to write request
 //

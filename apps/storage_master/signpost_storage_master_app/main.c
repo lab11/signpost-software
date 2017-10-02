@@ -35,44 +35,75 @@ static void storage_api_callback(uint8_t source_address,
   } else if (frame_type == CommandFrame) {
     printf("Got a command message!: len = %d\n", message_length);
     for (size_t i=0; i<message_length; i++) {
-      printf("%X ", message[i]);
+      printf("%2x", message[i]);
     }
     printf("\n");
+    if (message_type == StorageWriteMessage) {
+      // unmarshal sent data into logname and data
+      char logname[STORAGE_LOG_LEN+1];
+      char filename[STORAGE_LOG_LEN+1];
+      strncpy(logname, (char*) message, STORAGE_LOG_LEN);
+      size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
+      uint8_t* data = message + logname_len + 1;
+      size_t data_len = message_length - logname_len - 1;
+      logname_to_filename(logname, source_address, filename);
 
-    //XXX do some checking that the message type is right and all that jazz
-    //XXX also figure out what module index this is, somehow
-    int module_index = 0;
+      printf("\nWriting data\n");
 
-    printf("Writing data\n");
+      // write data to storage
+      Storage_Record_t write_record;
+      strncpy(write_record.logname, filename, STORAGE_LOG_LEN);
+      write_record.length = data_len;
+      size_t bytes_written = 0;
 
-    // get initial record
-    Storage_Record_Pointer_t write_record = {0};
-    write_record.block = storage_status.status_records[module_index].curr.block;
-    write_record.offset = storage_status.status_records[module_index].curr.offset;
+      err = storage_write_data(filename, data, data_len, data_len, &bytes_written, &write_record.offset);
+      if (err < TOCK_SUCCESS || bytes_written < data_len) {
+        printf("Writing error: %d\n", err);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        return;
+      }
 
-    // write data to storage
-    err = storage_write_record(write_record, message, message_length, &write_record);
-    if (err < TOCK_SUCCESS) {
-      printf("Writing error: %d\n", err);
-      //XXX: send error
+      // send response
+      err = signpost_storage_write_reply(source_address, &write_record);
+      if (err < TOCK_SUCCESS) {
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        return;
+      }
     }
 
-    // update record
-    storage_status.status_records[module_index].curr.block = write_record.block;
-    storage_status.status_records[module_index].curr.offset = write_record.offset;
-    err = storage_update_status();
-    if (err < TOCK_SUCCESS) {
-      printf("Updating status error: %d\n", err);
-      //XXX: send error
-    }
-    printf("Complete. Final block: %lu offset: %lu\n", write_record.block, write_record.offset);
+    else if (message_type == StorageReadMessage) {
+      // unmarshal sent data into logname, offset, and length
+      char logname[STORAGE_LOG_LEN+1];
+      char filename[STORAGE_LOG_LEN+1];
+      Storage_Record_t read_record;
+      strncpy(logname, (char*) message, STORAGE_LOG_LEN);
+      size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
+      size_t offset = *((size_t*) (message + logname_len + 1));
+      size_t length = *((size_t*) (message + logname_len + 2 + sizeof(size_t)));
+      logname_to_filename(logname, source_address, filename);
+      printf("%s %d %d\n", filename, offset, length);
+      printf("\nReading data\n");
 
-    // send response
-    err = signpost_storage_write_reply(source_address, (uint8_t*)&write_record);
-    if (err < TOCK_SUCCESS) {
-      //XXX: I guess just try to send an error...
-    }
+      //// write data to storage
+      //Storage_Record_t write_record;
+      //strncpy(write_record.logname, filename, STORAGE_LOG_LEN);
+      //write_record.length = data_len;
+      //size_t bytes_written = 0;
 
+      //err = storage_write_data(filename, data, data_len, data_len, &bytes_written, &write_record.offset);
+      //if (err < TOCK_SUCCESS || bytes_written < data_len) {
+      //  printf("Writing error: %d\n", err);
+      //  signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+      //  return;
+      //}
+
+      //// send response
+      //err = signpost_storage_write_reply(source_address, &write_record);
+      //if (err < TOCK_SUCCESS) {
+      //  signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+      //  return;
+      //}
+    }
   } else if (frame_type == ResponseFrame) {
     // XXX unexpected, drop
   } else if (frame_type == ErrorFrame) {
