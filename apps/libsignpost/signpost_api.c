@@ -1715,7 +1715,7 @@ int signpost_fetch_update(const char* url,
             //send response message so radio can proceed
             printf("Sending response message to get more data\n");
             ret = signpost_api_send(ModuleAddressRadio,
-                ResponseFrame, UpdateApiType, UpdateResponseMessage,
+                CommandFrame, UpdateApiType, UpdateResponseMessage,
                 0, NULL);
 
             if(ret < 0)  {
@@ -1723,13 +1723,16 @@ int signpost_fetch_update(const char* url,
                 return ret;
             };
         } else if (incoming_message_type == UpdateResponseMessage) {
+            printf("Received update done message!\n");
             signpost_update_done_t resp;
             memcpy(&resp, incoming_message, sizeof(signpost_update_done_t));
 
             if(resp.response_code == UpdateUpToDate) {
+                printf("Returning - up to date\n");
                 return UpdateUpToDate;
             } else if(resp.response_code == UpdateFetched) {
                 //copy the crc and length and return update fetched
+                printf("Got an update of length: %lu and crc: %lu\n",resp.total_length, resp.crc);
                 memcpy(&update_length, &resp.total_length, 4);
                 memcpy(&crc, &resp.crc, 4);
 
@@ -1752,6 +1755,7 @@ int signpost_apply_update(uint32_t flash_dest_address,
                             uint32_t update_length,
                             uint32_t crc) {
 
+    printf("Calling to port apply update\n");
     int ret = port_signpost_apply_update(flash_dest_address,
                                          flash_scratch_start,
                                          update_length,

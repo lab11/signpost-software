@@ -485,9 +485,7 @@ static void update_api_callback(uint8_t source_address,
                 binary_offset += 200;
                 offset += 200;
             }
-        }
-    } else if(frame_type == ResponseFrame) {
-        if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
+        } else if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
             printf("UPDATE: Received ack to continue transfer\n");
             if(done_transferring) {
                 printf("Sending update reply done\n");
