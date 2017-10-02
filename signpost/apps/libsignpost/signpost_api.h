@@ -197,6 +197,13 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 __attribute__((warn_unused_result))
 int signpost_storage_read (uint8_t* data, Storage_Record_t* record_pointer);
 
+// Delete log from the Storage Master
+//
+// params:
+//  record_pointer  - Record that will indicate location of data to delete
+__attribute__((warn_unused_result))
+int signpost_storage_delete (Storage_Record_t* record_pointer);
+
 // Storage master response to write request
 //
 // params:
@@ -209,9 +216,18 @@ int signpost_storage_write_reply (uint8_t destination_address, Storage_Record_t*
 //
 // params:
 //  destination_address - Address to reply to
-//  record_pointer      - Data at record
+//  data                - buffer to write read data
+//  length              - length of read data
 __attribute__((warn_unused_result))
 int signpost_storage_read_reply (uint8_t destination_address, uint8_t* data, size_t length);
+
+// Storage master response to delete request
+//
+// params:
+//  destination_address - Address to reply to
+//  record_pointer      - Returned record
+__attribute__((warn_unused_result))
+int signpost_storage_delete_reply (uint8_t destination_address, Storage_Record_t* record_pointer);
 
 /**************************************************************************/
 /* NETWORKING API                                                         */

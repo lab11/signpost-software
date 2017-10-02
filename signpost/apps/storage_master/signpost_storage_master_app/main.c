@@ -52,7 +52,7 @@ static void storage_api_callback(uint8_t source_address,
       printf("Writing data\n");
 
       // write data to storage
-      Storage_Record_t write_record;
+      Storage_Record_t write_record = {0};
       strncpy(write_record.logname, filename, STORAGE_LOG_LEN);
       write_record.length = data_len;
       size_t bytes_written = 0;
@@ -103,6 +103,24 @@ static void storage_api_callback(uint8_t source_address,
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
 
         free(data);
+        return;
+      }
+    }
+
+    else if (message_type == StorageDeleteMessage) {
+      char filename[STORAGE_LOG_LEN+1];
+      strncpy(filename, (char*) message, STORAGE_LOG_LEN);
+
+      printf("Deleting data\n");
+      // delete filename from storage
+      err = storage_del_data(filename);
+      Storage_Record_t deleted_record = {0};
+      strncpy(deleted_record.logname, filename, STORAGE_LOG_LEN);
+
+      // send response
+      err = signpost_storage_delete_reply(source_address, &deleted_record);
+      if (err < TOCK_SUCCESS) {
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
         return;
       }
     }

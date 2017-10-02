@@ -796,7 +796,7 @@ static void signpost_storage_read_callback(int len_or_rc) {
     if (len_or_rc < SB_PORT_SUCCESS) {
         // error code response
         storage_result = len_or_rc;
-    } else if (len_or_rc > 0 && (size_t) len_or_rc != callback_record->length) {
+    } else if ((size_t) len_or_rc != callback_record->length) {
         // invalid response length
         port_printf("%s:%d - Error: bad len, got %d, want %d\n",
                 __FILE__, __LINE__, len_or_rc, callback_record->length);
@@ -887,6 +887,32 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
 
 }
 
+int signpost_storage_delete (Storage_Record_t* record_pointer) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_pointer;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_write_callback;
+
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageDeleteMessage, logname_len, (uint8_t*) record_pointer->logname); if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
+
+    // wait for response
+    err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) return err;
+    return storage_result;
+}
+
 int signpost_storage_write_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {
     return signpost_api_send(destination_address,
             ResponseFrame, StorageApiType, StorageWriteMessage,
@@ -897,6 +923,12 @@ int signpost_storage_read_reply(uint8_t destination_address, uint8_t* data, size
     return signpost_api_send(destination_address,
             ResponseFrame, StorageApiType, StorageWriteMessage,
             length, data);
+}
+
+int signpost_storage_delete_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {
+    return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageDeleteMessage,
+            sizeof(Storage_Record_t), (uint8_t*) record_pointer);
 }
 
 /**************************************************************************/
