@@ -591,6 +591,7 @@ int signpost_controller_init (void) {
     // Setup backplane by enabling the modules
     controller_init_module_switches();
     controller_all_modules_disable_power();
+    controller_all_modules_disable_i2c();
     delay_ms(500);
     controller_all_modules_enable_power();
     controller_all_modules_enable_i2c();
@@ -598,6 +599,7 @@ int signpost_controller_init (void) {
     controller_gpio_enable_all_MODINs();
     controller_gpio_enable_all_MODOUTs(PullUp);
     controller_gpio_set_all();
+    delay_ms(500);
 
     //make sure that we give modules a chance to initialize
     memset(last_mod_out_state, 1, NUM_MOD_IO);

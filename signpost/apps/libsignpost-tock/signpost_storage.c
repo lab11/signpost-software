@@ -48,9 +48,7 @@ int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, 
   FIL fp;
 
   // open file for append and write
-  FRESULT res = f_open(&fp, filename, FA_OPEN_APPEND);
-  if (res != FR_OK) return TOCK_FAIL;
-  res = f_open(&fp, filename, FA_WRITE);
+  FRESULT res = f_open(&fp, filename, FA_OPEN_APPEND | FA_WRITE);
   if (res != FR_OK) return TOCK_FAIL;
 
   // copy file pointer to offset
