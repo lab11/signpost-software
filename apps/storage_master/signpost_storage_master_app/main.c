@@ -33,11 +33,12 @@ static void storage_api_callback(uint8_t source_address,
   if (frame_type == NotificationFrame) {
     // XXX unexpected, drop
   } else if (frame_type == CommandFrame) {
-    printf("Got a command message!: len = %d\n", message_length);
+    printf("\nGot a command message!: len = %d\n", message_length);
     for (size_t i=0; i<message_length; i++) {
       printf("%2x", message[i]);
     }
     printf("\n");
+
     if (message_type == StorageWriteMessage) {
       // unmarshal sent data into logname and data
       char logname[STORAGE_LOG_LEN+1];
@@ -48,7 +49,7 @@ static void storage_api_callback(uint8_t source_address,
       size_t data_len = message_length - logname_len - 1;
       logname_to_filename(logname, source_address, filename);
 
-      printf("\nWriting data\n");
+      printf("Writing data\n");
 
       // write data to storage
       Storage_Record_t write_record;
@@ -78,10 +79,9 @@ static void storage_api_callback(uint8_t source_address,
       size_t filename_len= strnlen(filename, STORAGE_LOG_LEN);
       size_t offset = *((size_t*) (message + filename_len + 1));
       size_t length = *((size_t*) (message + filename_len + 2 + sizeof(size_t)));
-      printf("%s %d %d\n", filename, offset, length);
-      printf("\nReading data\n");
 
-      // write data to storage
+      printf("Reading data\n");
+      // read data from storage
       size_t bytes_read= 0;
       //XXX this is potentially dangerous, should eventually define limits:
       uint8_t* data = (uint8_t*) malloc(length);
