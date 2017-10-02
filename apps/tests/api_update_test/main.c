@@ -28,7 +28,7 @@ int main(void) {
     delay_ms(20000);
 
     do {
-        rc = signpost_update("cdn.rawgit.com/lab11/signpost-software/init/deployment/audio","0.0.1",0,0x2000,0);
+        rc = signpost_update("ec2-52-43-58-157.us-west-2.compute.amazonaws.com/deployment/test_blink","0.0.1",0,0x2000,0);
         if (rc < 0) {
             printf("Error code %d occurred during update\n", rc);
             delay_ms(20000);
