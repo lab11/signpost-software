@@ -765,8 +765,9 @@ int signpost_initialization_initialize_with_module(uint8_t module_address) {
 static bool storage_ready;
 static bool storage_result;
 static Storage_Record_t* callback_record = NULL;
+static uint8_t* callback_data = NULL;
 
-static void signpost_storage_callback(int len_or_rc) {
+static void signpost_storage_write_callback(int len_or_rc) {
 
     if (len_or_rc < SB_PORT_SUCCESS) {
         // error code response
@@ -790,6 +791,29 @@ static void signpost_storage_callback(int len_or_rc) {
     storage_ready = true;
 }
 
+static void signpost_storage_read_callback(int len_or_rc) {
+    if (len_or_rc < SB_PORT_SUCCESS) {
+        // error code response
+        storage_result = len_or_rc;
+    } else if (len_or_rc > 0 && (size_t) len_or_rc != callback_record->length) {
+        // invalid response length
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
+                __FILE__, __LINE__, len_or_rc, callback_record->length);
+        storage_result = SB_PORT_FAIL;
+    } else {
+        // valid data
+        if (callback_data != NULL) {
+            // copy over record response
+            memcpy(callback_data, incoming_message, len_or_rc);
+        }
+        callback_data= NULL;
+        storage_result = SB_PORT_SUCCESS;
+    }
+
+    // response received
+    storage_ready = true;
+}
+
 int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_pointer) {
     storage_ready = false;
     storage_result = SB_PORT_SUCCESS;
@@ -799,17 +823,67 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
     }
-    incoming_active_callback = signpost_storage_callback;
+    incoming_active_callback = signpost_storage_write_callback;
+
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+    uint8_t* marshal = (uint8_t*) malloc(logname_len + len + 1);
+    memcpy(marshal, record_pointer->logname, logname_len+1);
+    marshal[logname_len] = 0;
+    memcpy(marshal+logname_len+1, data, len);
 
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageWriteMessage, len, data); if (err < SB_PORT_SUCCESS) {
+            StorageApiType, StorageWriteMessage, len+logname_len, marshal); if (err < SB_PORT_SUCCESS) {
         return err;
     }
 
+    // free message buffer
+    free(marshal);
+
     // wait for response
-    port_signpost_wait_for(&storage_ready);
+    port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) return err;
     return storage_result;
+}
+
+int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_pointer;
+    callback_data = data;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_read_callback;
+
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+    size_t offset_len = sizeof(record_pointer->offset);
+    size_t length_len = sizeof(record_pointer->length);
+    size_t marshal_len = logname_len + offset_len + length_len;
+    uint8_t* marshal = (uint8_t*) malloc(marshal_len);
+    memset(marshal, 0, marshal_len);
+    memcpy(marshal, &record_pointer->logname, logname_len);
+    memcpy(marshal+logname_len+1, &record_pointer->offset, offset_len);
+    memcpy(marshal+logname_len+1+offset_len+1, &record_pointer->length, length_len);
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageReadMessage, marshal_len, marshal); if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
+
+    // free message buffer
+    free(marshal);
+
+    // wait for response
+    err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) return err;
+    return storage_result;
+
 }
 
 int signpost_storage_write_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {
