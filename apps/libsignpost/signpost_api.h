@@ -211,7 +211,7 @@ int signpost_storage_write_reply (uint8_t destination_address, Storage_Record_t*
 //  destination_address - Address to reply to
 //  record_pointer      - Data at record
 __attribute__((warn_unused_result))
-int signpost_storage_read_reply (uint8_t destination_address, uint8_t* data);
+int signpost_storage_read_reply (uint8_t destination_address, uint8_t* data, size_t length);
 
 /**************************************************************************/
 /* NETWORKING API                                                         */

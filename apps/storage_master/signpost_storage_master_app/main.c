@@ -72,37 +72,39 @@ static void storage_api_callback(uint8_t source_address,
     }
 
     else if (message_type == StorageReadMessage) {
-      // unmarshal sent data into logname, offset, and length
-      char logname[STORAGE_LOG_LEN+1];
+      // unmarshal sent data into filename, offset, and length
       char filename[STORAGE_LOG_LEN+1];
-      Storage_Record_t read_record;
-      strncpy(logname, (char*) message, STORAGE_LOG_LEN);
-      size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
-      size_t offset = *((size_t*) (message + logname_len + 1));
-      size_t length = *((size_t*) (message + logname_len + 2 + sizeof(size_t)));
-      logname_to_filename(logname, source_address, filename);
+      strncpy(filename, (char*) message, STORAGE_LOG_LEN);
+      size_t filename_len= strnlen(filename, STORAGE_LOG_LEN);
+      size_t offset = *((size_t*) (message + filename_len + 1));
+      size_t length = *((size_t*) (message + filename_len + 2 + sizeof(size_t)));
       printf("%s %d %d\n", filename, offset, length);
       printf("\nReading data\n");
 
-      //// write data to storage
-      //Storage_Record_t write_record;
-      //strncpy(write_record.logname, filename, STORAGE_LOG_LEN);
-      //write_record.length = data_len;
-      //size_t bytes_written = 0;
+      // write data to storage
+      size_t bytes_read= 0;
+      //XXX this is potentially dangerous, should eventually define limits:
+      uint8_t* data = (uint8_t*) malloc(length);
+      if (data == NULL) {
+        printf("Failed to allocate enough memory\n");
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ENOMEM, true, true, 1);
+      }
 
-      //err = storage_write_data(filename, data, data_len, data_len, &bytes_written, &write_record.offset);
-      //if (err < TOCK_SUCCESS || bytes_written < data_len) {
-      //  printf("Writing error: %d\n", err);
-      //  signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
-      //  return;
-      //}
+      err = storage_read_data(filename, offset, data, length, length, &bytes_read);
+      if (err < TOCK_SUCCESS || bytes_read < length) {
+        printf("Writing error: %d\n", err);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        return;
+      }
 
-      //// send response
-      //err = signpost_storage_write_reply(source_address, &write_record);
-      //if (err < TOCK_SUCCESS) {
-      //  signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
-      //  return;
-      //}
+      // send response
+      err = signpost_storage_read_reply(source_address, data, length);
+      if (err < TOCK_SUCCESS) {
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+
+        free(data);
+        return;
+      }
     }
   } else if (frame_type == ResponseFrame) {
     // XXX unexpected, drop

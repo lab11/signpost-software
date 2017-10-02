@@ -309,7 +309,7 @@ int signpost_initialization_request_isolation(void) {
 
 static int signpost_initialization_declare_controller(void) {
     // set callback for handling response from controller/modules
-    if (incoming_active_callback != NULL) {
+    if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_declare_callback) {
         return SB_PORT_EBUSY;
     }
 
@@ -642,6 +642,7 @@ static int signpost_initialization_initialize_loop(void) {
             declare_controller_complete = false;
             rc = signpost_initialization_declare_controller();
             if (rc != SB_PORT_SUCCESS) {
+              printf("failed to declare with code %d\n", rc);
               init_state = RequestIsolation;
               break;
             }
@@ -843,6 +844,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 }
 
 int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
+    printf("reading!\n");
     storage_ready = false;
     storage_result = SB_PORT_SUCCESS;
     callback_record = record_pointer;
@@ -853,6 +855,7 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
         return SB_PORT_EBUSY;
     }
     incoming_active_callback = signpost_storage_read_callback;
+    printf("read ing!\n");
 
     // allocate new message buffer
     size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
@@ -885,6 +888,12 @@ int signpost_storage_write_reply(uint8_t destination_address, Storage_Record_t* 
     return signpost_api_send(destination_address,
             ResponseFrame, StorageApiType, StorageWriteMessage,
             sizeof(Storage_Record_t), (uint8_t*) record_pointer);
+}
+
+int signpost_storage_read_reply(uint8_t destination_address, uint8_t* data, size_t length) {
+    return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageWriteMessage,
+            length, data);
 }
 
 /**************************************************************************/
