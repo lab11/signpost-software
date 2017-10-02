@@ -849,7 +849,6 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 }
 
 int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
-    printf("reading!\n");
     storage_ready = false;
     storage_result = SB_PORT_SUCCESS;
     callback_record = record_pointer;
@@ -860,7 +859,6 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
         return SB_PORT_EBUSY;
     }
     incoming_active_callback = signpost_storage_read_callback;
-    printf("read ing!\n");
 
     // allocate new message buffer
     size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
