@@ -45,6 +45,12 @@ static void storage_api_callback(uint8_t source_address,
       char filename[STORAGE_LOG_LEN+1];
       strncpy(logname, (char*) message, STORAGE_LOG_LEN);
       size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
+      // if the expected size of the message is greater than its length
+      if (logname_len + sizeof(size_t) + 1 > message_length) {
+        printf("Failed to allocate enough memory\n");
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EINVAL, true, true, 1);
+        return;
+      }
       uint8_t* data = message + logname_len + 1;
       size_t data_len = message_length - logname_len - 1;
       logname_to_filename(logname, source_address, filename);
@@ -53,7 +59,7 @@ static void storage_api_callback(uint8_t source_address,
 
       // write data to storage
       Storage_Record_t write_record = {0};
-      strncpy(write_record.logname, filename, STORAGE_LOG_LEN);
+      strncpy(write_record.logname, logname, STORAGE_LOG_LEN);
       write_record.length = data_len;
       size_t bytes_written = 0;
 
@@ -73,12 +79,29 @@ static void storage_api_callback(uint8_t source_address,
     }
 
     else if (message_type == StorageReadMessage) {
-      // unmarshal sent data into filename, offset, and length
+      // unmarshal sent data into logname, offset, and length
+      char logname[STORAGE_LOG_LEN+1];
       char filename[STORAGE_LOG_LEN+1];
-      strncpy(filename, (char*) message, STORAGE_LOG_LEN);
-      size_t filename_len= strnlen(filename, STORAGE_LOG_LEN);
-      size_t offset = *((size_t*) (message + filename_len + 1));
-      size_t length = *((size_t*) (message + filename_len + 2 + sizeof(size_t)));
+      strncpy(logname, (char*) message, STORAGE_LOG_LEN);
+      size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
+      // if the expected size of the message is greater than its length
+      if (logname_len + sizeof(size_t)*2 + 2 > message_length) {
+        printf("Failed to allocate enough memory\n");
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EINVAL, true, true, 1);
+        return;
+      }
+      size_t offset = *((size_t*) (message + logname_len + 1));
+      for (size_t i=0; i<sizeof(offset); i++) {
+        printf("%2x", *(message + logname_len + 1 + i));
+      }
+      printf("\n");
+      size_t length = *((size_t*) (message + logname_len + 2 + sizeof(size_t)));
+      for (size_t i=0; i<sizeof(length); i++) {
+        printf("%2x", *(message + logname_len + 2 + sizeof(offset) + i));
+      }
+      printf("\n");
+      //printf("%d %d %d\n", offset, length, logname_len);
+      logname_to_filename(logname, source_address, filename);
 
       printf("Reading data\n");
       // read data from storage
@@ -88,6 +111,7 @@ static void storage_api_callback(uint8_t source_address,
       if (data == NULL) {
         printf("Failed to allocate enough memory\n");
         signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ENOMEM, true, true, 1);
+        return;
       }
 
       err = storage_read_data(filename, offset, data, length, length, &bytes_read);
@@ -108,8 +132,10 @@ static void storage_api_callback(uint8_t source_address,
     }
 
     else if (message_type == StorageDeleteMessage) {
+      char logname[STORAGE_LOG_LEN+1];
       char filename[STORAGE_LOG_LEN+1];
-      strncpy(filename, (char*) message, STORAGE_LOG_LEN);
+      strncpy(logname, (char*) message, STORAGE_LOG_LEN);
+      logname_to_filename(logname, source_address, filename);
 
       printf("Deleting data\n");
       // delete filename from storage
