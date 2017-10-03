@@ -14,7 +14,7 @@
 
 
 int main(void) {
-    printf("Update Test app\n");
+    printf("Update Test app version 0.0.1\n");
 
     int rc;
     do {
@@ -28,7 +28,8 @@ int main(void) {
     delay_ms(20000);
 
     do {
-        rc = signpost_update("ec2-52-43-58-157.us-west-2.compute.amazonaws.com/deployment/test_update","0.0.1",0,0x2000,0);
+        printf("Attempting update...\n");
+        rc = signpost_update("ec2-52-43-58-157.us-west-2.compute.amazonaws.com/deployment/test_update","0.0.1",0,0x20000,0);
         if (rc < 0) {
             printf("Error code %d occurred during update\n", rc);
             delay_ms(20000);
