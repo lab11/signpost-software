@@ -70,6 +70,13 @@ uint8_t data_length[QUEUE_SIZE];
 uint8_t data_address[QUEUE_SIZE];
 uint8_t queue_head = 0;
 uint8_t queue_tail = 0;
+
+// Records of stored data to send eventually
+// for now, just use queue size
+#define EVENTUAL_REC_SIZE 10
+size_t num_saved_records = 0;
+Storage_Record_t saved_records[EVENTUAL_REC_SIZE];
+
 uint32_t lora_packets_sent = 1;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
@@ -82,8 +89,8 @@ uint8_t status_data_offset = 0;
 #define LORA_ERROR -1
 int lora_state = LORA_ERROR;
 
-//these structures for reporting energy to the controller
-
+static uint8_t seq_num = 0;
+static bool currently_sending = false;
 
 static void increment_queue_pointer(uint8_t* p) {
     if(*p == (QUEUE_SIZE -1)) {
@@ -164,6 +171,67 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
     }
 }
 
+static int add_message_to_buffer(uint8_t *buffer, size_t buf_len, size_t offset, uint8_t *data, size_t len) {
+  if (buf_len < len + 2) return TOCK_ENOMEM;
+  // lengths are only 1 byte, but header takes 2 bytes
+  buffer[offset] = 0;
+  buffer[offset+1] = (uint8_t) (len & 0xff);
+  offset += 2;
+
+  memcpy(buffer+offset, data, len);
+  offset += len;
+
+  return offset;
+}
+
+
+static int save_eventual_buffer(uint8_t addr, uint8_t* buffer, size_t len) {
+    size_t topic_len = buffer[0];
+    char* topic = (char*) (buffer + 1);
+    if (topic_len >= len) return TOCK_ESIZE; // impossible topic_length
+    size_t data_len = buffer[topic_len + 1];
+    if (topic_len + data_len + 2 != len) return TOCK_ESIZE; // incorrect length
+    uint8_t* data = buffer + topic_len + 2;
+
+    // search for existing records with same topic
+    Storage_Record_t* store_record = NULL;
+    for (int i = 0; i < EVENTUAL_REC_SIZE; i++) {
+      if (strncmp(saved_records[i].logname, topic, topic_len) == 0) {
+        store_record = &saved_records[i];
+        break;
+      }
+    }
+
+    uint8_t store_buf[100] = {0};
+    size_t offset = 0;
+
+    // Create new record, and set up log
+    if (store_record == NULL) {
+      if(num_saved_records == EVENTUAL_REC_SIZE) {
+        // record keeping is full
+        return TOCK_FAIL;
+      }
+      itoa(addr, saved_records[num_saved_records].logname, 16);
+      saved_records[num_saved_records].logname[2] = '_';
+      memcpy(saved_records[num_saved_records].logname + 3, topic, topic_len);
+      saved_records[num_saved_records].offset = 0;
+      saved_records[num_saved_records].length = 0;
+      store_record = &saved_records[num_saved_records];
+
+      memcpy(store_buf, address, ADDRESS_SIZE);
+      offset += ADDRESS_SIZE;
+      memcpy(store_buf + offset, &seq_num, 1);
+      offset+=1;
+    }
+
+    // add the message to the buffer
+    offset = add_message_to_buffer(store_buf, 100, offset, data, data_len);
+
+    // Append message to log
+    return signpost_storage_write(store_buf, offset, store_record);
+
+}
+
 static uint8_t calc_queue_length(void) {
     //calculate and add the queue size in the status packet
     if(queue_tail >= queue_head) {
@@ -180,7 +248,11 @@ static void networking_api_callback(uint8_t source_address,
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
         if(message_type == NetworkingSendMessage) {
             int rc = add_buffer_to_queue(source_address, message, message_length);
-            signpost_networking_send_reply(source_address, rc);
+            signpost_networking_send_reply(source_address, NetworkingSendMessage, rc);
+        }
+        else if( message_type == NetworkingSendEventuallyMessage) {
+            int rc = save_eventual_buffer(source_address, message, message_length);
+            signpost_networking_send_reply(source_address, NetworkingSendEventuallyMessage, rc);
         }
     }
 }
@@ -564,9 +636,6 @@ void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
     //and maybe this
 }
 
-static uint8_t sn = 0;
-static bool currently_sending = false;
-
 
 #define SUCCESS 0
 #define FAILURE 1
@@ -605,7 +674,6 @@ static void track_failures(bool fail) {
         lora_state = LORA_ERROR;
     }
 }
-
 
 static int cellular_state = SARA_U260_NO_SERVICE;
 static void timer_callback (
@@ -647,13 +715,13 @@ static void timer_callback (
                 return;
             }
 
-            //the queue has gotten to long, let's just send it over cellular
+            //the queue has gotten too long, let's just send it over cellular
             //make a big buffer to pack a large chunk of the queue into
             uint8_t cell_buffer[CELL_POST_SIZE];
             size_t used = 0;
             memcpy(cell_buffer, address, ADDRESS_SIZE);
             used += ADDRESS_SIZE;
-            memcpy(cell_buffer + used, &sn, 1);
+            memcpy(cell_buffer + used, &seq_num, 1);
             used += 1;
             bool done = false;
             uint8_t temp_head = queue_head;
@@ -686,7 +754,7 @@ static void timer_callback (
                 ret = sara_u260_get_post_response(rbuf,20);
                 if(ret >= SARA_U260_SUCCESS) {
                     if(!strncmp((char*)(&rbuf[9]),"200 OK", 6)) {
-                        sn++;
+                        seq_num++;
                         printf("SARA U260 Post Successful\n");
                         queue_head = temp_head;
                     } else {
@@ -705,7 +773,7 @@ static void timer_callback (
 
             //send the packet
             memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
-            memcpy(LoRa_send_buffer+ADDRESS_SIZE, &sn, 1);
+            memcpy(LoRa_send_buffer+ADDRESS_SIZE, &seq_num, 1);
             memcpy(LoRa_send_buffer+ADDRESS_SIZE + 1, data_queue[queue_head], BUFFER_SIZE);
 
             xdot_wake();
@@ -718,7 +786,7 @@ static void timer_callback (
             } else {
                 track_failures(SUCCESS);
                 printf("Xdot send succeeded!\n");
-                sn++;
+                seq_num++;
                 increment_queue_pointer(&queue_head);
             }
 

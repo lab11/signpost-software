@@ -1339,10 +1339,10 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    }
 }
 
-void signpost_networking_send_reply(uint8_t src_addr, int return_code) {
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {
 
    int rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
-                        NetworkingSendMessage, 4, (uint8_t*)(&return_code));
+                        type, 4, (uint8_t*)(&return_code));
 
    if (rc < 0) {
       port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
