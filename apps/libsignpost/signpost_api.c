@@ -859,7 +859,7 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
     size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
     size_t offset_len = sizeof(record_pointer->offset);
     size_t length_len = sizeof(record_pointer->length);
-    size_t marshal_len = logname_len + offset_len + length_len;
+    size_t marshal_len = logname_len + offset_len + length_len + 2;
     uint8_t* marshal = (uint8_t*) malloc(marshal_len);
     memset(marshal, 0, marshal_len);
     memcpy(marshal, &record_pointer->logname, logname_len);
