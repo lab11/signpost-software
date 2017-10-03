@@ -165,7 +165,7 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 /* STORAGE API                                                            */
 /**************************************************************************/
 
-#define STORAGE_LOG_LEN 255
+#define STORAGE_LOG_LEN 32
 
 enum storage_message_type {
    StorageWriteMessage = 0,
@@ -276,7 +276,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
 __attribute__((warn_unused_result))
 int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len);
 
-void signpost_networking_send_reply(uint8_t src_addr, int return_code);
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code);
 void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response, uint16_t response_len);
 
 //This allows modules to send bytes to any random address

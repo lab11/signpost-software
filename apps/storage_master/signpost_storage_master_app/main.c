@@ -48,7 +48,7 @@ static void storage_api_callback(uint8_t source_address,
       // if the expected size of the message is greater than its length
       if (logname_len + sizeof(size_t) + 1 > message_length) {
         printf("Failed to allocate enough memory\n");
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EINVAL, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EMOMEM, true, true, 1);
         return;
       }
       uint8_t* data = message + logname_len + 1;
@@ -87,7 +87,7 @@ static void storage_api_callback(uint8_t source_address,
       // if the expected size of the message is greater than its length
       if (logname_len + sizeof(size_t)*2 + 2 > message_length) {
         printf("Failed to allocate enough memory\n");
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EINVAL, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ENOMEM, true, true, 1);
         return;
       }
       size_t offset = *((size_t*) (message + logname_len + 1));
