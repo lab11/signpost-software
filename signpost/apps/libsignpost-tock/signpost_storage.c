@@ -41,39 +41,45 @@ int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, 
   FRESULT res;
 
   // XXX check valid filename
+  for (int i = 0; i < STORAGE_LOG_LEN; i++) {
+    if (filename[i] == '/') return TOCK_EINVAL;
+  }
+  if (strnlen(filename, STORAGE_LOG_LEN) == STORAGE_LOG_LEN) return TOCK_ESIZE;
 
   // determine folder names and check for existence, create if don't exist
-  char* temp_filename = (char*) malloc(STORAGE_LOG_LEN+1);
-  temp_filename[STORAGE_LOG_LEN] = 0;
-  strncpy(temp_filename, filename, STORAGE_LOG_LEN);
-  char *found;
-  char full_path[STORAGE_LOG_LEN];
-  size_t full_path_index = 0;
+  //char* temp_filename = (char*) malloc(STORAGE_LOG_LEN+1);
+  //temp_filename[STORAGE_LOG_LEN] = 0;
+  //strncpy(temp_filename, filename, STORAGE_LOG_LEN);
+  //char *found;
+  //char full_path[STORAGE_LOG_LEN];
+  //size_t full_path_index = 0;
 
-  while((found = strsep((char**) &temp_filename, "/")) != NULL) {
-    size_t found_len = strnlen(found, STORAGE_LOG_LEN);
-    // check full path is not too large
-    if (full_path_index + 1 + found_len > STORAGE_LOG_LEN) return TOCK_ESIZE;
-    // copy new dir/file name to full path
-    memcpy(full_path + full_path_index, found, found_len);
-    full_path_index += found_len;
-    // make directory
-    res = f_mkdir(full_path);
-    if (res != FR_OK && res != FR_EXIST) {
-      return TOCK_EINVAL;
-    }
-    // add dir seperator to full path
-    full_path[full_path_index] = '/';
-    full_path_index += 1;
+  //while((found = strsep((char**) &temp_filename, "/")) != NULL) {
+  //  if (temp_filename == NULL) break;
+  //  printf("found %s\n", found);
+  //  size_t found_len = strnlen(found, STORAGE_LOG_LEN);
+  //  // check full path is not too large
+  //  if (full_path_index + 1 + found_len > STORAGE_LOG_LEN) return TOCK_ESIZE;
+  //  // copy new dir/file name to full path
+  //  memcpy(full_path + full_path_index, found, found_len);
+  //  full_path_index += found_len;
+  //  // make directory
+  //  res = f_mkdir(full_path);
+  //  if (res != FR_OK && res != FR_EXIST) {
+  //    return TOCK_EINVAL;
+  //  }
+  //  // add dir seperator to full path
+  //  full_path[full_path_index] = '/';
+  //  full_path_index += 1;
 
-    // check if the next bit is the actual filename at end of path
-    size_t i;
-    for(i = full_path_index; i < STORAGE_LOG_LEN; i++) {
-      if (filename[i] == '\0' || filename[i] == '/') break;
-    }
-    if (filename[i] == '\0') break;
-  }
-  free(temp_filename);
+  //  // check if the next bit is the actual filename at end of path
+  //  size_t i;
+  //  for(i = full_path_index; i < STORAGE_LOG_LEN; i++) {
+  //    if (filename[i] == '\0' || filename[i] == '/') break;
+  //  }
+  //  if (filename[i] == '\0') break;
+  //}
+  //free(temp_filename);
 
   // open file for append and write
   res = f_open(&fp, filename, FA_OPEN_APPEND | FA_WRITE);
