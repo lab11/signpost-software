@@ -42,18 +42,16 @@ static void storage_api_callback(uint8_t source_address,
     if (message_type == StorageWriteMessage) {
       // unmarshal sent data into logname and data
       char logname[STORAGE_LOG_LEN+1];
-      char filename[STORAGE_LOG_LEN+1];
       strncpy(logname, (char*) message, STORAGE_LOG_LEN);
       size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
       // if the expected size of the message is greater than its length
       if (logname_len + sizeof(size_t) + 1 > message_length) {
         printf("Failed to allocate enough memory\n");
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_EMOMEM, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ENOMEM, true, true, 1);
         return;
       }
       uint8_t* data = message + logname_len + 1;
       size_t data_len = message_length - logname_len - 1;
-      logname_to_filename(logname, source_address, filename);
 
       printf("Writing data\n");
 
@@ -63,7 +61,7 @@ static void storage_api_callback(uint8_t source_address,
       write_record.length = data_len;
       size_t bytes_written = 0;
 
-      err = storage_write_data(filename, data, data_len, data_len, &bytes_written, &write_record.offset);
+      err = storage_write_data(logname, data, data_len, data_len, &bytes_written, &write_record.offset);
       if (err < TOCK_SUCCESS || bytes_written < data_len) {
         printf("Writing error: %d\n", err);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
@@ -81,7 +79,6 @@ static void storage_api_callback(uint8_t source_address,
     else if (message_type == StorageReadMessage) {
       // unmarshal sent data into logname, offset, and length
       char logname[STORAGE_LOG_LEN+1];
-      char filename[STORAGE_LOG_LEN+1];
       strncpy(logname, (char*) message, STORAGE_LOG_LEN);
       size_t logname_len = strnlen(logname, STORAGE_LOG_LEN);
       // if the expected size of the message is greater than its length
@@ -101,7 +98,6 @@ static void storage_api_callback(uint8_t source_address,
       }
       printf("\n");
       //printf("%d %d %d\n", offset, length, logname_len);
-      logname_to_filename(logname, source_address, filename);
 
       printf("Reading data\n");
       // read data from storage
@@ -114,7 +110,7 @@ static void storage_api_callback(uint8_t source_address,
         return;
       }
 
-      err = storage_read_data(filename, offset, data, length, length, &bytes_read);
+      err = storage_read_data(logname, offset, data, length, length, &bytes_read);
       if (err < TOCK_SUCCESS || bytes_read < length) {
         printf("Writing error: %d\n", err);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
@@ -133,15 +129,13 @@ static void storage_api_callback(uint8_t source_address,
 
     else if (message_type == StorageDeleteMessage) {
       char logname[STORAGE_LOG_LEN+1];
-      char filename[STORAGE_LOG_LEN+1];
       strncpy(logname, (char*) message, STORAGE_LOG_LEN);
-      logname_to_filename(logname, source_address, filename);
 
       printf("Deleting data\n");
-      // delete filename from storage
-      err = storage_del_data(filename);
+      // delete logname from storage
+      err = storage_del_data(logname);
       Storage_Record_t deleted_record = {0};
-      strncpy(deleted_record.logname, filename, STORAGE_LOG_LEN);
+      strncpy(deleted_record.logname, logname, STORAGE_LOG_LEN);
 
       // send response
       err = signpost_storage_delete_reply(source_address, &deleted_record);
