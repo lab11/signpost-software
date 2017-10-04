@@ -7,18 +7,10 @@
 
 #include "ff.h"
 
+#include "signpost_api.h"
 #include "signpost_storage.h"
 
 FATFS fs;           /* File system object */
-
-void logname_to_filename(char* logname, uint8_t mod_addr, char* filename) {
-    // first 2 characters are module address
-    // 'XX<logname>'
-    memset(filename, 0, MAX_FNAME_LEN);
-    itoa(mod_addr, filename, 16);
-    filename[2] = '_';
-    memcpy(filename+3, logname, MAX_FNAME_LEN-3);
-}
 
 static FRESULT scan_files (const char* path) {
     FRESULT res;
@@ -46,9 +38,46 @@ int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, 
 {
   size_t len = buf_len < bytes_to_write? buf_len : bytes_to_write;
   FIL fp;
+  FRESULT res;
+
+  // XXX check valid filename
+
+  // determine folder names and check for existence, create if don't exist
+  char* temp_filename = (char*) malloc(STORAGE_LOG_LEN+1);
+  temp_filename[STORAGE_LOG_LEN] = 0;
+  strncpy(temp_filename, filename, STORAGE_LOG_LEN);
+  char *found;
+  char full_path[STORAGE_LOG_LEN];
+  size_t full_path_index = 0;
+
+  while((found = strsep((char**) &temp_filename, "/")) != NULL) {
+    size_t found_len = strnlen(found, STORAGE_LOG_LEN);
+    // check full path is not too large
+    if (full_path_index + 1 + found_len > STORAGE_LOG_LEN) return TOCK_ESIZE;
+    // copy new dir/file name to full path
+    memcpy(full_path + full_path_index, found, found_len);
+    full_path_index += found_len;
+    // make directory
+    res = f_mkdir(full_path);
+    if (res != FR_OK && res != FR_EXIST) {
+      return TOCK_EINVAL;
+    }
+    // add dir seperator to full path
+    full_path[full_path_index] = '/';
+    full_path_index += 1;
+
+    // check if the next bit is the actual filename at end of path
+    size_t i;
+    for(i = full_path_index; i < STORAGE_LOG_LEN; i++) {
+      if (filename[i] == '\0' || filename[i] == '/') break;
+    }
+    if (filename[i] == '\0') break;
+  }
+  free(temp_filename);
 
   // open file for append and write
-  FRESULT res = f_open(&fp, filename, FA_OPEN_APPEND | FA_WRITE);
+  res = f_open(&fp, filename, FA_OPEN_APPEND | FA_WRITE);
+  printf("%d\n", res);
   if (res != FR_OK) return TOCK_FAIL;
 
   // copy file pointer to offset

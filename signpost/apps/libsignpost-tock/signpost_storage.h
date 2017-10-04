@@ -4,14 +4,7 @@
 extern "C" {
 #endif
 
-#define MAX_FNAME_LEN 255
-
 // function prototypes
-
-// convert logname to used filename
-// first 2 characters are module address
-// 'XX<logname>'
-void logname_to_filename(char* logname, uint8_t mod_addr, char* filename);
 
 // opens a file for writing and appends data to file
 int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, size_t bytes_to_write, size_t* bytes_written, size_t* offset);
