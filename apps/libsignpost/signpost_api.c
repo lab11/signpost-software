@@ -409,7 +409,7 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
     if (module_info.i2c_address_mods[module_number] != source_address) {
       module_info.i2c_address_mods[module_number] = source_address;
       module_info.haskey[module_number] = false;
-      printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
+      port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
     }
 
     // Just ack, TODO eventually will send new address
@@ -642,7 +642,6 @@ static int signpost_initialization_initialize_loop(void) {
             declare_controller_complete = false;
             rc = signpost_initialization_declare_controller();
             if (rc != SB_PORT_SUCCESS) {
-              printf("failed to declare with code %d\n", rc);
               init_state = RequestIsolation;
               break;
             }
@@ -830,12 +829,15 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageWriteMessage, len+logname_len, marshal); if (err < SB_PORT_SUCCESS) {
-        return err;
-    }
+            StorageApiType, StorageWriteMessage, len+logname_len, marshal);
 
     // free message buffer
     free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
+
 
     // wait for response
     port_signpost_wait_for_with_timeout(&storage_ready, 5000);
@@ -868,12 +870,14 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
 
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageReadMessage, marshal_len, marshal); if (err < SB_PORT_SUCCESS) {
-        return err;
-    }
+            StorageApiType, StorageReadMessage, marshal_len, marshal);
 
     // free message buffer
     free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
 
     // wait for response
     err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
@@ -1307,7 +1311,7 @@ int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_
 
     free(buf);
     if(rc < SB_PORT_SUCCESS) {
-        return rc;
+      return rc;
     }
 
     rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
@@ -1340,7 +1344,7 @@ void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_c
                         type, 4, (uint8_t*)(&return_code));
 
    if (rc < 0) {
-      printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
+      port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
             NetworkingSendMessage, rc, true, true, 1);
    }
@@ -1469,12 +1473,12 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
             report_buf_size, report_buf);
+    free(report_buf);
     if (rc < 0) return rc;
 
     incoming_active_callback = signpost_energy_report_callback;
     energy_report_received = false;
     rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
-    free(report_buf);
     if(rc < 0) {
         return SB_PORT_FAIL;
     }
@@ -1798,41 +1802,41 @@ int signpost_fetch_update(const char* url,
         //we got the message, is it a done or a xfer message?
         if(incoming_message_type == UpdateTransferMessage) {
             //take the message, unpack it, do a flash write, then respond
-            printf("Received transfer message\n");
+            //printf("Received transfer message\n");
             uint32_t data_len;
             uint32_t offset;
 
             memcpy(&data_len, incoming_message, 4);
             uint8_t* data = malloc(data_len);
             if(!data) {
-                printf("Memory error, returning\n");
+                //printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
             memcpy(data, incoming_message+4, data_len);
             memcpy(&offset, incoming_message+4+data_len, 4);
 
             if(offset+data_len > flash_scratch_length) {
-                printf("Memory error, returning\n");
+                //printf("Memory error, returning\n");
                 return SB_PORT_ENOMEM;
             }
 
-            printf("Writing to flash\n");
+            //printf("Writing to flash\n");
             ret = port_signpost_flash_write(flash_scratch_start + offset, data, data_len);
 
             free(data);
             if(ret < 0) {
-                printf("Error writing to flash\n");
+                //printf("Error writing to flash\n");
                 return ret;
             }
 
             //send response message so radio can proceed
-            printf("Sending response message to get more data\n");
+            //printf("Sending response message to get more data\n");
             ret = signpost_api_send(ModuleAddressRadio,
                 ResponseFrame, UpdateApiType, UpdateResponseMessage,
                 0, NULL);
 
             if(ret < 0)  {
-                printf("Error sending response message\n");
+                //printf("Error sending response message\n");
                 return ret;
             };
         } else if (incoming_message_type == UpdateResponseMessage) {
