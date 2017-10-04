@@ -171,23 +171,28 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
     }
 }
 
-static int add_message_to_buffer(uint8_t *buffer, size_t buf_len, size_t offset, uint8_t *data, size_t len) {
-  if (buf_len < len + 2) return TOCK_ENOMEM;
+static int add_message_to_buffer(uint8_t *buffer, size_t buf_len, size_t* offset, uint8_t *data, size_t len) {
+  size_t allowed_length = buf_len < len + 2? buf_len : len + 2;
   // lengths are only 1 byte, but header takes 2 bytes
-  buffer[offset] = 0;
-  buffer[offset+1] = (uint8_t) (len & 0xff);
-  offset += 2;
+  buffer[*offset] = 0;
+  buffer[*offset+1] = (uint8_t) (allowed_length & 0xff);
+  *offset += 2;
 
-  memcpy(buffer+offset, data, len);
-  offset += len;
+  memcpy(buffer+*offset, data, allowed_length);
+  *offset += allowed_length;
 
-  return offset;
+  return TOCK_SUCCESS;
 }
 
 
-static int save_eventual_buffer(uint8_t addr, uint8_t* buffer, size_t len) {
+static int save_eventual_buffer(uint8_t* buffer, size_t len) {
+    int rc = 0;
     size_t topic_len = buffer[0];
     char* topic = (char*) (buffer + 1);
+    for (int i = 0; i < topic_len; i++) {
+      printf("%c", topic[i]);
+    }
+    printf("\n");
     if (topic_len >= len) return TOCK_ESIZE; // impossible topic_length
     size_t data_len = buffer[topic_len + 1];
     if (topic_len + data_len + 2 != len) return TOCK_ESIZE; // incorrect length
@@ -211,9 +216,9 @@ static int save_eventual_buffer(uint8_t addr, uint8_t* buffer, size_t len) {
         // record keeping is full
         return TOCK_FAIL;
       }
-      itoa(addr, saved_records[num_saved_records].logname, 16);
-      saved_records[num_saved_records].logname[2] = '_';
-      memcpy(saved_records[num_saved_records].logname + 3, topic, topic_len);
+      //itoa(addr, saved_records[num_saved_records].logname, 16);
+      //saved_records[num_saved_records].logname[2] = '_';
+      memcpy(saved_records[num_saved_records].logname, topic, topic_len);
       saved_records[num_saved_records].offset = 0;
       saved_records[num_saved_records].length = 0;
       store_record = &saved_records[num_saved_records];
@@ -223,10 +228,11 @@ static int save_eventual_buffer(uint8_t addr, uint8_t* buffer, size_t len) {
       memcpy(store_buf + offset, &seq_num, 1);
       offset+=1;
     }
-
     // add the message to the buffer
-    offset = add_message_to_buffer(store_buf, 100, offset, data, data_len);
-
+    rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
+    if (rc < 0) {
+      return rc;
+    }
     // Append message to log
     return signpost_storage_write(store_buf, offset, store_record);
 
@@ -246,12 +252,13 @@ static void networking_api_callback(uint8_t source_address,
         uint8_t message_type, size_t message_length, uint8_t* message) {
 
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
+        //printf("Got message!\n");
         if(message_type == NetworkingSendMessage) {
             int rc = add_buffer_to_queue(source_address, message, message_length);
             signpost_networking_send_reply(source_address, NetworkingSendMessage, rc);
         }
         else if( message_type == NetworkingSendEventuallyMessage) {
-            int rc = save_eventual_buffer(source_address, message, message_length);
+            int rc = save_eventual_buffer(message, message_length);
             signpost_networking_send_reply(source_address, NetworkingSendEventuallyMessage, rc);
         }
     }
