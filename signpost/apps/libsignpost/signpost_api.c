@@ -647,7 +647,6 @@ static int signpost_initialization_initialize_loop(void) {
             declare_controller_complete = false;
             rc = signpost_initialization_declare_controller();
             if (rc != SB_PORT_SUCCESS) {
-              printf("failed to declare with code %d\n", rc);
               init_state = RequestIsolation;
               break;
             }
@@ -835,12 +834,15 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageWriteMessage, len+logname_len, marshal); if (err < SB_PORT_SUCCESS) {
-        return err;
-    }
+            StorageApiType, StorageWriteMessage, len+logname_len, marshal);
 
     // free message buffer
     free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
+
 
     // wait for response
     port_signpost_wait_for_with_timeout(&storage_ready, 5000);
@@ -873,12 +875,14 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t * record_pointer) {
 
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageReadMessage, marshal_len, marshal); if (err < SB_PORT_SUCCESS) {
-        return err;
-    }
+            StorageApiType, StorageReadMessage, marshal_len, marshal);
 
     // free message buffer
     free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
 
     // wait for response
     err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
@@ -1312,7 +1316,7 @@ int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_
 
     free(buf);
     if(rc < SB_PORT_SUCCESS) {
-        return rc;
+      return rc;
     }
 
     rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
@@ -1474,12 +1478,12 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
             report_buf_size, report_buf);
+    free(report_buf);
     if (rc < 0) return rc;
 
     incoming_active_callback = signpost_energy_report_callback;
     energy_report_received = false;
     rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
-    free(report_buf);
     if(rc < 0) {
         return SB_PORT_FAIL;
     }
