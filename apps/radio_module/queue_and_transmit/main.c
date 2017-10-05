@@ -51,10 +51,15 @@ static simple_ble_config_t ble_config = {
 };
 
 // short uuid is 0x6F00
+#define EVENTUAL_BUFFER_SIZE 200
 static simple_ble_service_t signpost_service = {
     .uuid128 = {{0x5C, 0xC2, 0x0D, 0x14, 0x6D, 0x28, 0x49, 0x7A,
                  0x8F, 0x56, 0x66, 0xB7, 0x6F, 0x00, 0xE9, 0x75}}
 };
+static simple_ble_char_t log_update_char = {.uuid16 = 0x6F01};
+static simple_ble_char_t log_notify_char = {.uuid16 = 0x6F02};
+static uint8_t log_buffer[EVENTUAL_BUFFER_SIZE];
+static uint8_t log_update_value [STORAGE_LOG_LEN];
 
 //definitions for the i2c
 #define BUFFER_SIZE 100
@@ -75,6 +80,7 @@ uint8_t queue_tail = 0;
 // for now, just use queue size
 #define EVENTUAL_REC_SIZE 10
 size_t num_saved_records = 0;
+size_t selected_record = 0;
 Storage_Record_t saved_records[EVENTUAL_REC_SIZE];
 
 uint32_t lora_packets_sent = 1;
@@ -125,12 +131,6 @@ static int join_lora_network(void);
         i = 0;
     }
 }*/
-
-static void ble_init(void) {
-    conn_handle = simple_ble_init(&ble_config)->conn_handle;
-    simple_ble_add_service(&signpost_service);
-    simple_adv_only_name();
-}
 
 static void count_module_packet(uint8_t module_address) {
 
@@ -189,7 +189,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
     int rc = 0;
     size_t topic_len = buffer[0];
     char* topic = (char*) (buffer + 1);
-    for (int i = 0; i < topic_len; i++) {
+    for (size_t i = 0; i < topic_len; i++) {
       printf("%c", topic[i]);
     }
     printf("\n");
@@ -613,6 +613,21 @@ static void update_api_callback(uint8_t source_address,
 }
 
 __attribute__ ((const))
+void services_init(void) {
+    simple_ble_add_service(&signpost_service);
+
+    simple_ble_add_stack_characteristic(1, 1, 0, 0,
+        STORAGE_LOG_LEN, (uint8_t*) log_update_value,
+        &signpost_service, &log_update_char);
+    printf("before char\n");
+    simple_ble_add_stack_characteristic(1, 0, 1, 0,
+        EVENTUAL_REC_SIZE, (uint8_t*) log_buffer,
+        &signpost_service, &log_notify_char);
+    printf("after char\n");
+
+}
+
+__attribute__ ((const))
 void ble_address_set(void) {
     static ble_gap_addr_t gap_addr;
 
@@ -631,6 +646,26 @@ void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //this has to be here too
     printf("ble error, resetting...");
     //app_watchdog_reset_app();
+}
+
+void ble_evt_write(ble_evt_t* p_ble_evt) {
+  if(simple_ble_is_char_event(p_ble_evt, &log_update_char)) {
+    // wrote to update characteristic
+    // search for and select the correct log
+    printf("requested logname: %s\n", log_update_value);
+    for (int i = 0; i < EVENTUAL_REC_SIZE; i++) {
+      if(strncmp(saved_records[i].logname, log_update_value, STORAGE_LOG_LEN) == 0) {
+        selected_record = i;
+        break;
+      }
+    }
+    printf("selected logname: %s\n", saved_records[selected_record].logname);
+
+    // get first 512 bytes of log
+
+    // notify that read is available
+    simple_ble_notify_char(&log_notify_char);
+  }
 }
 
 void ble_evt_connected(ble_evt_t* p_ble_evt __attribute__ ((unused))) {
@@ -976,7 +1011,10 @@ int main (void) {
     status_data_offset++;
 
     //ble
-    ble_init();
+    printf("before init\n");
+    conn_handle = simple_ble_init(&ble_config)->conn_handle;
+    printf("after init\n");
+    simple_adv_only_name();
 
     // setup watchdog
     app_watchdog_set_kernel_timeout(60000);
