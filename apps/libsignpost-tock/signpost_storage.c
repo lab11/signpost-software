@@ -34,6 +34,36 @@ static FRESULT scan_files (const char* path) {
     return res;
 }
 
+int32_t storage_scan_files(Storage_Record_t* list, size_t* list_len, size_t max_list_len) {
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+
+    *list_len = 0;
+    res = f_opendir(&dir, "");                       // Open the directory
+    if (res == FR_OK) {
+      while(1) {
+        res = f_readdir(&dir, &fno);                   // Read a directory item
+        if (res != FR_OK || fno.fname[0] == 0) break;  // Break on error or end of dir
+        if (!(fno.fattrib & AM_DIR)) {                    // It's not a directory
+          // if we're at the max, finish
+          if (*list_len >= max_list_len) break;
+          printf("  %s\n", fno.fname);
+          // copy the file info into a record
+          strncpy(list[*list_len].logname, fno.fname, STORAGE_LOG_LEN);
+          list[*list_len].offset = 0;
+          list[*list_len].length = fno.fsize;
+          // increment the current record number
+          *list_len += 1;
+        }
+      }
+      f_closedir(&dir);
+    }
+
+    return res;
+
+}
+
 int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, size_t bytes_to_write, size_t* bytes_written, size_t* offset)
 {
   size_t len = buf_len < bytes_to_write? buf_len : bytes_to_write;

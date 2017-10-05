@@ -81,7 +81,7 @@ uint8_t queue_tail = 0;
 #define EVENTUAL_REC_SIZE 10
 size_t num_saved_records = 0;
 size_t selected_record = 0;
-Storage_Record_t saved_records[EVENTUAL_REC_SIZE];
+Storage_Record_t saved_records[EVENTUAL_REC_SIZE] = {0};
 
 uint32_t lora_packets_sent = 1;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
@@ -619,11 +619,9 @@ void services_init(void) {
     simple_ble_add_stack_characteristic(1, 1, 0, 0,
         STORAGE_LOG_LEN, (uint8_t*) log_update_value,
         &signpost_service, &log_update_char);
-    printf("before char\n");
     simple_ble_add_stack_characteristic(1, 0, 1, 0,
         EVENTUAL_REC_SIZE, (uint8_t*) log_buffer,
         &signpost_service, &log_notify_char);
-    printf("after char\n");
 
 }
 
@@ -1010,10 +1008,18 @@ int main (void) {
     status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;
 
+    // eventual send data
+    // read existing log info
+    printf("Found the following existing files:\n");
+    num_saved_records = EVENTUAL_REC_SIZE;
+    rc = signpost_storage_scan(saved_records, &num_saved_records);
+    for(int i = 0; i < num_saved_records; i++) {
+      printf("  %s\n", saved_records[i].logname);
+    }
+    printf("\n");
+
     //ble
-    printf("before init\n");
     conn_handle = simple_ble_init(&ble_config)->conn_handle;
-    printf("after init\n");
     simple_adv_only_name();
 
     // setup watchdog

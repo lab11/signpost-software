@@ -6,6 +6,9 @@ extern "C" {
 
 // function prototypes
 
+// scan files in root directory, return list of records and length of records
+int32_t storage_scan_files(Storage_Record_t* list, size_t* list_len, size_t max_list_len);
+
 // opens a file for writing and appends data to file
 int32_t storage_write_data (const char* filename, uint8_t* buf, size_t buf_len, size_t bytes_to_write, size_t* bytes_written, size_t* offset);
 

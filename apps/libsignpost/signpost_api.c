@@ -761,6 +761,34 @@ static bool storage_ready;
 static bool storage_result;
 static Storage_Record_t* callback_record = NULL;
 static uint8_t* callback_data = NULL;
+static size_t* callback_length = NULL;
+
+static void signpost_storage_scan_callback(int len_or_rc) {
+
+    if (len_or_rc < SB_PORT_SUCCESS) {
+        // error code response
+        storage_result = len_or_rc;
+    } else if ((size_t) len_or_rc > *callback_length * sizeof(Storage_Record_t)) {
+        // invalid response length
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
+                __FILE__, __LINE__, len_or_rc, *callback_length*sizeof(Storage_Record_t));
+        storage_result = SB_PORT_FAIL;
+    } else {
+        // valid storage record
+        if (callback_record != NULL && callback_length != NULL) {
+            // copy over record response
+            *callback_length = len_or_rc / sizeof(Storage_Record_t);
+            printf("%u\n", *callback_length);
+            memcpy(callback_record, incoming_message, len_or_rc);
+        }
+        callback_record = NULL;
+        callback_length = NULL;
+        storage_result = SB_PORT_SUCCESS;
+    }
+
+    // response received
+    storage_ready = true;
+}
 
 static void signpost_storage_write_callback(int len_or_rc) {
 
@@ -807,6 +835,32 @@ static void signpost_storage_read_callback(int len_or_rc) {
 
     // response received
     storage_ready = true;
+}
+
+int signpost_storage_scan (Storage_Record_t* record_list, size_t* list_len) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_list;
+    callback_length = list_len;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_scan_callback;
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageScanMessage, sizeof(*list_len), (uint8_t*) list_len);
+
+    if (err < SB_PORT_SUCCESS) {
+        return err;
+    }
+
+    // wait for response
+    port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) return err;
+    return storage_result;
 }
 
 int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_pointer) {
@@ -910,6 +964,12 @@ int signpost_storage_delete (Storage_Record_t* record_pointer) {
     err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
     if (err != 0) return err;
     return storage_result;
+}
+
+int signpost_storage_scan_reply(uint8_t destination_address, Storage_Record_t* list, size_t list_len) {
+    return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageScanMessage,
+            list_len*sizeof(Storage_Record_t), (uint8_t*) list);
 }
 
 int signpost_storage_write_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {

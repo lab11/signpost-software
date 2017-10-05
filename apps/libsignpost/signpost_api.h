@@ -171,6 +171,7 @@ enum storage_message_type {
    StorageWriteMessage = 0,
    StorageReadMessage= 1,
    StorageDeleteMessage= 2,
+   StorageScanMessage= 3,
 };
 
 typedef struct {
@@ -178,6 +179,15 @@ typedef struct {
   size_t offset;
   size_t length;
 } Storage_Record_t;
+
+// Write data to the Storage Master
+//
+// params:
+//  record_list     - List of records to fill
+//  list_len        - Actual number of records filled
+//  max_list_len    - Maximum number of records to accept
+__attribute__((warn_unused_result))
+int signpost_storage_scan (Storage_Record_t* record_list, size_t* list_len);
 
 // Write data to the Storage Master
 //
@@ -203,6 +213,15 @@ int signpost_storage_read (uint8_t* data, Storage_Record_t* record_pointer);
 //  record_pointer  - Record that will indicate location of data to delete
 __attribute__((warn_unused_result))
 int signpost_storage_delete (Storage_Record_t* record_pointer);
+
+// Storage master response to scan request
+//
+// params:
+//  destination_address - Address to reply to
+//  list                - Buffer list of file names
+//  list_len            - Max list buffer length
+__attribute__((warn_unused_result))
+int signpost_storage_scan_reply(uint8_t destination_address, Storage_Record_t* list, size_t list_len);
 
 // Storage master response to write request
 //
