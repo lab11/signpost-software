@@ -39,7 +39,41 @@ static void storage_api_callback(uint8_t source_address,
     }
     printf("\n");
 
-    if (message_type == StorageWriteMessage) {
+    if (message_type == StorageScanMessage) {
+      if (message_length < sizeof(size_t)) {
+        printf("Message length is too small\n");
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ESIZE, true, true, 1);
+        return;
+      }
+      // unmarshal sent data into list_len
+      size_t list_len = *(size_t*) message;
+      printf("got request for %u records\n", list_len);
+      Storage_Record_t* list = malloc(list_len * sizeof(Storage_Record_t));
+      if (list == NULL) {
+        printf("Not enough memory to store record list of length %u\n", list_len);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, TOCK_ENOMEM, true, true, 1);
+        return;
+      }
+
+      printf("Scanning root directory\n");
+
+      // scan existing files
+      err = storage_scan_files(list, &list_len, list_len);
+      if (err < TOCK_SUCCESS) {
+        printf("Scanning error: %d\n", err);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        return;
+      }
+
+      // send response
+      err = signpost_storage_scan_reply(source_address, list, list_len);
+      if (err < TOCK_SUCCESS) {
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        return;
+      }
+    }
+
+    else if (message_type == StorageWriteMessage) {
       // unmarshal sent data into logname and data
       char logname[STORAGE_LOG_LEN+1];
       strncpy(logname, (char*) message, STORAGE_LOG_LEN);
