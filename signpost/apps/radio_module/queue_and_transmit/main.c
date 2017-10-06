@@ -44,7 +44,7 @@ uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
 static simple_ble_config_t ble_config = {
     .platform_id        = 0x00,
     .device_id          = DEVICE_ID_DEFAULT,
-    .adv_name           = (char *)DEVICE_NAME,
+    .adv_name           = DEVICE_NAME,
     .adv_interval       = MSEC_TO_UNITS(300, UNIT_0_625_MS),
     .min_conn_interval  = MSEC_TO_UNITS(500, UNIT_1_25_MS),
     .max_conn_interval  = MSEC_TO_UNITS(1250, UNIT_1_25_MS),
@@ -644,8 +644,22 @@ void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //app_watchdog_reset_app();
 }
 
+uint32_t simple_ble_stack_char_get_test (simple_ble_char_t* char_handle, uint16_t* len, uint8_t* buf) {
+    uint32_t err_code;
+    ble_gatts_value_t value = {
+        .len = *len,
+        .offset = 0,
+        .p_value = buf,
+    };
+
+    return sd_ble_gatts_value_get(conn_handle, char_handle->char_handle.value_handle, &value);
+}
+
 void ble_evt_write(ble_evt_t* p_ble_evt) {
   if(simple_ble_is_char_event(p_ble_evt, &log_update_char)) {
+    uint16_t char_len = STORAGE_LOG_LEN;
+    // get char from nrf
+    simple_ble_stack_char_get_test(&log_update_char, &char_len, log_update_value);
     // wrote to update characteristic
     // search for and select the correct log
     printf("requested logname: %s\n", log_update_value);
@@ -983,10 +997,10 @@ int main (void) {
         }
     } while (rc<0);
 
-    gpio_enable_output(BLE_POWER);
-    gpio_set(BLE_POWER);
-    delay_ms(10);
-    gpio_clear(BLE_POWER);
+    gpio_enable_output(BLE_RESET);
+    gpio_clear(BLE_RESET);
+    delay_ms(100);
+    gpio_set(BLE_RESET);
 
     gpio_enable_output(LORA_POWER);
 //    gpio_enable_output(GSM_POWER);
