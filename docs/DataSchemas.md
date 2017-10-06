@@ -124,13 +124,13 @@ MQTT Topic: signpost/lab11/energy
 ```
 
 ### Radio Status
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_radio_status.v0-0-1
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_radio.v0-0-1
 
 MQTT Topic: signpost/lab11/radio-status
 
 ```
 {
-    "device": "signpost_radio_status",
+    "device": "signpost_radio",
     "packets_sent": {
         "module_name": <uint8_t>,
         "module_name": <uint8_t>,
@@ -182,8 +182,7 @@ MQTT Topic: signpost/lab11/ambient
 ```
 
 ### RF Spectrum Sensing Module (currently TV whitespace channels)
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum.v0-0-1
-
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_max.v0-0-1
 MQTT Topic: signpost/lab11/spectrum
 
 ```
@@ -197,8 +196,9 @@ MQTT Topic: signpost/lab11/spectrum
     "944MHz-950MHz_max":    <int8_t>,
 }
 ```
-and
 
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_stddev.v0-0-1
+MQTT Topic: signpost/lab11/spectrum
 ```
 {
     "device": "signpost_rf_spectrum",
@@ -210,7 +210,9 @@ and
     "944MHz-950MHz_stddev":    <int8_t>,
 }
 ```
-and
+
+GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_mean.v0-0-1
+MQTT Topic: signpost/lab11/spectrum
 
 ```
 {
