@@ -183,6 +183,7 @@ MQTT Topic: signpost/lab11/ambient
 
 ### RF Spectrum Sensing Module (currently TV whitespace channels)
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_max.v0-0-1
+
 MQTT Topic: signpost/lab11/spectrum
 
 ```
@@ -198,6 +199,7 @@ MQTT Topic: signpost/lab11/spectrum
 ```
 
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_stddev.v0-0-1
+
 MQTT Topic: signpost/lab11/spectrum
 ```
 {
@@ -212,6 +214,7 @@ MQTT Topic: signpost/lab11/spectrum
 ```
 
 GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_mean.v0-0-1
+
 MQTT Topic: signpost/lab11/spectrum
 
 ```
