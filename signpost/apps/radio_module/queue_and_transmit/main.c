@@ -172,14 +172,14 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
 }
 
 static int add_message_to_buffer(uint8_t *buffer, size_t buf_len, size_t* offset, uint8_t *data, size_t len) {
-  size_t allowed_length = buf_len < len + 2? buf_len : len + 2;
+  if (len + 2 > buf_len) return TOCK_FAIL;
   // lengths are only 1 byte, but header takes 2 bytes
   buffer[*offset] = 0;
-  buffer[*offset+1] = (uint8_t) (allowed_length & 0xff);
+  buffer[*offset+1] = (uint8_t) (len & 0xff);
   *offset += 2;
 
-  memcpy(buffer+*offset, data, allowed_length);
-  *offset += allowed_length;
+  memcpy(buffer+*offset, data, len);
+  *offset += len;
 
   return TOCK_SUCCESS;
 }
@@ -189,6 +189,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
     int rc = 0;
     size_t topic_len = buffer[0];
     char* topic = (char*) (buffer + 1);
+    printf("\ngot save request!\n");
     for (size_t i = 0; i < topic_len; i++) {
       printf("%c", topic[i]);
     }
@@ -207,7 +208,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
       }
     }
 
-    uint8_t store_buf[100] = {0};
+    uint8_t store_buf[200] = {0};
     size_t offset = 0;
 
     // Create new record, and set up log
@@ -218,24 +219,30 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
       }
       //itoa(addr, saved_records[num_saved_records].logname, 16);
       //saved_records[num_saved_records].logname[2] = '_';
+
+      //XXX search for empty, available spaces
       memcpy(saved_records[num_saved_records].logname, topic, topic_len);
       saved_records[num_saved_records].offset = 0;
       saved_records[num_saved_records].length = 0;
       store_record = &saved_records[num_saved_records];
-
-      memcpy(store_buf, address, ADDRESS_SIZE);
-      offset += ADDRESS_SIZE;
-      memcpy(store_buf + offset, &seq_num, 1);
-      offset+=1;
     }
     // add the message to the buffer
     rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
     if (rc < 0) {
       return rc;
     }
+    //for (int i = 0; i < offset; i++) {
+    //  printf("%02x", store_buf[i]);
+    //}
+    //printf("\n");
+    //printf("\n");
     // Append message to log
-    return signpost_storage_write(store_buf, offset, store_record);
-
+    rc = signpost_storage_write(store_buf, offset, store_record);
+    if (rc < 0) {
+      return rc;
+    }
+    store_record->length += offset;
+    return rc;
 }
 
 static uint8_t calc_queue_length(void) {
@@ -644,8 +651,7 @@ void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //app_watchdog_reset_app();
 }
 
-uint32_t simple_ble_stack_char_get_test (simple_ble_char_t* char_handle, uint16_t* len, uint8_t* buf) {
-    uint32_t err_code;
+static uint32_t simple_ble_stack_char_get_test (simple_ble_char_t* char_handle, uint16_t* len, uint8_t* buf) {
     ble_gatts_value_t value = {
         .len = *len,
         .offset = 0,
@@ -664,16 +670,61 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     // search for and select the correct log
     printf("requested logname: %s\n", log_update_value);
     for (int i = 0; i < EVENTUAL_REC_SIZE; i++) {
-      if(strncmp(saved_records[i].logname, log_update_value, STORAGE_LOG_LEN) == 0) {
+      if(strncmp(saved_records[i].logname, (char*)log_update_value, STORAGE_LOG_LEN) == 0) {
         selected_record = i;
         break;
       }
     }
     printf("selected logname: %s\n", saved_records[selected_record].logname);
 
-    // get first 512 bytes of log
+    size_t index = 0;
 
-    // notify that read is available
+    //form sendable packet header
+    memcpy(log_buffer, address, ADDRESS_SIZE);
+    index += ADDRESS_SIZE;
+    memcpy(log_buffer + index, &seq_num, 1);
+    index+=1;
+
+    // get next bytes of log
+    printf("getting read\n");
+    size_t actual_read = EVENTUAL_BUFFER_SIZE - index;
+    int rc = signpost_storage_read(log_buffer + index, &actual_read, &saved_records[selected_record]);
+    if (rc != 0) {
+      printf("error getting packets from storage\n");
+      return;
+    }
+
+    for (int i = 0; i < EVENTUAL_BUFFER_SIZE; i++) {
+      printf("%02x", log_buffer[i]);
+    }
+    printf("\n\n");
+    for (int i = index; i < EVENTUAL_BUFFER_SIZE; i++) {
+      printf("%02x", log_buffer[i]);
+    }
+    printf("\n\n");
+
+    // fix up offset of record based on complete messages contained
+    size_t search = index;
+    while(search < EVENTUAL_BUFFER_SIZE) {
+      uint16_t pkt_len = log_buffer[search+1];
+      if (pkt_len == 0) break;
+      printf("found packet of length %u\n", pkt_len);
+
+      if (search + sizeof(uint16_t) + pkt_len >= EVENTUAL_BUFFER_SIZE) break;
+      search += sizeof(uint16_t) + pkt_len;
+    }
+    if (search == 0) {
+      //done, so disconnect?
+      //delete log
+    }
+
+    // search is now the total length of non-fragmented packets
+    saved_records[selected_record].offset += search - index;
+    // zero out fragmented packets remaining in buffer
+    memset(log_buffer+search+index, 0, EVENTUAL_BUFFER_SIZE-search-index);
+
+    // write data to nrf and notify that read is available
+    simple_ble_stack_char_set(&log_notify_char, search+index, log_buffer);
     simple_ble_notify_char(&log_notify_char);
   }
 }
@@ -997,6 +1048,16 @@ int main (void) {
         }
     } while (rc<0);
 
+    // eventual send data
+    // read existing log info
+    printf("Found the following existing files:\n");
+    num_saved_records = EVENTUAL_REC_SIZE;
+    rc = signpost_storage_scan(saved_records, &num_saved_records);
+    for(size_t i = 0; i < num_saved_records; i++) {
+      printf("  %s\n", saved_records[i].logname);
+    }
+    printf("\n");
+
     gpio_enable_output(BLE_RESET);
     gpio_clear(BLE_RESET);
     delay_ms(100);
@@ -1019,16 +1080,6 @@ int main (void) {
     status_data_offset = status_length_offset+1;
     status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;
-
-    // eventual send data
-    // read existing log info
-    printf("Found the following existing files:\n");
-    num_saved_records = EVENTUAL_REC_SIZE;
-    rc = signpost_storage_scan(saved_records, &num_saved_records);
-    for(int i = 0; i < num_saved_records; i++) {
-      printf("  %s\n", saved_records[i].logname);
-    }
-    printf("\n");
 
     //ble
     conn_handle = simple_ble_init(&ble_config)->conn_handle;

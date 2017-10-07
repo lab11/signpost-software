@@ -148,7 +148,7 @@ static void storage_api_callback(uint8_t source_address,
 
       err = storage_read_data(logname, offset, data, length, length, &bytes_read);
       if (err < TOCK_SUCCESS || bytes_read < length) {
-        printf("Writing error: %d\n", err);
+        printf("Reading error: %d\n", err);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
         free(data);
         return;
