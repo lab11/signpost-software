@@ -29,12 +29,12 @@ int main (void) {
     }
   } while (err < 0);
 
-  Storage_Record_t record = {0};
+  Storage_Record_t record = {.logname = "test"};
+
   while (true) {
     // create buffer
     // set buffer value to a byte from the record so that the value changes
-    memset(data, record.value[4], DATA_SIZE);
-    printf("Writing buffer [%X]*%d\n", record.value[4], DATA_SIZE);
+    printf("Writing buffer!\n");
 
     err = signpost_storage_write(data, DATA_SIZE, &record);
     if (err < TOCK_SUCCESS) {
@@ -42,7 +42,7 @@ int main (void) {
     } else {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-      printf("Wrote successfully! Block: %lu Offset: %lu\n", *(uint32_t*)&record.value[0], *(uint32_t*)&record.value[4]);
+      printf("Wrote successfully!\n");
 #pragma GCC diagnostic pop
     }
     printf("\n");

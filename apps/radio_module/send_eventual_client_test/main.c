@@ -37,7 +37,7 @@ int main(void) {
   }
 
   for(int i = 0; i < 5; i++) {
-    printf("Sending Eventually\n"):
+    printf("Sending Eventually\n");
     rc = signpost_networking_send_eventually("testtopic", data, 30);
 
     printf("rc: %d\n", rc);

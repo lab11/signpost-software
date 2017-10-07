@@ -127,11 +127,12 @@ int main (void) {
   printf("Writing data to file \"test\"\n");
   uint8_t buffer[100] = {0};
   size_t bytes_written = 0;
+  size_t offset = 0;
   int i;
   for (i=0; i<100; i++) {
     buffer[i] = i;
   }
-  rc = storage_write_data("test", buffer, 100, i, &bytes_written);
+  rc = storage_write_data("test", buffer, 100, i, &bytes_written, &offset);
   if (rc < TOCK_SUCCESS) {
     printf("Writing error: %d\n", rc);
   }

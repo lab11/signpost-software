@@ -4,6 +4,8 @@
 extern "C" {
 #endif
 
+#include "signpost_api.h"
+
 // function prototypes
 
 // scan files in root directory, return list of records and length of records
