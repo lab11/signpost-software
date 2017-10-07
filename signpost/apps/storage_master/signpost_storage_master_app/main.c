@@ -62,11 +62,13 @@ static void storage_api_callback(uint8_t source_address,
       if (err < TOCK_SUCCESS) {
         printf("Scanning error: %d\n", err);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        free(list);
         return;
       }
 
       // send response
       err = signpost_storage_scan_reply(source_address, list, list_len);
+      free(list);
       if (err < TOCK_SUCCESS) {
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
         return;
@@ -148,15 +150,16 @@ static void storage_api_callback(uint8_t source_address,
       if (err < TOCK_SUCCESS || bytes_read < length) {
         printf("Writing error: %d\n", err);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
+        free(data);
         return;
       }
 
       // send response
       err = signpost_storage_read_reply(source_address, data, length);
+      free(data);
       if (err < TOCK_SUCCESS) {
         signpost_api_error_reply_repeating(source_address, api_type, message_type, err, true, true, 1);
 
-        free(data);
         return;
       }
     }
