@@ -57,9 +57,11 @@ static simple_ble_service_t signpost_service = {
                  0x8F, 0x56, 0x66, 0xB7, 0x6F, 0x00, 0xE9, 0x75}}
 };
 static simple_ble_char_t log_update_char = {.uuid16 = 0x6F01};
-static simple_ble_char_t log_notify_char = {.uuid16 = 0x6F02};
-static uint8_t log_buffer[EVENTUAL_BUFFER_SIZE];
+static simple_ble_char_t log_read_char = {.uuid16 = 0x6F02};
+static simple_ble_char_t log_notify_char = {.uuid16 = 0x6F03};
 static uint8_t log_update_value [STORAGE_LOG_LEN];
+static uint8_t log_buffer[EVENTUAL_BUFFER_SIZE];
+static size_t  log_bytes_remaining;
 
 //definitions for the i2c
 #define BUFFER_SIZE 100
@@ -624,8 +626,11 @@ void services_init(void) {
     simple_ble_add_stack_characteristic(1, 1, 0, 0,
         STORAGE_LOG_LEN, (uint8_t*) log_update_value,
         &signpost_service, &log_update_char);
-    simple_ble_add_stack_characteristic(1, 0, 1, 0,
-        EVENTUAL_REC_SIZE, (uint8_t*) log_buffer,
+    simple_ble_add_stack_characteristic(1, 0, 0, 0,
+        EVENTUAL_BUFFER_SIZE, (uint8_t*) log_buffer,
+        &signpost_service, &log_read_char);
+    simple_ble_add_stack_characteristic(0, 0, 1, 0,
+        sizeof(size_t), (uint8_t*) &log_bytes_remaining,
         &signpost_service, &log_notify_char);
 
 }
@@ -694,15 +699,6 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
       return;
     }
 
-    for (int i = 0; i < EVENTUAL_BUFFER_SIZE; i++) {
-      printf("%02x", log_buffer[i]);
-    }
-    printf("\n\n");
-    for (int i = index; i < EVENTUAL_BUFFER_SIZE; i++) {
-      printf("%02x", log_buffer[i]);
-    }
-    printf("\n\n");
-
     // fix up offset of record based on complete messages contained
     size_t search = index;
     while(search < EVENTUAL_BUFFER_SIZE) {
@@ -713,9 +709,16 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
       if (search + sizeof(uint16_t) + pkt_len >= EVENTUAL_BUFFER_SIZE) break;
       search += sizeof(uint16_t) + pkt_len;
     }
-    if (search == 0) {
-      //done, so disconnect?
+    if (search == index) {
+      //done, so notify disconnect
+      printf("disconnect\n");
+      uint8_t stop = 0x1;
+      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
+      simple_ble_notify_char(&log_notify_char);
       //delete log
+      signpost_storage_delete(&saved_records[selected_record]);
+      //XXX handle deleted records - reorder storage
+      return;
     }
 
     // search is now the total length of non-fragmented packets
@@ -724,8 +727,15 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     memset(log_buffer+search+index, 0, EVENTUAL_BUFFER_SIZE-search-index);
 
     // write data to nrf and notify that read is available
-    simple_ble_stack_char_set(&log_notify_char, search+index, log_buffer);
+    rc = simple_ble_stack_char_set(&log_read_char, search, log_buffer);
+    if (rc != 0) {
+      printf("read update error: %d\n", rc);
+    }
     simple_ble_notify_char(&log_notify_char);
+
+    if (rc != 0) {
+      printf("notify update error: %d\n", rc);
+    }
   }
 }
 
