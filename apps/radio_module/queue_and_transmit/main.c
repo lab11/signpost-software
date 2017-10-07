@@ -89,7 +89,7 @@ uint32_t lora_packets_sent = 1;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
-uint8_t status_send_buf[50] = {0};
+uint8_t status_send_buf[400] = {0};
 uint8_t status_length_offset = 0;
 uint8_t status_data_offset = 0;
 
@@ -718,7 +718,11 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
       simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       simple_ble_notify_char(&log_notify_char);
       //delete log
-      signpost_storage_delete(&saved_records[selected_record]);
+      rc = signpost_storage_delete(&saved_records[selected_record]);
+      if (rc != 0) {
+        printf("Failed to delete record!\n");
+      }
+      saved_records[selected_record].length = 0;
       //XXX handle deleted records - reorder storage
       return;
     }
@@ -940,6 +944,29 @@ static void timer_callback (
                 break;
             }
         }
+        // copy logname lengths, lognames, and log lengths into buffer
+        // | log remaining length (uint16_t) | log name length (uint8_t) | log name (up to 32 uint8_t) |
+        size_t eventual_status_index = status_data_offset + 1 + number_of_modules*2;
+        status_send_buf[eventual_status_index] = num_saved_records;
+        eventual_status_index += 1;
+        i = 0;
+        for (; i < num_saved_records; i++){
+            if (saved_records[i].length > 0) {
+              size_t logname_len = strnlen(saved_records[i].logname, STORAGE_LOG_LEN);
+              if (logname_len == STORAGE_LOG_LEN) {
+                printf("Bad logname found when trying to send status\n");
+              }
+              uint16_t remaining = saved_records[i].length - saved_records[i].offset;
+              status_send_buf[eventual_status_index] = (uint8_t) ((remaining & 0xff00) >> 8);
+              status_send_buf[eventual_status_index+1] = (uint8_t) (remaining & 0xff);
+              eventual_status_index += 2;
+              status_send_buf[eventual_status_index] = logname_len & 0xff;
+              eventual_status_index += 1;
+              memcpy(status_send_buf + eventual_status_index, saved_records[i].logname, logname_len);
+              eventual_status_index += logname_len;
+            }
+        }
+
 
         printf("Sending energy query\n");
         signpost_energy_information_t info;
@@ -982,16 +1009,16 @@ static void timer_callback (
 
         //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
-            status_send_buf[status_data_offset+1+number_of_modules*2] = queue_tail-queue_head;
+            status_send_buf[eventual_status_index] = queue_tail-queue_head;
         } else {
-            status_send_buf[status_data_offset+1+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
+            status_send_buf[eventual_status_index] = QUEUE_SIZE-(queue_head-queue_tail);
         }
 
-        uint8_t status_len = 2+number_of_modules*2+1;
+        uint8_t status_len = 1 + eventual_status_index - status_data_offset;//2+number_of_modules*2+1;
         status_send_buf[status_length_offset] = status_len;
 
         //put it in the send buffer
-        add_buffer_to_queue(0x22, status_send_buf, status_data_offset+1+number_of_modules*2+1);
+        add_buffer_to_queue(0x22, status_send_buf, eventual_status_index);
 
         //reset send_counter
         send_counter = 0;
