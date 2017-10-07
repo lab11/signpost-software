@@ -1013,8 +1013,9 @@ static void timer_callback (
         } else {
             status_send_buf[eventual_status_index] = QUEUE_SIZE-(queue_head-queue_tail);
         }
+        eventual_status_index += 1;
 
-        uint8_t status_len = 1 + eventual_status_index - status_data_offset;//2+number_of_modules*2+1;
+        uint8_t status_len = eventual_status_index - status_data_offset;//2+number_of_modules*2+1;
         status_send_buf[status_length_offset] = status_len;
 
         //put it in the send buffer
