@@ -205,7 +205,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
 //  len             - Length of data to read
 //  record_pointer  - Record that will indicate location of stored data
 __attribute__((warn_unused_result))
-int signpost_storage_read (uint8_t* data, Storage_Record_t* record_pointer);
+int signpost_storage_read (uint8_t* data, size_t length, Storage_Record_t* record_pointer);
 
 // Delete log from the Storage Master
 //
