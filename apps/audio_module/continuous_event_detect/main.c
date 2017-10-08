@@ -23,8 +23,7 @@
 #define ANALYSIS_FRAME_LEN 256
 #define FFT_FRAME_LEN 2*AUDIO_FRAME_LEN
 
-// 18*2*256 = 8192 samples = 512 milliseconds
-#define BUFFER_LEN 2*2*AUDIO_FRAME_LEN
+#define BUFFER_LEN 2*AUDIO_FRAME_LEN
 static uint16_t sample_buffer[BUFFER_LEN];
 
 static uint8_t buffer_offset = 0;
@@ -94,8 +93,6 @@ static void continuous_buffered_sample_cb(uint8_t channel,
     printf("Event detected!\n");
 
     ridgeTracker_reset();
-  } else {
-    printf("No event!\n");
   }
 
   // update buffer offset
