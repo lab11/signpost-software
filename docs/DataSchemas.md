@@ -9,12 +9,12 @@ MQTT username and password.
 
 ### Stream/Log Naming
 
-MQTT: signpost/lab11/<device_short_name> 
+MQTT: signpost/lab11/<device_short_name>
 
 (i.e. signpost/lab11/gps)
 
 
-GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version> 
+GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version>
 
 (i.e. edu.berkeley.eecs.c098e5120003.signpost_energy.v0-0-1)
 
@@ -156,8 +156,8 @@ MQTT Topic: signpost/lab11/radio-status
         .
     },
     "packets_delayed_for_muling": {
-        "module_name": <uint16_t>,
-        "module_name": <uint16_t>,
+        "log_name": <uint16_t>,
+        "log_name": <uint16_t>,
         .
         .
         .
