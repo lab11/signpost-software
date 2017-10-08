@@ -272,7 +272,7 @@ int xdot_sleep(void) {
     ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_send(LORA_CONSOLE, "AT+sleep\n");
+    ret = at_send(LORA_CONSOLE, "AT+sleep=1\n");
     if(ret < 0) return XDOT_ERROR;
 
     return at_wait_for_response(LORA_CONSOLE,3,500);
