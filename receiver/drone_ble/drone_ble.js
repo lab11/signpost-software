@@ -1,10 +1,6 @@
 #!/usr/bin/env node
 
 var noble = require('noble')
-var async = require('async')
-var sleep = require('sleep')
-var request = require('request')
-var fs = require('fs')
 
 var signpost_service_uuid = '75e96f00b766568f7a49286d140dc25c'
 var signpost_update_char_uuid = '75e96f01b766568f7a49286d140dc25c' // use this to write request to signpost
@@ -16,10 +12,9 @@ var signpost_update_char = 0
 var signpost_read_char = 0
 var signpost_notify_char = 0
 
-var logname = "testtopic"
+var logname = "testtopic" // logname we are looking for
 
-var signpost_signpost
-
+var signpost_peripheral = 0
 var packets = []
 
 noble.on('stateChange', function(state) {
@@ -55,7 +50,8 @@ function explore(peripheral) {
   console.log('services and characteristics:');
 
   peripheral.on('disconnect', function() {
-    console.log("disconnect")
+    console.log("disconnected")
+    // send or consume any packets collected now!
     process.exit()
   });
 
