@@ -5,7 +5,7 @@ Make sure to `git pull`, `git submodule init`, and `git submodule update`.
 
 ### Relevent Files and Apps:
 
-#### For the Radio module:
+#### For the Radio Module:
 
 Update radio kernel:
 ```
@@ -21,11 +21,27 @@ make flash ID=XX
 XX represents a uinique hexidecimal byte distinguishing this radio. It can be
 anything.
 
-#### For the Storage module:
+#### For the Control Module:
+
+Update control kernel:
+```
+cd signpost-software/kernel/boards/controller/
+make flash
+```
+
+Install control app:
+```
+cd signpost-softare/apps/controller/signpost_controller_send_bytes_app/
+make flash
+```
+
+#### For the Storage Master (On the Controller Module):
+
+Make sure to install an SD card into the underside of the module.
 
 Update storage kernel:
 ```
-cd signpost-software/kernel/boards/storage_module/
+cd signpost-software/kernel/boards/storage_master/
 make flash
 ```
 
