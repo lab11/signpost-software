@@ -222,6 +222,7 @@ int xdot_reset(void) {
 
     ret = at_send(LORA_CONSOLE, "AT\n");
     if(ret < 0) return XDOT_ERROR;
+    delay_ms(100);
 
     //return at_wait_for_response(LORA_CONSOLE,6,500);
     return XDOT_SUCCESS;
