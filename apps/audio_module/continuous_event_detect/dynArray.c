@@ -5,32 +5,30 @@
 #include "common.h"
 #include "_kiss_fft_guts.h"
 
-#define BUF_SIZE 1600
+#define BUF_SIZE 1400
 
-void initArray(Array *a, size_t initialSize) {
+int insertArray_checked(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti);
+
+void initArray(Array *a,
+        __attribute__ ((unused)) size_t initialSize) {
+    //Note: We are ignoring the initial size here and using a static maximum
+    // size instead in order to avoid malloc
+
     static kiss_fft_scalar SNR_BUF[BUF_SIZE];
     static size_t FI_BUF[BUF_SIZE];
     static size_t TI_BUF[BUF_SIZE];
-    static bool used = false;
 
-    //Note: We are ignoring the initial size here and using a static maximum
-    // size instead in order to avoid malloc
     a->maxSize = BUF_SIZE;
     a->used = 0;
 
     a->size = a->maxSize;
     debug_printf("Init array size = %zu\n",a->size);
-    if (!used) {
-        a->SNR = SNR_BUF;
-        a->FI = FI_BUF;
-        a->TI = TI_BUF;
-        used = true;
-    } else {
-        printf("Trying to init second array!\n");
-    }
+    a->SNR = SNR_BUF;
+    a->FI = FI_BUF;
+    a->TI = TI_BUF;
 }
 
-void insertArray(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti) {
+int insertArray_checked(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti) {
 
     // we no longer double the array, but rather have a fixed size in order to
     // avoid malloc. This means we could run out of space. If we do, just throw
@@ -38,13 +36,20 @@ void insertArray(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti) {
     if (a->used >= a->size) {
         printf("Ran out of space!\n");
         a->used = 0;
-        return;
+        // return that there was an error
+        return -1;
     }
 
     a->SNR[a->used] = snr;
     a->FI[a->used] = fi;
     a->TI[a->used] = ti;
     a->used++;
+
+    return 0;
+}
+
+void insertArray(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti) {
+    insertArray_checked(a, snr, fi, ti);
 }
 
 void freeArray(Array *a) {

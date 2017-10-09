@@ -12,6 +12,10 @@
 #include <timer.h>
 #include <tock.h>
 
+#include "app_watchdog.h"
+#include "port_signpost.h"
+#include "signpost_api.h"
+
 #include "_kiss_fft_guts.h"
 #include "kiss_fftr.h"
 #include "ridgeTracker.h"
@@ -22,6 +26,8 @@
 #define AUDIO_FRAME_LEN 256
 #define ANALYSIS_FRAME_LEN 256
 #define FFT_FRAME_LEN 2*AUDIO_FRAME_LEN
+#define MS_PER_ITERATION 16
+#define REPORT_EVENTS_INTERVAL_MS 60*1000
 
 #define BUFFER_LEN 2*AUDIO_FRAME_LEN
 static uint16_t sample_buffer[BUFFER_LEN];
@@ -29,30 +35,46 @@ static uint16_t sample_buffer[BUFFER_LEN];
 static uint8_t buffer_offset = 0;
 #define MAX_BUFFER_OFFSET (BUFFER_LEN / AUDIO_FRAME_LEN)
 
+// FFT parameters stored in FLASH
 extern const kiss_fft_scalar WINDOW[FFT_FRAME_LEN];
+extern const uint8_t KISS_FFT_CFG_SUBSTATE[1288];
+extern const uint8_t KISS_FFT_CPX_SUPER_TWIDDLES[512];
 
-// okay, so this is the actual size malloc'd in `kiss_fftr_alloc`, which we
-// need to allocate statically and copy into when copying the
-// kiss_configuration before running an FFT
-#define KISS_FFTR_STATE_SIZE (3*sizeof(int*))
-#define KISS_CONFIGURATION_SIZE (KISS_FFTR_STATE_SIZE + sizeof(kiss_fft_cpx) * (FFT_FRAME_LEN/2 * 3 / 2) + (sizeof(struct kiss_fft_state) + sizeof(kiss_fft_cpx) * (FFT_FRAME_LEN/2 - 1)))
-static kiss_fftr_cfg kiss_configuration;
+// configuration for kiss fft library
+static uint8_t* kiss_configuration[3];
+static kiss_fft_cpx kiss_config_tmpbuf[FFT_FRAME_LEN/2];
 
 // function prototypes
 static void analyze_frequency(kiss_fft_scalar* frame, kiss_fft_scalar* spectrum);
+static int audio_initialize(void);
+static int start_sampling(void);
+static int stop_sampling(void);
+static void report_events(uint32_t event_count);
+static void report_event_occurred(void);
 
-
-static void continuous_buffered_sample_cb(uint8_t channel,
-                                          uint32_t length,
+// get callback when a buffer is filled with audio samples
+// should be called every ~16 ms (16000/256 times per second)
+static void continuous_buffered_sample_cb(__attribute__ ((unused)) uint8_t channel,
+                                          __attribute__ ((unused)) uint32_t length,
                                           uint16_t* buf_ptr,
                                           __attribute__ ((unused)) void* callback_args) {
   // keep track of which buffer to update
   static bool is_first_buffer = true;
 
+  // keep track of iterations to report events periodically
+  static uint16_t iterations = 0;
+
+  // keep track of how many events have been detected
+  static uint32_t event_count = 0;
+
   // local buffer for analyzed data
   static kiss_fft_scalar fft_frame[FFT_FRAME_LEN];
   static kiss_fft_scalar spectrum[ANALYSIS_FRAME_LEN];
-  static kiss_fft_scalar snr_out[ANALYSIS_FRAME_LEN]; //XXX: is this even necessary?
+
+  // we'll just put snr results in the first half of the fft frame to save
+  // memory instead of putting it separately in the data section
+  //static kiss_fft_scalar snr_out[ANALYSIS_FRAME_LEN];
+  kiss_fft_scalar* snr_out = fft_frame;
 
   //XXX: toggle debug pin
   led_on(0);
@@ -74,6 +96,9 @@ static void continuous_buffered_sample_cb(uint8_t channel,
     }
   }
 
+  // next callback will be the other buffer
+  is_first_buffer = !is_first_buffer;
+
   // copy last two audio frames into buffer for analysis
   uint16_t* prev_buf_ptr = &(sample_buffer[(MAX_BUFFER_OFFSET-1)*AUDIO_FRAME_LEN]);
   if (buffer_offset > 0) {
@@ -82,7 +107,13 @@ static void continuous_buffered_sample_cb(uint8_t channel,
   memcpy(&(fft_frame[0]), prev_buf_ptr, AUDIO_FRAME_LEN);
   memcpy(&(fft_frame[AUDIO_FRAME_LEN]), buf_ptr, AUDIO_FRAME_LEN);
 
-  // perfrom FFT
+  // update buffer offset
+  buffer_offset++;
+  if (buffer_offset >= MAX_BUFFER_OFFSET) {
+    buffer_offset = 0;
+  }
+
+  // perform FFT
   analyze_frequency(fft_frame, spectrum);
 
   // update ridge-tracking algorithm
@@ -90,42 +121,54 @@ static void continuous_buffered_sample_cb(uint8_t channel,
 
   // check for event
   if (ridgeTracker_isReady) {
+    event_count++;
+
+    // stop the ADC briefly and send messages
+    stop_sampling();
     printf("Event detected!\n");
-
+    report_event_occurred();
     ridgeTracker_reset();
+
+    // restarting the ADC will mean that we are on the first buffer again
+    is_first_buffer = true;
+    start_sampling();
   }
 
-  // update buffer offset
-  buffer_offset++;
-  if (buffer_offset >= MAX_BUFFER_OFFSET) {
-    buffer_offset = 0;
-  }
+  // check to see if we should report information
+  iterations++;
+  if (iterations * MS_PER_ITERATION > REPORT_EVENTS_INTERVAL_MS) {
+    iterations = 0;
 
-  // next callback will be the other buffer
-  is_first_buffer = !is_first_buffer;
+    // stop the ADC briefly and send messages
+    stop_sampling();
+    printf("Sending event report!\n");
+    report_events(event_count);
+    event_count = 0;
+
+    // restarting the ADC will mean that we are on the first buffer again
+    is_first_buffer = true;
+    start_sampling();
+  }
 
   //XXX: toggle debug pin
   led_off(0);
 }
 
-
 static void analyze_frequency(kiss_fft_scalar* frame, kiss_fft_scalar* spectrum) {
-  // FFT data structure
-  static kiss_fft_scalar in[FFT_FRAME_LEN];
-  static kiss_fft_cpx out[ANALYSIS_FRAME_LEN + 1];
-  static uint8_t fft_cfg_bytes[KISS_CONFIGURATION_SIZE];
-  //static kiss_fftr_cfg cfg = (kiss_fftr_cfg)fft_cfg_bytes;
+  // FFT data structures
+  kiss_fft_cpx out[ANALYSIS_FRAME_LEN + 1];
 
   // windowing and prescaling
+  // modified to do so in-place
   for (size_t i = 0; i < FFT_FRAME_LEN; i++){
-    in[i] = S_MUL(frame[i], WINDOW[i]) << 4;
+    frame[i] = S_MUL(frame[i], WINDOW[i]) << 4;
   }
 
   // use default configuration for FFT
-  kiss_fftr_cfg cfg = kiss_configuration;
+  kiss_fftr_cfg cfg = (kiss_fftr_cfg)kiss_configuration;
 
   // run the FFTs
-  kiss_fftr(cfg, in, out);
+  kiss_fftr(cfg, frame, out);
 
   // save the magnitude of the data
   for (size_t k = 0; k < ANALYSIS_FRAME_LEN; k++){
@@ -133,10 +176,8 @@ static void analyze_frequency(kiss_fft_scalar* frame, kiss_fft_scalar* spectrum)
   }
 }
 
-
-int main (void) {
+static int audio_initialize(void) {
   int err;
-  printf("[Audio Module] Continuous ADC sampling\n");
 
   // checking invariants
   assert(AUDIO_FRAME_LEN == INC_LEN);
@@ -147,24 +188,17 @@ int main (void) {
   // initialize ridge-tracking library
   ridgeTracker_init();
 
-  // generate a kiss fft configuration which we need for running FFTs. This
-  // takes a long time to generate (100-200 ms) but is the same every time its
-  // made, so we generate it once here and perform deep copies of the original
-  // whenever we need to run an FFT.
-  kiss_configuration = kiss_fftr_alloc(FFT_FRAME_LEN, 0, NULL, NULL);
-  if (kiss_configuration == NULL) {
-    printf("Kiss FFT failed to allocate configuration memory\n");
-    return -1;
-  }
-  //XXX: this configuration could be moved into ROM. But if we do so, we need
-  //to make sure to include an updated pointer to tmpbuf
-  //Probably best way to do it is to put substate and super_twiddles in ROM separately
-  // and then craft a kiss_configuration that points to them and a tmpbuf in RAM
-
-  // test that we correctly determined the kiss configuration size
-  size_t realsize = 0;
-  kiss_fftr_alloc(FFT_FRAME_LEN, 0, NULL, &realsize);
-  assert(realsize == KISS_CONFIGURATION_SIZE);
+  // create a kiss configuration!
+  // Instead of malloc-ing the whole thing on the heap, we've previously
+  // generated a configuration and placed it into Flash (except tmpbuf, which
+  // needs to be in RAM). So just build the kiss configuration out of those
+  // parts
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+  kiss_configuration[0] = KISS_FFT_CFG_SUBSTATE;
+  kiss_configuration[1] = (uint8_t*)kiss_config_tmpbuf;
+  kiss_configuration[2] = KISS_FFT_CPX_SUPER_TWIDDLES;
+#pragma GCC diagnostic pop
 
   // set ADC callbacks
   err = adc_set_continuous_buffered_sample_callback(continuous_buffered_sample_cb, NULL);
@@ -190,14 +224,66 @@ int main (void) {
   }
   buffer_offset++;
 
-  // begin continuous sampling
-  printf("Beginning continuous sampling on channel %d at %d Hz\n",
-         AUDIO_ADC_CHANNEL, AUDIO_SAMPLE_FREQUENCY);
-  err = adc_continuous_buffered_sample(AUDIO_ADC_CHANNEL, AUDIO_SAMPLE_FREQUENCY);
+  // begin sampling the ADC
+  err = start_sampling();
   if (err < TOCK_SUCCESS) {
     printf("continuous sample error: %d - %s\n", err, tock_strerror(err));
     return -1;
   }
+  printf(" * Started continuous sampling on channel %d at %d Hz\n",
+         AUDIO_ADC_CHANNEL, AUDIO_SAMPLE_FREQUENCY);
+
+  return TOCK_SUCCESS;
+}
+
+static int start_sampling (void) {
+  // begin continuous sampling
+  return adc_continuous_buffered_sample(AUDIO_ADC_CHANNEL, AUDIO_SAMPLE_FREQUENCY);
+}
+
+static int stop_sampling (void) {
+  return adc_stop_sampling();
+}
+
+// periodically report events over the radio
+static void report_events (uint32_t event_count) {
+
+  printf("Servicing timer callback!\n");
+  delay_ms(2000 + event_count);
+  printf("Done servicing\n");
+
+  // tickle watchdog
+  app_watchdog_tickle_kernel();
+}
+
+// asynchronously report an event triggering through the eventual interface
+static void report_event_occurred (void) {
+
+  // tickle watchdog
+  app_watchdog_tickle_kernel();
+}
+
+int main (void) {
+  printf("[Audio Module] Continuous ADC sampling\n");
+
+  //initialize the signpost API
+  int err;
+  do {
+    err = signpost_initialization_module_init(0x33, NULL);
+    if (err < SB_PORT_SUCCESS) {
+      printf(" - Error initializing bus (code %d). Sleeping for 5s\n", err);
+      delay_ms(5000);
+    }
+  } while (err < SB_PORT_SUCCESS);
+  printf(" * Bus initialized\n");
+
+  // start up app watchdog
+  app_watchdog_set_kernel_timeout(5*60*1000);
+  app_watchdog_start();
+  printf(" * Watchdog enabled\n");
+
+  // start up audio processing chain
+  audio_initialize();
 
   // return successfully. The system automatically calls `yield` continuously
   // for us
