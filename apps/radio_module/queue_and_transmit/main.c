@@ -39,29 +39,14 @@
 
 #define UMICH_COMPANY_IDENTIFIER 0x02E0
 
-uint16_t conn_handle = BLE_CONN_HANDLE_INVALID;
-
-static simple_ble_config_t ble_config = {
+/*static simple_ble_config_t ble_config = {
     .platform_id        = 0x00,
     .device_id          = DEVICE_ID_DEFAULT,
-    .adv_name           = DEVICE_NAME,
+    .adv_name           = (char *)DEVICE_NAME,
     .adv_interval       = MSEC_TO_UNITS(300, UNIT_0_625_MS),
     .min_conn_interval  = MSEC_TO_UNITS(500, UNIT_1_25_MS),
     .max_conn_interval  = MSEC_TO_UNITS(1250, UNIT_1_25_MS),
-};
-
-// short uuid is 0x6F00
-#define EVENTUAL_BUFFER_SIZE 200
-static simple_ble_service_t signpost_service = {
-    .uuid128 = {{0x5C, 0xC2, 0x0D, 0x14, 0x6D, 0x28, 0x49, 0x7A,
-                 0x8F, 0x56, 0x66, 0xB7, 0x6F, 0x00, 0xE9, 0x75}}
-};
-static simple_ble_char_t log_update_char = {.uuid16 = 0x6F01};
-static simple_ble_char_t log_read_char = {.uuid16 = 0x6F02};
-static simple_ble_char_t log_notify_char = {.uuid16 = 0x6F03};
-static uint8_t log_update_value [STORAGE_LOG_LEN];
-static uint8_t log_buffer[EVENTUAL_BUFFER_SIZE];
-static size_t  log_bytes_remaining;
+};*/
 
 //definitions for the i2c
 #define BUFFER_SIZE 100
@@ -77,19 +62,11 @@ uint8_t data_length[QUEUE_SIZE];
 uint8_t data_address[QUEUE_SIZE];
 uint8_t queue_head = 0;
 uint8_t queue_tail = 0;
-
-// Records of stored data to send eventually
-// for now, just use queue size
-#define EVENTUAL_REC_SIZE 10
-size_t num_saved_records = 0;
-size_t selected_record = 0;
-Storage_Record_t saved_records[EVENTUAL_REC_SIZE] = {0};
-
 uint32_t lora_packets_sent = 1;
 uint8_t module_num_map[NUMBER_OF_MODULES] = {0};
 uint8_t number_of_modules = 0;
 uint8_t module_packet_count[NUMBER_OF_MODULES] = {0};
-uint8_t status_send_buf[400] = {0};
+uint8_t status_send_buf[50] = {0};
 uint8_t status_length_offset = 0;
 uint8_t status_data_offset = 0;
 
@@ -97,8 +74,8 @@ uint8_t status_data_offset = 0;
 #define LORA_ERROR -1
 int lora_state = LORA_ERROR;
 
-static uint8_t seq_num = 0;
-static bool currently_sending = false;
+//these structures for reporting energy to the controller
+
 
 static void increment_queue_pointer(uint8_t* p) {
     if(*p == (QUEUE_SIZE -1)) {
@@ -173,86 +150,6 @@ static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
     }
 }
 
-static int add_message_to_buffer(uint8_t *buffer, size_t buf_len, size_t* offset, uint8_t *data, size_t len) {
-  if (len + 2 > buf_len) return TOCK_FAIL;
-  // lengths are only 1 byte, but header takes 2 bytes
-  buffer[*offset] = 0;
-  buffer[*offset+1] = (uint8_t) (len & 0xff);
-  *offset += 2;
-
-  memcpy(buffer+*offset, data, len);
-  *offset += len;
-
-  return TOCK_SUCCESS;
-}
-
-
-static int save_eventual_buffer(uint8_t* buffer, size_t len) {
-    int rc = 0;
-    size_t topic_len = buffer[0];
-    char* topic = (char*) (buffer + 1);
-    printf("\ngot save request!\n");
-    for (size_t i = 0; i < topic_len; i++) {
-      printf("%c", topic[i]);
-    }
-    printf("\n");
-    if (topic_len >= len) return TOCK_ESIZE; // impossible topic_length
-    size_t data_len = buffer[topic_len + 1];
-    if (topic_len + data_len + 2 != len) return TOCK_ESIZE; // incorrect length
-    uint8_t* data = buffer + topic_len + 2;
-
-    // search for existing records with same topic
-    Storage_Record_t* store_record = NULL;
-    for (int i = 0; i < EVENTUAL_REC_SIZE; i++) {
-      if (strncmp(saved_records[i].logname, topic, topic_len) == 0) {
-        store_record = &saved_records[i];
-        break;
-      }
-    }
-
-    uint8_t store_buf[200] = {0};
-    size_t offset = 0;
-
-    // Create new record, and set up log
-    if (store_record == NULL) {
-      if(num_saved_records == EVENTUAL_REC_SIZE) {
-        // record keeping is full
-        return TOCK_FAIL;
-      }
-      //itoa(addr, saved_records[num_saved_records].logname, 16);
-      //saved_records[num_saved_records].logname[2] = '_';
-
-      //XXX search for empty, available spaces
-      memcpy(saved_records[num_saved_records].logname, topic, topic_len);
-      saved_records[num_saved_records].offset = 0;
-      saved_records[num_saved_records].length = 0;
-      store_record = &saved_records[num_saved_records];
-      num_saved_records += 1;
-    }
-
-    // use temp_record and ignore write_storage modifies to record
-    // This is a workaround of the async nature of write_storage, and the
-    // inability to wait within a callback
-    Storage_Record_t temp_record = {};
-    memcpy(&temp_record, store_record, sizeof(Storage_Record_t));
-
-    // add the message to the buffer
-    rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
-    if (rc < 0) {
-      return rc;
-    }
-    //for (int i = 0; i < offset; i++) {
-    //  printf("%02x", store_buf[i]);
-    //}
-    //printf("\n");
-    //printf("\n");
-    // Append message to log
-    rc = signpost_storage_write(store_buf, offset, &temp_record);
-    store_record->length += offset;
-
-    return rc;
-}
-
 static uint8_t calc_queue_length(void) {
     //calculate and add the queue size in the status packet
     if(queue_tail >= queue_head) {
@@ -267,14 +164,9 @@ static void networking_api_callback(uint8_t source_address,
         uint8_t message_type, size_t message_length, uint8_t* message) {
 
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
-        //printf("Got message!\n");
         if(message_type == NetworkingSendMessage) {
             int rc = add_buffer_to_queue(source_address, message, message_length);
             signpost_networking_send_reply(source_address, NetworkingSendMessage, rc);
-        }
-        else if( message_type == NetworkingSendEventuallyMessage) {
-            int rc = save_eventual_buffer(message, message_length);
-            signpost_networking_send_reply(source_address, NetworkingSendEventuallyMessage, rc);
         }
     }
 }
@@ -593,9 +485,7 @@ static void update_api_callback(uint8_t source_address,
                 binary_offset += 200;
                 offset += 200;
             }
-        }
-    } else if(frame_type == ResponseFrame) {
-        if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
+        } else if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
             printf("UPDATE: Received ack to continue transfer\n");
             if(done_transferring) {
                 printf("Sending update reply done\n");
@@ -627,23 +517,6 @@ static void update_api_callback(uint8_t source_address,
     }
 }
 
-__attribute__ ((const))
-void services_init(void) {
-    simple_ble_add_service(&signpost_service);
-
-    simple_ble_add_stack_characteristic(1, 1, 0, 0,
-        STORAGE_LOG_LEN, (uint8_t*) log_update_value,
-        &signpost_service, &log_update_char);
-    simple_ble_add_stack_characteristic(1, 0, 0, 0,
-        EVENTUAL_BUFFER_SIZE, (uint8_t*) log_buffer,
-        &signpost_service, &log_read_char);
-    simple_ble_add_stack_characteristic(0, 0, 1, 0,
-        sizeof(size_t), (uint8_t*) &log_bytes_remaining,
-        &signpost_service, &log_notify_char);
-
-}
-
-__attribute__ ((const))
 void ble_address_set(void) {
     static ble_gap_addr_t gap_addr;
 
@@ -664,97 +537,6 @@ void ble_error(uint32_t error_code __attribute__ ((unused))) {
     //app_watchdog_reset_app();
 }
 
-static uint32_t simple_ble_stack_char_get_test (simple_ble_char_t* char_handle, uint16_t* len, uint8_t* buf) {
-    ble_gatts_value_t value = {
-        .len = *len,
-        .offset = 0,
-        .p_value = buf,
-    };
-
-    return sd_ble_gatts_value_get(conn_handle, char_handle->char_handle.value_handle, &value);
-}
-
-void ble_evt_write(ble_evt_t* p_ble_evt) {
-  if(simple_ble_is_char_event(p_ble_evt, &log_update_char)) {
-    uint16_t char_len = STORAGE_LOG_LEN;
-    // get char from nrf
-    simple_ble_stack_char_get_test(&log_update_char, &char_len, log_update_value);
-    // wrote to update characteristic
-    // search for and select the correct log
-    printf("requested logname: %s\n", log_update_value);
-    for (int i = 0; i < EVENTUAL_REC_SIZE; i++) {
-      if(strncmp(saved_records[i].logname, (char*)log_update_value, STORAGE_LOG_LEN) == 0) {
-        selected_record = i;
-        break;
-      }
-    }
-    printf("selected logname: %s\n", saved_records[selected_record].logname);
-
-    size_t index = 0;
-
-    //form sendable packet header
-    memcpy(log_buffer, address, ADDRESS_SIZE);
-    index += ADDRESS_SIZE;
-    memcpy(log_buffer + index, &seq_num, 1);
-    index+=1;
-
-    // get next bytes of log
-    size_t actual_read = EVENTUAL_BUFFER_SIZE - index;
-    int rc = signpost_storage_read(log_buffer + index, &actual_read, &saved_records[selected_record]);
-    if (rc != 0) {
-      printf("error getting packets from storage\n");
-      uint8_t stop = 0x1;
-      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
-      return;
-    }
-
-    // fix up offset of record based on complete messages contained
-    size_t search = index;
-    while(search < EVENTUAL_BUFFER_SIZE) {
-      uint16_t pkt_len = log_buffer[search+1];
-      if (pkt_len == 0) break;
-      printf("found packet of length %u\n", pkt_len);
-
-      if (search + sizeof(uint16_t) + pkt_len >= EVENTUAL_BUFFER_SIZE) break;
-      search += sizeof(uint16_t) + pkt_len;
-    }
-    if (search == index) {
-      //done, so notify disconnect
-      printf("disconnect\n");
-      uint8_t stop = 0x1;
-      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
-      simple_ble_notify_char(&log_notify_char);
-
-      stop = 0x0;
-      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
-      //delete log
-      rc = signpost_storage_delete(&saved_records[selected_record]);
-      if (rc != 0) {
-        printf("Failed to delete record!\n");
-      }
-      saved_records[selected_record].length = 0;
-      //XXX handle deleted records - reorder storage
-      return;
-    }
-
-    // search is now the total length of non-fragmented packets
-    saved_records[selected_record].offset += search - index;
-    // zero out fragmented packets remaining in buffer
-    memset(log_buffer+search, 0, EVENTUAL_BUFFER_SIZE-search);
-
-    // write data to nrf and notify that read is available
-    rc = simple_ble_stack_char_set(&log_read_char, search, log_buffer);
-    if (rc != 0) {
-      printf("read update error: %d\n", rc);
-    }
-    simple_ble_notify_char(&log_notify_char);
-
-    if (rc != 0) {
-      printf("notify update error: %d\n", rc);
-    }
-  }
-}
-
 void ble_evt_connected(ble_evt_t* p_ble_evt __attribute__ ((unused))) {
     //this might also need to be here
 }
@@ -766,6 +548,9 @@ void ble_evt_disconnected(ble_evt_t* p_ble_evt __attribute__ ((unused))) {
 void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
     //and maybe this
 }
+
+static uint8_t sn = 0;
+static bool currently_sending = false;
 
 
 #define SUCCESS 0
@@ -806,6 +591,7 @@ static void track_failures(bool fail) {
     }
 }
 
+
 static int cellular_state = SARA_U260_NO_SERVICE;
 static void timer_callback (
     int callback_type __attribute__ ((unused)),
@@ -818,6 +604,8 @@ static void timer_callback (
 
     if(queue_head != queue_tail) {
 
+        currently_sending = true;
+
         if(cellular_state == SARA_U260_NO_SERVICE) {
             int ret = sara_u260_check_connection();
             if(ret < SARA_U260_SUCCESS) {
@@ -829,8 +617,6 @@ static void timer_callback (
                 cellular_state = SARA_U260_SUCCESS;
             }
         }
-
-        currently_sending = true;
 
         if(calc_queue_length() > QUEUE_SIZE*0.66 && cellular_state == SARA_U260_SUCCESS) {
             printf("Attempting to send data with cellular radio\n");
@@ -846,13 +632,13 @@ static void timer_callback (
                 return;
             }
 
-            //the queue has gotten too long, let's just send it over cellular
+            //the queue has gotten to long, let's just send it over cellular
             //make a big buffer to pack a large chunk of the queue into
             uint8_t cell_buffer[CELL_POST_SIZE];
             size_t used = 0;
             memcpy(cell_buffer, address, ADDRESS_SIZE);
             used += ADDRESS_SIZE;
-            memcpy(cell_buffer + used, &seq_num, 1);
+            memcpy(cell_buffer + used, &sn, 1);
             used += 1;
             bool done = false;
             uint8_t temp_head = queue_head;
@@ -885,7 +671,7 @@ static void timer_callback (
                 ret = sara_u260_get_post_response(rbuf,20);
                 if(ret >= SARA_U260_SUCCESS) {
                     if(!strncmp((char*)(&rbuf[9]),"200 OK", 6)) {
-                        seq_num++;
+                        sn++;
                         printf("SARA U260 Post Successful\n");
                         queue_head = temp_head;
                     } else {
@@ -904,7 +690,7 @@ static void timer_callback (
 
             //send the packet
             memcpy(LoRa_send_buffer, address, ADDRESS_SIZE);
-            memcpy(LoRa_send_buffer+ADDRESS_SIZE, &seq_num, 1);
+            memcpy(LoRa_send_buffer+ADDRESS_SIZE, &sn, 1);
             memcpy(LoRa_send_buffer+ADDRESS_SIZE + 1, data_queue[queue_head], BUFFER_SIZE);
 
             xdot_wake();
@@ -917,7 +703,7 @@ static void timer_callback (
             } else {
                 track_failures(SUCCESS);
                 printf("Xdot send succeeded!\n");
-                seq_num++;
+                sn++;
                 increment_queue_pointer(&queue_head);
             }
 
@@ -931,7 +717,7 @@ static void timer_callback (
 
     //every minute put a status packet on the queue
     //also send an energy report to the controller
-    if(send_counter == 5) {
+    if(send_counter == 30) {
         //increment the sequence number
         status_send_buf[status_data_offset] = number_of_modules;
 
@@ -953,29 +739,6 @@ static void timer_callback (
             } else {
                 break;
             }
-        }
-
-        // copy logname lengths, lognames, and log lengths into buffer
-        // | log remaining length (uint16_t) | log name length (uint8_t) | log name (up to 32 uint8_t) |
-        size_t eventual_status_index = status_data_offset + 1 + number_of_modules*2;
-        status_send_buf[eventual_status_index] = num_saved_records;
-        eventual_status_index += 1;
-        i = 0;
-        for (; i < num_saved_records; i++){
-          size_t logname_len = strnlen(saved_records[i].logname, STORAGE_LOG_LEN);
-          if (logname_len == STORAGE_LOG_LEN) {
-            printf("Bad logname found when trying to send status\n");
-          }
-          //printf("saved record offset %d\n", saved_records[i].offset);
-          //printf("saved record length %d\n", saved_records[i].length);
-          uint16_t remaining = saved_records[i].length - saved_records[i].offset;
-          status_send_buf[eventual_status_index] = (uint8_t) ((remaining & 0xff00) >> 8);
-          status_send_buf[eventual_status_index+1] = (uint8_t) (remaining & 0xff);
-          eventual_status_index += 2;
-          status_send_buf[eventual_status_index] = logname_len & 0xff;
-          eventual_status_index += 1;
-          memcpy(status_send_buf + eventual_status_index, saved_records[i].logname, logname_len);
-          eventual_status_index += logname_len;
         }
 
         printf("Sending energy query\n");
@@ -1019,17 +782,16 @@ static void timer_callback (
 
         //calculate and add the queue size in the status packet
         if(queue_tail >= queue_head) {
-            status_send_buf[eventual_status_index] = queue_tail-queue_head;
+            status_send_buf[status_data_offset+1+number_of_modules*2] = queue_tail-queue_head;
         } else {
-            status_send_buf[eventual_status_index] = QUEUE_SIZE-(queue_head-queue_tail);
+            status_send_buf[status_data_offset+1+number_of_modules*2] = QUEUE_SIZE-(queue_head-queue_tail);
         }
-        eventual_status_index += 1;
 
-        uint8_t status_len = 1 + eventual_status_index - status_data_offset;//2+number_of_modules*2+1;
+        uint8_t status_len = 2+number_of_modules*2+1;
         status_send_buf[status_length_offset] = status_len;
 
         //put it in the send buffer
-        add_buffer_to_queue(0x22, status_send_buf, eventual_status_index);
+        add_buffer_to_queue(0x22, status_send_buf, status_data_offset+1+number_of_modules*2+1);
 
         //reset send_counter
         send_counter = 0;
@@ -1098,20 +860,10 @@ int main (void) {
         }
     } while (rc<0);
 
-    // eventual send data
-    // read existing log info
-    printf("Found the following existing files:\n");
-    num_saved_records = EVENTUAL_REC_SIZE;
-    rc = signpost_storage_scan(saved_records, &num_saved_records);
-    for(size_t i = 0; i < num_saved_records; i++) {
-      printf("  %s\n", saved_records[i].logname);
-    }
-    printf("\n");
-
-    gpio_enable_output(BLE_RESET);
-    gpio_clear(BLE_RESET);
-    delay_ms(100);
-    gpio_set(BLE_RESET);
+    gpio_enable_output(BLE_POWER);
+    gpio_set(BLE_POWER);
+    delay_ms(10);
+    gpio_clear(BLE_POWER);
 
     gpio_enable_output(LORA_POWER);
 //    gpio_enable_output(GSM_POWER);
@@ -1125,26 +877,21 @@ int main (void) {
     rc = sara_u260_init();
 
     status_send_buf[0] = strlen("lab11/radio-status");
-    printf("%02x\n", status_send_buf[0]);
     memcpy(status_send_buf+1,"lab11/radio-status",strlen("lab11/radio-status"));
-    for(int k = 0; k < status_send_buf[0] + 1; k++) {
-      printf("%02x", status_send_buf[k]);
-    }
-    printf("\n");
     status_length_offset = 1 + strlen("lab11/radio-status");
     status_data_offset = status_length_offset+1;
-    status_send_buf[status_data_offset] = 0x02;
+    status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;
-
     //ble
-    conn_handle = simple_ble_init(&ble_config)->conn_handle;
-    simple_adv_only_name();
+    //simple_ble_init(&ble_config);
 
-    // setup watchdog
+    //setup a tock timer to
+    //eddystone_adv((char *)PHYSWEB_URL,NULL);
+    //
     app_watchdog_set_kernel_timeout(60000);
     app_watchdog_start();
 
-    // setup timer
+    //setup timer
     static tock_timer_t timer;
     timer_every(2000, timer_callback, NULL, &timer);
 
