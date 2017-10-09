@@ -27,6 +27,7 @@
 #define BUFFER_SIZE 20
 
 uint8_t send_buf[100];
+uint8_t send_buf2[100];
 bool sample_done = false;
 bool still_sampling = false;
 
@@ -148,16 +149,17 @@ static void timer_callback (
     count++;
 
     if(count == 10) {
+        memcpy(send_buf2,send_buf,100);
+        count = 0;
+
         printf("About to send data to radio\n");
-        rc = signpost_networking_send("lab11/audio",send_buf,5+count*7);
+        rc = signpost_networking_send("lab11/audio",send_buf2,75);
         printf("Sent data with return code %d\n\n\n",rc);
 
         if(rc >= 0 && still_sampling == true) {
             app_watchdog_tickle_kernel();
             still_sampling = false;
         }
-
-        count = 0;
 
         //okay now try to get the time from the controller
         signpost_timelocation_time_t stime;
@@ -233,15 +235,16 @@ int main (void) {
 
     //init adc
     adc_set_callback(adc_callback, NULL);
+    adc_continuous_sample(0,700);
 
     //start timer
     printf("Starting timer\n");
     static tock_timer_t send_timer;
     timer_every(1000, timer_callback, NULL, &send_timer);
 
-    while (1) {
+/*    while (1) {
         sample_done = false;
         adc_single_sample(0);
         yield_for(&sample_done);
-    }
+    }*/
 }
