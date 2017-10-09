@@ -7,7 +7,9 @@ APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 VPATH_DIRS += ../../support/log2fix
 VPATH_DIRS += ../../support/kiss_fft
 VPATH_DIRS += ../../support/kiss_fft/tools
-VPATH_DIRS += ../../support/audio_class/c
+
+# we're adding these to the local path instead
+#VPATH_DIRS += ../../support/audio_class/c
 
 C_SRCS   += main.c
 C_SRCS   += parameters.c
