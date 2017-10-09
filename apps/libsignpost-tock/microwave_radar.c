@@ -91,7 +91,7 @@ static void adc_callback(__attribute__((unused)) uint8_t channel,
 
     //add the sample to the accumulator
     int s = sample;
-    s = s-2024;
+    s = s-2048;
     if(s < 0) {
         s = s * -1;
     }
