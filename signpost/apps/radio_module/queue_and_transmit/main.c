@@ -919,7 +919,7 @@ static void timer_callback (
                 increment_queue_pointer(&queue_head);
             }
 
-            //xdot_sleep();
+            xdot_sleep();
         }
         currently_sending = false;
     }
@@ -1070,7 +1070,7 @@ static int join_lora_network(void) {
         app_watchdog_tickle_kernel();
     } while (rc < 0);
 
-    //xdot_sleep();
+    xdot_sleep();
     track_failures(SUCCESS);
     lora_state = LORA_JOINED;
     printf("Joined successfully! Starting packets\n");
