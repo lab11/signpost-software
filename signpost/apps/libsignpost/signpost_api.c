@@ -1364,7 +1364,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
         return rc;
     }
 
-    rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
+    rc = port_signpost_wait_for_with_timeout(&networking_ready, 3000);
     if(rc < SB_PORT_SUCCESS) {
         return rc;
     }
