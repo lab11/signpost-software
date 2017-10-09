@@ -16,43 +16,15 @@
 #include "i2c_master_slave.h"
 #include "signpost_api.h"
 #include "microwave_radar.h"
+#include "time.h"
 
 // i2c message storage
-uint8_t send_buf[20];
+uint8_t send_buf[50];
 
 #define LED_PIN 0
 
-uint8_t motion_since_last_transmit = 0;
-uint32_t max_speed_since_last_transmit = 0;
-uint32_t max_index_since_last_transmit = 0;
-uint32_t periods_with_motion_since_last_transmit = 0;
-
-static void motion_callback (
-        int callback_type __attribute__ ((unused)),
-        int pin_value __attribute__ ((unused)),
-        int unused __attribute__ ((unused)),
-        void* callback_args __attribute__ ((unused))) {
-
-    int motion = mr_is_motion();
-    uint32_t motion_index = mr_motion_index();
-    uint32_t motion_freq = mr_motion_frequency_hz();
-    uint32_t mmps = mr_frequency_to_speed_mmps(motion_freq);
-
-    printf("Motion: %d, Index: %lu, Freq: %lu, Speed: %lu\n",motion,motion_index,motion_freq,mmps);
-
-    if(motion){
-        motion_since_last_transmit = 1;
-        periods_with_motion_since_last_transmit += 1;
-    }
-
-    if(motion_index > max_index_since_last_transmit) {
-        max_index_since_last_transmit = motion_index;
-    }
-
-    if(mmps > max_speed_since_last_transmit && motion) {
-        max_speed_since_last_transmit = mmps;
-    }
-}
+static uint32_t utime;
+struct tm current_time;
 
 static void timer_callback (
         int callback_type __attribute__ ((unused)),
@@ -61,33 +33,54 @@ static void timer_callback (
         void* callback_args __attribute__ ((unused))
         ) {
 
+    static int count = 0;
+    uint32_t motion_index = mr_motion_index();
+    printf("Got motion index of %lu\n",motion_index);
 
-    // set data
-    // boolean, motion since last transmission
-    send_buf[1] = (motion_since_last_transmit & 0xFF);
     // uint32_t, max speed in milli-meters per second detected since last transmission
-    send_buf[3] = ((max_speed_since_last_transmit >> 24) & 0xFF);
-    send_buf[4] = ((max_speed_since_last_transmit >> 16) & 0xFF);
-    send_buf[5] = ((max_speed_since_last_transmit >>  8) & 0xFF);
-    send_buf[6] = ((max_speed_since_last_transmit)       & 0xFF);
-    send_buf[7] = ((max_index_since_last_transmit >> 24) & 0xFF);
-    send_buf[8] = ((max_index_since_last_transmit >> 16) & 0xFF);
-    send_buf[9] = ((max_index_since_last_transmit >>  8) & 0xFF);
-    send_buf[10] = ((max_index_since_last_transmit)       & 0xFF);
-    send_buf[11] = ((periods_with_motion_since_last_transmit >> 24) & 0xFF);
-    send_buf[12] = ((periods_with_motion_since_last_transmit >> 16) & 0xFF);
-    send_buf[13] = ((periods_with_motion_since_last_transmit >>  8) & 0xFF);
-    send_buf[14] = ((periods_with_motion_since_last_transmit)       & 0xFF);
+    send_buf[5+count*4] = ((motion_index >> 24) & 0xFF);
+    send_buf[5+count*4+1] = ((motion_index >> 16) & 0xFF);
+    send_buf[5+count*4+2] = ((motion_index >> 8) & 0xFF);
+    send_buf[5+count*4+3] = ((motion_index) & 0xFF);
 
+    count++;
 
-    // write data
-    int rc = signpost_networking_send("lab11/radar",send_buf,15);
-    if(rc >= 0) {
-        app_watchdog_tickle_kernel();
-        motion_since_last_transmit = 0;
-        max_speed_since_last_transmit = 0;
-        max_index_since_last_transmit = 0;
-        periods_with_motion_since_last_transmit = 0;
+    if(count == 10) {
+        printf("About to send data to radio\n");
+        int rc = signpost_networking_send("lab11/radar",send_buf,5+count*4);
+        printf("Sent data with return code %d\n\n\n",rc);
+
+        if(rc >= 0) {
+            app_watchdog_tickle_kernel();
+        }
+
+        count = 0;
+
+        //okay now try to get the time from the controller
+        signpost_timelocation_time_t stime;
+        rc = signpost_timelocation_get_time(&stime);
+        printf("Got time with %d satellites\n",stime.satellite_count);
+        if(rc < 0 || stime.satellite_count < 2) {
+            printf("Failed to get time - assuming 10 seconds\n");
+            utime += 10;
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
+        } else {
+            current_time.tm_year = stime.year - 1900;
+            current_time.tm_mon = stime.month - 1;
+            current_time.tm_mday = stime.day;
+            current_time.tm_hour = stime.hours;
+            current_time.tm_min = stime.minutes;
+            current_time.tm_sec = stime.seconds;
+            current_time.tm_isdst = 0;
+            utime = mktime(&current_time);
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
+        }
     }
 }
 
@@ -97,6 +90,10 @@ int main (void) {
     // initialize LED
     gpio_enable_output(LED_PIN);
     gpio_set(LED_PIN);
+
+    //turn off mr radar
+    gpio_enable_output(3);
+    gpio_clear(3);
 
     int rc;
     do {
@@ -108,17 +105,17 @@ int main (void) {
     } while (rc < 0);
     printf(" * Bus initialized\n");
 
+    //turn on mr radar
+    gpio_set(3);
+
     mr_init();
 
-    send_buf[0] = 0x01;
+    send_buf[0] = 0x02;
 
     // setup two timers. One every 500ms to check for motion and
     // one to send data every 5s summarizing that motion
     static tock_timer_t send_timer;
-    timer_every(5000, timer_callback, NULL, &send_timer);
-
-    static tock_timer_t motion_timer;
-    timer_every(500, motion_callback, NULL, &motion_timer);
+    timer_every(1000, timer_callback, NULL, &send_timer);
 
     // Setup a watchdog
     app_watchdog_set_kernel_timeout(60000);
