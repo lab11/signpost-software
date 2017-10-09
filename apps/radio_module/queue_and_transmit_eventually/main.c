@@ -593,9 +593,7 @@ static void update_api_callback(uint8_t source_address,
                 binary_offset += 200;
                 offset += 200;
             }
-        }
-    } else if(frame_type == ResponseFrame) {
-        if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
+        } else if(message_type == UpdateResponseMessage && update_state == TRANSFERRING_BINARY) {
             printf("UPDATE: Received ack to continue transfer\n");
             if(done_transferring) {
                 printf("Sending update reply done\n");
@@ -818,6 +816,8 @@ static void timer_callback (
 
     if(queue_head != queue_tail) {
 
+        currently_sending = true;
+
         if(cellular_state == SARA_U260_NO_SERVICE) {
             int ret = sara_u260_check_connection();
             if(ret < SARA_U260_SUCCESS) {
@@ -829,8 +829,6 @@ static void timer_callback (
                 cellular_state = SARA_U260_SUCCESS;
             }
         }
-
-        currently_sending = true;
 
         if(calc_queue_length() > QUEUE_SIZE*0.66 && cellular_state == SARA_U260_SUCCESS) {
             printf("Attempting to send data with cellular radio\n");
