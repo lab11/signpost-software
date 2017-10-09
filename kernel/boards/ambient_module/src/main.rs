@@ -78,10 +78,10 @@ impl Platform for AmbientModule {
             8 => f(Some(self.led)),
 
             10 => f(Some(self.si7021)),
-            11 => f(Some(self.lps25hb)),
             12 => f(Some(self.tsl2561)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
+            22 => f(Some(self.lps25hb)),
             30 => f(Some(self.app_flash)),
 
             108 => f(Some(self.app_watchdog)),
