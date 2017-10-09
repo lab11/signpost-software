@@ -229,6 +229,13 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
       store_record = &saved_records[num_saved_records];
       num_saved_records += 1;
     }
+
+    // use temp_record and ignore write_storage modifies to record
+    // This is a workaround of the async nature of write_storage, and the
+    // inability to wait within a callback
+    Storage_Record_t temp_record = {};
+    memcpy(&temp_record, store_record, sizeof(Storage_Record_t));
+
     // add the message to the buffer
     rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
     if (rc < 0) {
@@ -240,11 +247,9 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
     //printf("\n");
     //printf("\n");
     // Append message to log
-    rc = signpost_storage_write(store_buf, offset, store_record);
-    if (rc < 0) {
-      return rc;
-    }
+    rc = signpost_storage_write(store_buf, offset, &temp_record);
     store_record->length += offset;
+
     return rc;
 }
 
@@ -692,11 +697,12 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     index+=1;
 
     // get next bytes of log
-    printf("getting read\n");
     size_t actual_read = EVENTUAL_BUFFER_SIZE - index;
     int rc = signpost_storage_read(log_buffer + index, &actual_read, &saved_records[selected_record]);
     if (rc != 0) {
       printf("error getting packets from storage\n");
+      uint8_t stop = 0x1;
+      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       return;
     }
 
@@ -716,6 +722,9 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
       uint8_t stop = 0x1;
       simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       simple_ble_notify_char(&log_notify_char);
+
+      stop = 0x0;
+      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       //delete log
       rc = signpost_storage_delete(&saved_records[selected_record]);
       if (rc != 0) {
@@ -729,7 +738,7 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     // search is now the total length of non-fragmented packets
     saved_records[selected_record].offset += search - index;
     // zero out fragmented packets remaining in buffer
-    memset(log_buffer+search+index, 0, EVENTUAL_BUFFER_SIZE-search-index);
+    memset(log_buffer+search, 0, EVENTUAL_BUFFER_SIZE-search);
 
     // write data to nrf and notify that read is available
     rc = simple_ble_stack_char_set(&log_read_char, search, log_buffer);
@@ -920,7 +929,7 @@ static void timer_callback (
 
     //every minute put a status packet on the queue
     //also send an energy report to the controller
-    if(send_counter == 30) {
+    if(send_counter == 5) {
         //increment the sequence number
         status_send_buf[status_data_offset] = number_of_modules;
 
@@ -955,6 +964,8 @@ static void timer_callback (
           if (logname_len == STORAGE_LOG_LEN) {
             printf("Bad logname found when trying to send status\n");
           }
+          //printf("saved record offset %d\n", saved_records[i].offset);
+          //printf("saved record length %d\n", saved_records[i].length);
           uint16_t remaining = saved_records[i].length - saved_records[i].offset;
           status_send_buf[eventual_status_index] = (uint8_t) ((remaining & 0xff00) >> 8);
           status_send_buf[eventual_status_index+1] = (uint8_t) (remaining & 0xff);
