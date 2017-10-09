@@ -6,6 +6,7 @@
 #include <assert.h>
 
 #include <adc.h>
+#include <alarm.h>
 #include <console.h>
 #include <gpio.h>
 #include <led.h>
@@ -35,6 +36,15 @@ static uint16_t sample_buffer[BUFFER_LEN];
 static uint8_t buffer_offset = 0;
 #define MAX_BUFFER_OFFSET (BUFFER_LEN / AUDIO_FRAME_LEN)
 
+#define EVENT_AUDIO_VERSION 1
+#define EVENT_AUDIO_LEN 5
+
+#define AUDIO_RIDGE_VERSION 1
+#define AUDIO_RIDGE_HEADER_LEN 6
+#define AUDIO_RIDGE_FRAGMENT_LEN 64
+#define AUDIO_RIDGE_LEN (AUDIO_RIDGE_HEADER_LEN + AUDIO_RIDGE_FRAGMENT_LEN)
+
+
 // FFT parameters stored in FLASH
 extern const kiss_fft_scalar WINDOW[FFT_FRAME_LEN];
 extern const uint8_t KISS_FFT_CFG_SUBSTATE[1288];
@@ -50,7 +60,7 @@ static int audio_initialize(void);
 static int start_sampling(void);
 static int stop_sampling(void);
 static void report_events(uint32_t event_count);
-static void report_event_occurred(void);
+static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len);
 
 // get callback when a buffer is filled with audio samples
 // should be called every ~16 ms (16000/256 times per second)
@@ -123,25 +133,33 @@ static void continuous_buffered_sample_cb(__attribute__ ((unused)) uint8_t chann
   if (ridgeTracker_isReady) {
     event_count++;
 
-    // stop the ADC briefly and send messages
-    stop_sampling();
-    printf("Event detected!\n");
-    report_event_occurred();
-    ridgeTracker_reset();
+    // send detailed data once per minute
+    if (event_count == 1) {
+      // stop the ADC briefly and send messages
+      stop_sampling();
+      printf("Event detected!\n");
+      // the current alarm ticks seems like a reasonable enough way to disambiguate events
+      uint32_t event_id = alarm_read();
+      report_event_occurred(event_id, (uint8_t*)snr_out, sizeof(kiss_fft_scalar)*FFT_FRAME_LEN);
+      ridgeTracker_reset();
 
-    // restarting the ADC will mean that we are on the first buffer again
-    is_first_buffer = true;
-    start_sampling();
+      // restarting the ADC will mean that we are on the first buffer again
+      is_first_buffer = true;
+      start_sampling();
+    }
   }
 
   // check to see if we should report information
   iterations++;
+  if (iterations % 150 == 0) {
+    printf("itr: %d\n", iterations);
+  }
   if (iterations * MS_PER_ITERATION > REPORT_EVENTS_INTERVAL_MS) {
     iterations = 0;
 
     // stop the ADC briefly and send messages
     stop_sampling();
-    printf("Sending event report!\n");
+    printf("Sending event report! - %lu events\n", event_count);
     report_events(event_count);
     event_count = 0;
 
@@ -248,19 +266,67 @@ static int stop_sampling (void) {
 // periodically report events over the radio
 static void report_events (uint32_t event_count) {
 
-  printf("Servicing timer callback!\n");
-  delay_ms(2000 + event_count);
-  printf("Done servicing\n");
+  // put data into buffer
+  uint8_t data_buf[EVENT_AUDIO_LEN];
+  data_buf[0] = EVENT_AUDIO_VERSION;
+  data_buf[1] = (uint8_t)((event_count >> 24) & 0xFF);
+  data_buf[2] = (uint8_t)((event_count >> 16) & 0xFF);
+  data_buf[3] = (uint8_t)((event_count >>  8) & 0xFF);
+  data_buf[4] = (uint8_t)((event_count      ) & 0xFF);
 
-  // tickle watchdog
-  app_watchdog_tickle_kernel();
+  int err = signpost_networking_send("lab11/eventAudio", data_buf, EVENT_AUDIO_LEN);
+  if (err >= SB_PORT_SUCCESS) {
+    // tickle watchdog
+    app_watchdog_tickle_kernel();
+  } else {
+    printf("Networking send failed: %d\n", err);
+  }
 }
 
 // asynchronously report an event triggering through the eventual interface
-static void report_event_occurred (void) {
+static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len) {
 
-  // tickle watchdog
-  app_watchdog_tickle_kernel();
+  // put data into buffer
+  uint8_t data_buf[AUDIO_RIDGE_LEN];
+  data_buf[0] = AUDIO_RIDGE_VERSION;
+  data_buf[1] = (uint8_t)((event_id >> 24) & 0xFF);
+  data_buf[2] = (uint8_t)((event_id >> 16) & 0xFF);
+  data_buf[3] = (uint8_t)((event_id >>  8) & 0xFF);
+  data_buf[4] = (uint8_t)((event_id      ) & 0xFF);
+  data_buf[5] = 0; // packet fragment number
+
+  // send each report fragment
+  uint16_t bytes_remaining = report_len;
+  uint8_t fragment_index = 0;
+  while (bytes_remaining > 0) {
+
+    // record fragment number
+    data_buf[5] = fragment_index;
+
+    // copy bytes into data buffer
+    uint8_t bytes_written = AUDIO_RIDGE_FRAGMENT_LEN;
+    if (bytes_written > bytes_remaining) {
+      bytes_written = bytes_remaining;
+    }
+    memcpy(&(data_buf[6]), &(report_data[fragment_index * AUDIO_RIDGE_FRAGMENT_LEN]), bytes_written);
+
+    // send data to radio
+    uint8_t data_buf_len = AUDIO_RIDGE_HEADER_LEN + bytes_written;
+    int err = signpost_networking_send_eventually("lab11_audioRidge", data_buf, data_buf_len);
+    if (err >= SB_PORT_SUCCESS) {
+      // tickle watchdog
+      app_watchdog_tickle_kernel();
+    } else {
+      printf("Networking send eventually failed: %d\n", err);
+    }
+
+    // wait for the storage master
+    delay_ms(500);
+
+    // update state
+    bytes_remaining -= bytes_written;
+    fragment_index++;
+  }
 }
 
 int main (void) {
@@ -278,7 +344,9 @@ int main (void) {
   printf(" * Bus initialized\n");
 
   // start up app watchdog
-  app_watchdog_set_kernel_timeout(5*60*1000);
+  // warning: there may be a bug with the timeout period. Setting it rather
+  // long here in order to compensate
+  app_watchdog_set_kernel_timeout(15*60*1000);
   app_watchdog_start();
   printf(" * Watchdog enabled\n");
 
