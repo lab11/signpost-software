@@ -227,6 +227,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
       saved_records[num_saved_records].offset = 0;
       saved_records[num_saved_records].length = 0;
       store_record = &saved_records[num_saved_records];
+      num_saved_records += 1;
     }
     // add the message to the buffer
     rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
@@ -1121,7 +1122,7 @@ int main (void) {
     printf("\n");
     status_length_offset = 1 + strlen("lab11/radio-status");
     status_data_offset = status_length_offset+1;
-    status_send_buf[status_data_offset] = 0x01;
+    status_send_buf[status_data_offset] = 0x02;
     status_data_offset++;
 
     //ble
