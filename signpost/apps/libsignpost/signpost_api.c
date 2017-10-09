@@ -817,8 +817,6 @@ static void signpost_storage_write_callback(int len_or_rc) {
 }
 
 static void signpost_storage_read_callback(int len_or_rc) {
-    printf("callback?\n");
-    printf("returned %d, expected %d, total %d\n", len_or_rc, *callback_length, callback_record->length);
     if (len_or_rc < SB_PORT_SUCCESS) {
         // error code response
         storage_result = len_or_rc;
