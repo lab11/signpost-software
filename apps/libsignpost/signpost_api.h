@@ -165,13 +165,29 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 /* STORAGE API                                                            */
 /**************************************************************************/
 
+#define STORAGE_LOG_LEN 32
+
 enum storage_message_type {
    StorageWriteMessage = 0,
+   StorageReadMessage= 1,
+   StorageDeleteMessage= 2,
+   StorageScanMessage= 3,
 };
 
 typedef struct {
-   uint8_t value[8];
+  char logname[STORAGE_LOG_LEN+1]; //+1 for null char
+  size_t offset;
+  size_t length;
 } Storage_Record_t;
+
+// Write data to the Storage Master
+//
+// params:
+//  record_list     - List of records to fill
+//  list_len        - Actual number of records filled
+//  max_list_len    - Maximum number of records to accept
+__attribute__((warn_unused_result))
+int signpost_storage_scan (Storage_Record_t* record_list, size_t* list_len);
 
 // Write data to the Storage Master
 //
@@ -182,13 +198,55 @@ typedef struct {
 __attribute__((warn_unused_result))
 int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_pointer);
 
+// Read data from the Storage Master
+//
+// params:
+//  data            - Pointer to buffer to read to
+//  len             - Length of data to read
+//  record_pointer  - Record that will indicate location of stored data
+__attribute__((warn_unused_result))
+int signpost_storage_read (uint8_t* data, size_t *len, Storage_Record_t* record_pointer);
+
+// Delete log from the Storage Master
+//
+// params:
+//  record_pointer  - Record that will indicate location of data to delete
+__attribute__((warn_unused_result))
+int signpost_storage_delete (Storage_Record_t* record_pointer);
+
+// Storage master response to scan request
+//
+// params:
+//  destination_address - Address to reply to
+//  list                - Buffer list of file names
+//  list_len            - Max list buffer length
+__attribute__((warn_unused_result))
+int signpost_storage_scan_reply(uint8_t destination_address, Storage_Record_t* list, size_t list_len);
+
 // Storage master response to write request
 //
 // params:
 //  destination_address - Address to reply to
 //  record_pointer      - Data at record
 __attribute__((warn_unused_result))
-int signpost_storage_write_reply (uint8_t destination_address, uint8_t* record_pointer);
+int signpost_storage_write_reply (uint8_t destination_address, Storage_Record_t* record_pointer);
+
+// Storage master response to read request
+//
+// params:
+//  destination_address - Address to reply to
+//  data                - buffer to write read data
+//  length              - length of read data
+__attribute__((warn_unused_result))
+int signpost_storage_read_reply (uint8_t destination_address, uint8_t* data, size_t length);
+
+// Storage master response to delete request
+//
+// params:
+//  destination_address - Address to reply to
+//  record_pointer      - Returned record
+__attribute__((warn_unused_result))
+int signpost_storage_delete_reply (uint8_t destination_address, Storage_Record_t* record_pointer);
 
 /**************************************************************************/
 /* NETWORKING API                                                         */
@@ -237,7 +295,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
 __attribute__((warn_unused_result))
 int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len);
 
-void signpost_networking_send_reply(uint8_t src_addr, int return_code);
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code);
 void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response, uint16_t response_len);
 
 //This allows modules to send bytes to any random address

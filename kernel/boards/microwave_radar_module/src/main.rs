@@ -100,6 +100,8 @@ unsafe fn set_pin_primary_functions() {
     PA[14].configure(None); // MSGEQ7 strobe
     PA[15].configure(None); // MSGEQ7 reset
     PA[17].configure(None); // Blink LED
+    PA[19].configure(Some(A)); // USART2 RX
+    PA[20].configure(Some(A)); // USART2 TX
     PA[23].configure(Some(B)); // I2C SDA
     PA[24].configure(Some(B)); // I2C SCL
     PA[19].configure(Some(A)); // USART2 RX

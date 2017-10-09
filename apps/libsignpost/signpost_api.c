@@ -138,7 +138,6 @@ static void signpost_api_start_new_async_recv(void) {
 }
 
 static void signpost_api_recv_callback(int len_or_rc) {
-    SIGNBUS_DEBUG("len_or_rc %d\n", len_or_rc);
     if (len_or_rc < 0) {
         if (len_or_rc == SB_PORT_ECRYPT) {
             port_printf("Dropping message with HMAC/HASH failure\n");
@@ -309,7 +308,7 @@ int signpost_initialization_request_isolation(void) {
 
 static int signpost_initialization_declare_controller(void) {
     // set callback for handling response from controller/modules
-    if (incoming_active_callback != NULL) {
+    if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_declare_callback) {
         return SB_PORT_EBUSY;
     }
 
@@ -760,9 +759,36 @@ int signpost_initialization_initialize_with_module(uint8_t module_address) {
 static bool storage_ready;
 static bool storage_result;
 static Storage_Record_t* callback_record = NULL;
+static uint8_t* callback_data = NULL;
+static size_t* callback_length = NULL;
 
-static void signpost_storage_callback(int len_or_rc) {
+static void signpost_storage_scan_callback(int len_or_rc) {
+    if (len_or_rc < SB_PORT_SUCCESS) {
+        // error code response
+        storage_result = len_or_rc;
+    } else if ((size_t) len_or_rc > *callback_length * sizeof(Storage_Record_t)) {
+        // invalid response length
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
+                __FILE__, __LINE__, len_or_rc, *callback_length*sizeof(Storage_Record_t));
+        storage_result = SB_PORT_FAIL;
+    } else {
+        // valid storage record
+        if (callback_record != NULL && callback_length != NULL) {
+            // copy over record response
+            *callback_length = len_or_rc / sizeof(Storage_Record_t);
+            printf("%u\n", *callback_length);
+            memcpy(callback_record, incoming_message, len_or_rc);
+        }
+        callback_record = NULL;
+        callback_length = NULL;
+        storage_result = SB_PORT_SUCCESS;
+    }
 
+    // response received
+    storage_ready = true;
+}
+
+static void signpost_storage_write_callback(int len_or_rc) {
     if (len_or_rc < SB_PORT_SUCCESS) {
         // error code response
         storage_result = len_or_rc;
@@ -785,6 +811,64 @@ static void signpost_storage_callback(int len_or_rc) {
     storage_ready = true;
 }
 
+static void signpost_storage_read_callback(int len_or_rc) {
+    if (len_or_rc < SB_PORT_SUCCESS) {
+        // error code response
+        storage_result = len_or_rc;
+    } else if (callback_length == NULL) {
+        storage_result = SB_PORT_EINVAL;
+    } else if ((size_t) len_or_rc > *callback_length) {
+        // invalid response length
+        port_printf("%s:%d - Error: bad len, got %d, want %d\n",
+                __FILE__, __LINE__, len_or_rc, *callback_length);
+        storage_result = SB_PORT_FAIL;
+    } else {
+        // valid data
+        if (callback_data != NULL) {
+            // copy over record response
+            memcpy(callback_data, incoming_message, *callback_length);
+        }
+        callback_data= NULL;
+        callback_length = NULL;
+        storage_result = SB_PORT_SUCCESS;
+    }
+
+    // response received
+    storage_ready = true;
+}
+
+int signpost_storage_scan (Storage_Record_t* record_list, size_t* list_len) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_list;
+    callback_length = list_len;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_scan_callback;
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageScanMessage, sizeof(*list_len), (uint8_t*) list_len);
+
+    if (err < SB_PORT_SUCCESS) {
+        storage_ready = true;
+        incoming_active_callback = NULL;
+        return err;
+    }
+
+    // wait for response
+    port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) {
+      storage_ready = true;
+      incoming_active_callback = NULL;
+      return err;
+    }
+    return storage_result;
+}
+
 int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_pointer) {
     storage_ready = false;
     storage_result = SB_PORT_SUCCESS;
@@ -794,23 +878,143 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
     if (incoming_active_callback != NULL) {
         return SB_PORT_EBUSY;
     }
-    incoming_active_callback = signpost_storage_callback;
+    incoming_active_callback = signpost_storage_write_callback;
 
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+    uint8_t* marshal = (uint8_t*) malloc(logname_len + len + 1);
+    memcpy(marshal, record_pointer->logname, logname_len+1);
+    marshal[logname_len] = 0;
+    memcpy(marshal+logname_len+1, data, len);
     // send message
     int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
-            StorageApiType, StorageWriteMessage, len, data); if (err < SB_PORT_SUCCESS) {
+            StorageApiType, StorageWriteMessage, len+logname_len+1, marshal);
+
+    // free message buffer
+    free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        storage_ready = true;
+        incoming_active_callback = NULL;
         return err;
     }
 
     // wait for response
-    port_signpost_wait_for(&storage_ready);
+    //err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    //if (err != 0) {
+    //  storage_ready = true;
+    //  incoming_active_callback = NULL;
+    //  return err;
+    //}
     return storage_result;
 }
 
-int signpost_storage_write_reply(uint8_t destination_address, uint8_t* record_pointer) {
+int signpost_storage_read (uint8_t* data, size_t *len, Storage_Record_t * record_pointer) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_pointer;
+    callback_data = data;
+    callback_length = len;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_read_callback;
+
+    if(*len> record_pointer->length - record_pointer->offset) {
+      *len= record_pointer->length - record_pointer->offset;
+    }
+
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+    size_t offset_len = sizeof(record_pointer->offset);
+    size_t length_len = sizeof(*len);
+    size_t marshal_len = logname_len + offset_len + length_len + 2;
+
+    uint8_t* marshal = (uint8_t*) malloc(marshal_len);
+    memset(marshal, 0, marshal_len);
+    memcpy(marshal, &record_pointer->logname, logname_len);
+    memcpy(marshal+logname_len+1, &record_pointer->offset, offset_len);
+    memcpy(marshal+logname_len+1+offset_len+1, len, length_len);
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageReadMessage, marshal_len, marshal);
+
+    // free message buffer
+    free(marshal);
+
+    if (err < SB_PORT_SUCCESS) {
+        storage_ready = true;
+        incoming_active_callback = NULL;
+        return err;
+    }
+
+    // wait for response
+    err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    if (err != 0) {
+      storage_ready = true;
+      incoming_active_callback = NULL;
+      return err;
+    }
+    return storage_result;
+}
+
+int signpost_storage_delete (Storage_Record_t* record_pointer) {
+    storage_ready = false;
+    storage_result = SB_PORT_SUCCESS;
+    callback_record = record_pointer;
+
+    // set up callback
+    if (incoming_active_callback != NULL) {
+        return SB_PORT_EBUSY;
+    }
+    incoming_active_callback = signpost_storage_write_callback;
+
+    // allocate new message buffer
+    size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
+
+    // send message
+    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+            StorageApiType, StorageDeleteMessage, logname_len, (uint8_t*) record_pointer->logname); if (err < SB_PORT_SUCCESS) {
+        storage_ready = true;
+        incoming_active_callback = NULL;
+        return err;
+    }
+
+    // wait for response
+    //err = port_signpost_wait_for_with_timeout(&storage_ready, 5000);
+    //if (err != 0) {
+    //  storage_ready = true;
+    //  incoming_active_callback = NULL;
+    //  return err;
+    //}
+    return storage_result;
+}
+
+int signpost_storage_scan_reply(uint8_t destination_address, Storage_Record_t* list, size_t list_len) {
+    return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageScanMessage,
+            list_len*sizeof(Storage_Record_t), (uint8_t*) list);
+}
+
+int signpost_storage_write_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {
+  return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageWriteMessage,
+            sizeof(Storage_Record_t), (uint8_t*) record_pointer);
+}
+
+int signpost_storage_read_reply(uint8_t destination_address, uint8_t* data, size_t length) {
     return signpost_api_send(destination_address,
             ResponseFrame, StorageApiType, StorageWriteMessage,
-            sizeof(Storage_Record_t), record_pointer);
+            length, data);
+}
+
+int signpost_storage_delete_reply(uint8_t destination_address, Storage_Record_t* record_pointer) {
+    return signpost_api_send(destination_address,
+            ResponseFrame, StorageApiType, StorageDeleteMessage,
+            sizeof(Storage_Record_t), (uint8_t*) record_pointer);
 }
 
 /**************************************************************************/
@@ -1194,7 +1398,7 @@ int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_
 
     free(buf);
     if(rc < SB_PORT_SUCCESS) {
-        return rc;
+      return rc;
     }
 
     rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
@@ -1221,13 +1425,13 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    }
 }
 
-void signpost_networking_send_reply(uint8_t src_addr, int return_code) {
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {
 
    int rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
-                        NetworkingSendMessage, 4, (uint8_t*)(&return_code));
+                        type, 4, (uint8_t*)(&return_code));
 
    if (rc < 0) {
-      port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
+      port_printf(" - %d: Error sending networking reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
             NetworkingSendMessage, rc, true, true, 1);
    }
@@ -1356,12 +1560,12 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
             report_buf_size, report_buf);
+    free(report_buf);
     if (rc < 0) return rc;
 
     incoming_active_callback = signpost_energy_report_callback;
     energy_report_received = false;
     rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
-    free(report_buf);
     if(rc < 0) {
         return SB_PORT_FAIL;
     }

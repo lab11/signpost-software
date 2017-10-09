@@ -124,58 +124,36 @@ int main (void) {
 
   //XXX: TESTING
   // Write data to SD card
-  while (1) {
-    printf("Writing data\n");
-    uint8_t module_index = 0;
-    Storage_Record_Pointer_t write_record = {0};
-    write_record.block = storage_status.status_records[module_index].curr.block;
-    write_record.offset = storage_status.status_records[module_index].curr.offset;
-    uint8_t buffer[100] = {0};
-    for (int i=0; i<100; i++) {
-      memset(buffer, i, i);
-      rc = storage_write_record(write_record, buffer, i, &write_record);
-      if (rc < TOCK_SUCCESS) {
-        printf("Writing error: %d\n", rc);
-        break;
-      }
-    }
-    storage_status.status_records[module_index].curr.block = write_record.block;
-    storage_status.status_records[module_index].curr.offset = write_record.offset;
-    rc = storage_update_status();
-    if (rc < TOCK_SUCCESS) {
-      printf("Updating status rc: %d\n", rc);
-    }
-    printf("Complete. Final block: %lu offset: %lu\n", write_record.block, write_record.offset);
-
-    // Read data from SD card
-    printf("Reading data\n");
-    Storage_Record_Pointer_t read_record = {
-      .block = 2,
-      .offset = 0,
-    };
-    rc = TOCK_SUCCESS;
-    size_t len = 0;
-    while (rc == TOCK_SUCCESS) {
-      rc = storage_read_record(read_record, buffer, &len, &read_record);
-      if (rc == TOCK_SUCCESS) {
-        /*
-        for (int j=0; j<len; j++) {
-          printf("%02X ", buffer[j]);
-        }
-        printf("\n");
-        */
-      } else if (rc == ENOHEADER) {
-        // no more records to read
-        break;
-      } else {
-        printf("Reading error: %d\n", rc);
-        break;
-      }
-    }
-    printf("Complete\n");
-
-    printf("\n");
+  printf("Writing data to file \"test\"\n");
+  uint8_t buffer[100] = {0};
+  size_t bytes_written = 0;
+  size_t offset = 0;
+  int i;
+  for (i=0; i<100; i++) {
+    buffer[i] = i;
   }
+  rc = storage_write_data("test", buffer, 100, i, &bytes_written, &offset);
+  if (rc < TOCK_SUCCESS) {
+    printf("Writing error: %d\n", rc);
+  }
+  printf("Wrote %d/%d bytes\n", bytes_written, i);
+
+  // Read data from SD card
+  printf("Reading data\n");
+  rc = TOCK_SUCCESS;
+  size_t len = 0;
+  rc = storage_read_data("test", 0, buffer, 100, 100, &len);
+  if (rc == TOCK_SUCCESS) {
+    for (size_t j=0; j<len; j++) {
+      printf("%02X ", buffer[j]);
+    }
+    printf("\n");
+  } else {
+    printf("Reading error: %d\n", rc);
+  }
+  printf("Complete\n");
+
+  printf("\n");
 
 
   // Setup watchdog

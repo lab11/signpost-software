@@ -8,14 +8,10 @@ APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # files needed for this code
 C_SRCS   := main.c mmc_io.c
 
-# handle complex paths
-vpath %.c fatfs
-C_SRCS   += ff.c
-
-vpath %.c fatfs/option
-C_SRCS   += unicode.c
 
 # include makefile settings that are shared between applications
+SIGNPOST_USERLAND_BASE_DIR := ../..
+include $(SIGNPOST_USERLAND_BASE_DIR)/support/fatfs/Makefile
 include ../../AppMakefileTock.mk
 
 # To see the generated rules, run:
