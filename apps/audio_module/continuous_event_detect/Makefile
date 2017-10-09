@@ -26,8 +26,9 @@ override CFLAGS += -I$(APP_DIR)/../../support/kiss_fft/tools
 override CFLAGS += -I$(APP_DIR)../../support
 override CFLAGS += -I$(APP_DIR)/../../support/audio_class/c
 
-APP_HEAP_SIZE := 4000
+APP_HEAP_SIZE := 2000
 STACK_SIZE := 2048
+KERNEL_HEAP_SIZE := 512
 
 TOCK_BOARD = audio_module
 

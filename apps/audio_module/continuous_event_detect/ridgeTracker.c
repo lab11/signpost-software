@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+// signpost tock-specific libraries
+#include "led.h"
+
 #include "ridgeTracker.h"
 #include "_kiss_fft_guts.h"
 #include "common.h"
@@ -18,7 +21,7 @@
 // SAMP_MAX is fixed-point 1
 #define BTLEN       (10) // int(btTime/tInc)
 #define ALP         ((kiss_fft_scalar)(0.9*SAMP_MAX)) // exp(-tInc/btTime)
-#define SUPTHRESH   ((kiss_fft_scalar)(0.3*SAMP_MAX))
+#define SUPTHRESH   ((kiss_fft_scalar)(0.5*SAMP_MAX))
 #define NADA        ((kiss_fft_scalar)(0.01*SAMP_MAX))
 #define EPSILON     ((kiss_fft_scalar)(0.001*SAMP_MAX)) //noise adaptive param
 kiss_fft_scalar ind[FRE_LEN];
@@ -35,6 +38,9 @@ kiss_fft_scalar probEst;
 
 bool ridgeTracker_isReady;
 Array ridgeTracker_out;
+
+// prototype
+int insertArray_checked(Array *a, kiss_fft_scalar snr, size_t fi, size_t ti);
 
 void ridgeTracker_init(void){
     for (size_t f=0; f<FRE_LEN; f++){
@@ -131,16 +137,26 @@ void ridgeTracker_update(kiss_fft_scalar* spec, kiss_fft_scalar* snrOut){
     for (size_t f=0; f<FRE_LEN; f++){
         if (snrAcc[f] > SUPTHRESH){
             binActive = true;
-            led_toggle(1);
-            led_toggle(1);
+            //led_toggle(1);
+            //led_toggle(1);
             snrOut[f] = snrAcc[f] - SUPTHRESH;
 
             if (curTime == -1){
                 debug_printf("\nStart timer\n");
                 curTime = BTLEN;
             }
-            insertArray(&ridgeTracker_out,snrOut[f],f,(size_t)curTime);
+            if (insertArray_checked(&ridgeTracker_out,snrOut[f],f,(size_t)curTime) != 0) {
+                // we ran out of space. Restart when we get the next audio samples
+                ridgeTracker_init();
+                return;
+            }
         }
+    }
+
+    if(binActive) {
+        led_on(1);
+    } else {
+        led_off(1);
     }
 
     // output if applicable

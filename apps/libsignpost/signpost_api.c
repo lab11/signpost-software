@@ -1783,7 +1783,8 @@ int signpost_watchdog_reply(uint8_t destination_address) {
 /**************************************************************************/
 
 // TODO figure out actual size needed
-#define MAX_JSON_BLOB_SIZE 1000
+// I needed to make this really small to get back some memory
+#define MAX_JSON_BLOB_SIZE 32
 static char json_blob[MAX_JSON_BLOB_SIZE];
 
 int signpost_json_send(uint8_t destination_address, size_t field_count, ... ) {
