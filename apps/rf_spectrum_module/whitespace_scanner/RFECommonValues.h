@@ -39,25 +39,25 @@
 //------------------------- Array Length - This depends on board used----------
 
 //Max number of steps in Spectrum Analyzer
-#define MAX_SPECTRUM_STEPS          240 
+#define MAX_SPECTRUM_STEPS          240
 //Max size of String that storage complete message received
 #define STRING_SIZE                 512
 
 //------------------------- 3G+ IoT connections with Arduino -----------------------------
 
 #define	_RFE_RESET                  PA_8
-#define	_RFE_BUZZER                 
-#define	_RFE_GPIO0                  
-#define	_RFE_GPIO1                  
-#define	_RFE_GPIO2                  PA_15
-#define	_RFE_GPIO3                  PA_1
-#define	_RFE_GPIO4                  
-#define	_RFE_GPIO5                  
-#define	_RFE_GPIO6                  
-#define	_RFE_GPIO7                  
-#define	_RFE_RFGPIO0                
-#define	_RFE_RFGPIO1                
-#define	_RFE_RFGPIO2                
+#define	_RFE_BUZZER
+#define	_RFE_GPIO0
+#define	_RFE_GPIO1
+#define	_RFE_GPIO2                  0
+#define	_RFE_GPIO3                  PA_15
+#define	_RFE_GPIO4
+#define	_RFE_GPIO5
+#define	_RFE_GPIO6
+#define	_RFE_GPIO7
+#define	_RFE_RFGPIO0
+#define	_RFE_RFGPIO1
+#define	_RFE_RFGPIO2
 #define _RFE_TX                     PB_6
 #define _RFE_RX                     PB_7
 

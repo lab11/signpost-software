@@ -4,16 +4,17 @@
 #include "port_signpost.h"
 #include "signpost_api.h"
 #include "signbus_io_interface.h"
+#include "board.h"
 
 #include "RFExplorer_3GP_IoT.h"
 #include "RFESweepData.h"
 #include "RFECommonValues.h"
 
 RFExplorer_3GP_IoT RF;
-DigitalOut RF_gpio2(_RFE_GPIO2);
-DigitalOut Antenna1(PA_4);
-DigitalOut Antenna2(PA_5);
-DigitalOut Antenna3(PA_6);
+DigitalOut Antenna1(ANT1);
+DigitalOut Antenna2(ANT2);
+DigitalOut Antenna3(ANT3);
+DigitalOut Gate(POWER_GATE);
 
 static int8_t bin_max[80] = {0};
 static int bin_accumulator[80] = {0};
@@ -56,12 +57,10 @@ int main(void) {
 
     printf("Initializing RF Explorer...\n");
 
+    Gate = 0;
     Antenna1 = 1;
     Antenna2 = 0;
     Antenna3 = 0;
-
-    //set GPIO2 to 0 before reset for 2400 baud
-    RF_gpio2 = 0;
 
     //initialize bin_max
     for(uint8_t i = 0; i < 80; i++) {
@@ -72,13 +71,15 @@ int main(void) {
     printf("Resetting Hardware\n");
     RF.resetHardware();
     wait_ms(5000);
+    RF.changeBaudrate(500000);
+    wait_ms(1000);
+    RF.changeBaudrate(115200);
+    wait_ms(1000);
 
     //initialize
     printf("Calling Init\n");
     RF.init();
 
-    //after init we can pull this back up
-    RF_gpio2 = 1;
     wait_ms(1000);
 
     //change the baud rate
