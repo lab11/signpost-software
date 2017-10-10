@@ -1108,8 +1108,12 @@ int main (void) {
     // read existing log info
     printf("Found the following existing files:\n");
     num_saved_records = EVENTUAL_REC_SIZE;
-    rc = signpost_storage_scan(saved_records, &num_saved_records);
+    while (signpost_storage_scan(saved_records, &num_saved_records) < 0) {}
     for(size_t i = 0; i < num_saved_records; i++) {
+      if (saved_records[i].length == 0) {
+        num_saved_records = i;
+        break;
+      }
       printf("  %s\n", saved_records[i].logname);
     }
     printf("\n");
