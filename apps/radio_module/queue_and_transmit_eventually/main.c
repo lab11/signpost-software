@@ -199,7 +199,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
     if (topic_len >= len) return TOCK_ESIZE; // impossible topic_length
     size_t data_len = buffer[topic_len + 1];
     if (topic_len + data_len + 2 != len) return TOCK_ESIZE; // incorrect length
-    uint8_t* data = buffer + topic_len + 2;
+    //uint8_t* data = buffer + topic_len + 2;
 
     // search for existing records with same topic
     Storage_Record_t* store_record = NULL;
@@ -237,7 +237,7 @@ static int save_eventual_buffer(uint8_t* buffer, size_t len) {
     memcpy(&temp_record, store_record, sizeof(Storage_Record_t));
 
     // add the message to the buffer
-    rc = add_message_to_buffer(store_buf, 100, &offset, data, data_len);
+    rc = add_message_to_buffer(store_buf, 100, &offset, buffer, len);
     if (rc < 0) {
       return rc;
     }
