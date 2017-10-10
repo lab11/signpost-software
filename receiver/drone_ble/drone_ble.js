@@ -2,6 +2,7 @@
 
 var noble = require('noble')
 var http = require('http')
+var fs = require('fs')
 var argv = require('yargs')
            .demand('a')
            .alias('a', 'address')
@@ -27,6 +28,7 @@ function post_callback (res) {
   })
 }
 
+
 var signpost_service_uuid = '75e96f00b766568f7a49286d140dc25c'
 var signpost_update_char_uuid = '75e96f01b766568f7a49286d140dc25c' // use this to write request to signpost
 var signpost_read_char_uuid = '75e96f02b766568f7a49286d140dc25c' // use this to read data from the signpost
@@ -38,7 +40,13 @@ var signpost_read_char = 0
 var signpost_notify_char = 0
 
 var signpost_peripheral = 0
-var packets = []
+var packet_limit= 50
+var packet_num = 0
+
+var dirname = "packets/"
+if (!fs.existsSync(dirname)) {
+  fs.mkdirSync(dirname)
+}
 
 noble.on('stateChange', function(state) {
   if (state === 'poweredOn') {
@@ -74,24 +82,6 @@ function explore(peripheral) {
 
   peripheral.on('disconnect', function() {
     console.log("disconnected")
-    // send or consume any packets collected now!
-    console.log("Sending " + packets.length.toString() + " collected packets")
-    for(var i = 0; i < packets.length; i++) {
-      var post_options = {
-        host: 'ec2-35-166-179-172.us-west-2.compute.amazonaws.com',
-        path: '/signpost',
-        port: '80',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': Buffer.byteLength(packets[i])
-        }
-      }
-
-      var post_req = http.request(post_options, post_callback)
-      post_req.write(packets[i])
-      post_req.end()
-    }
   });
 
   peripheral.connect(function(error) { peripheral.discoverServices([], on_discover_services); });
@@ -151,7 +141,19 @@ function on_signpost_notify_data(data, isNotify) {
       console.log("Got some data from the signpost")
 
       console.log(data.toString('hex'))
-      packets.push(data)
+      filename = dirname + "packet_" + packet_num.toString() + "_" + (new Date).toISOString()
+      fs.writeFile(filename, data, function(err) {
+        if(err) console.log(err)
+        else {
+          console.log("saved " + filename + " successfully")
+          packet_num += 1
+          if (packet_num > packet_limit) {
+            signpost_peripheral.disconnect()
+            process.exit(0)
+          }
+        }
+      })
+
 
       // Write ack back
       var buffer = Buffer.from(argv.t) // put whatever string you need here
@@ -163,5 +165,6 @@ function on_signpost_notify_data(data, isNotify) {
 function timed_out() {
     console.log("Timed out waiting for Signpost")
     signpost_peripheral.disconnect();
-    process.exit()
+    if (packet_num > 0) process.exit(0)
+    else process.exit(1)
 }
