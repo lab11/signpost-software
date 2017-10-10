@@ -58,7 +58,7 @@ function on_discovery(peripheral) {
 
   if (local_name) {
     console.log('Found peripheral with local_name ' + local_name + ' address ' + ble_address)
-      if(local_name === "Signpost" && ble_address.toString() == ble_address) {
+      if(local_name === "Signpost" && ble_address == argv.a) {
         signpost_peripheral = peripheral
         noble.stopScanning()
           explore(peripheral) // set up disconnect callback and connect to the peripheral
