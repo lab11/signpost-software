@@ -60,7 +60,7 @@ static int audio_initialize(void);
 static int start_sampling(void);
 static int stop_sampling(void);
 static void report_events(uint32_t event_count);
-static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len);
+static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len, bool is_real);
 
 // get callback when a buffer is filled with audio samples
 // should be called every ~16 ms (16000/256 times per second)
@@ -140,7 +140,7 @@ static void continuous_buffered_sample_cb(__attribute__ ((unused)) uint8_t chann
       printf("Event detected!\n");
       // the current alarm ticks seems like a reasonable enough way to disambiguate events
       uint32_t event_id = alarm_read();
-      report_event_occurred(event_id, (uint8_t*)snr_out, sizeof(kiss_fft_scalar)*FFT_FRAME_LEN);
+      report_event_occurred(event_id, (uint8_t*)snr_out, sizeof(kiss_fft_scalar)*FFT_FRAME_LEN, true);
       ridgeTracker_reset();
 
       // restarting the ADC will mean that we are on the first buffer again
@@ -161,6 +161,14 @@ static void continuous_buffered_sample_cb(__attribute__ ((unused)) uint8_t chann
     stop_sampling();
     printf("Sending event report! - %lu events\n", event_count);
     report_events(event_count);
+
+    if (event_count == 0) {
+      // we didn't store anything to eventually this cycle. Do so
+      uint32_t event_id = alarm_read();
+      report_event_occurred(event_id, (uint8_t*)snr_out, sizeof(kiss_fft_scalar)*FFT_FRAME_LEN, false);
+    }
+
+    // reset event count
     event_count = 0;
 
     // restarting the ADC will mean that we are on the first buffer again
@@ -284,11 +292,11 @@ static void report_events (uint32_t event_count) {
 }
 
 // asynchronously report an event triggering through the eventual interface
-static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len) {
+static void report_event_occurred (uint32_t event_id, uint8_t* report_data, uint16_t report_len, bool is_real) {
 
   // put data into buffer
   uint8_t data_buf[AUDIO_RIDGE_LEN];
-  data_buf[0] = AUDIO_RIDGE_VERSION;
+  data_buf[0] = AUDIO_RIDGE_VERSION + (is_real)?0:1;
   data_buf[1] = (uint8_t)((event_id >> 24) & 0xFF);
   data_buf[2] = (uint8_t)((event_id >> 16) & 0xFF);
   data_buf[3] = (uint8_t)((event_id >>  8) & 0xFF);
