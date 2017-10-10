@@ -335,7 +335,7 @@ int main (void) {
   //initialize the signpost API
   int err;
   do {
-    err = signpost_initialization_module_init(0x33, NULL);
+    err = signpost_initialization_module_init(0x38, NULL);
     if (err < SB_PORT_SUCCESS) {
       printf(" - Error initializing bus (code %d). Sleeping for 5s\n", err);
       delay_ms(5000);
