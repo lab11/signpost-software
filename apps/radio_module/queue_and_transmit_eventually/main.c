@@ -686,6 +686,12 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
         break;
       }
     }
+    if (saved_records[selected_record].length == 0) {
+      uint8_t stop = 0x1;
+      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
+      simple_ble_notify_char(&log_notify_char);
+      return;
+    }
     printf("selected logname: %s\n", saved_records[selected_record].logname);
 
     size_t index = 0;
@@ -758,7 +764,8 @@ void ble_evt_connected(ble_evt_t* p_ble_evt __attribute__ ((unused))) {
 }
 
 void ble_evt_disconnected(ble_evt_t* p_ble_evt __attribute__ ((unused))) {
-    //this too
+    uint8_t stop = 0x0;
+    simple_ble_stack_char_set(&log_notify_char, 1, &stop);
 }
 
 void ble_evt_user_handler (ble_evt_t* p_ble_evt __attribute__ ((unused))) {
@@ -966,7 +973,8 @@ static void timer_callback (
           }
           //printf("saved record offset %d\n", saved_records[i].offset);
           //printf("saved record length %d\n", saved_records[i].length);
-          uint16_t remaining = saved_records[i].length - saved_records[i].offset;
+          uint16_t remaining = (saved_records[i].length - saved_records[i].offset)/1024 + 1;
+          if (saved_records[i].length == 0) remaining = 0;
           status_send_buf[eventual_status_index] = (uint8_t) ((remaining & 0xff00) >> 8);
           status_send_buf[eventual_status_index+1] = (uint8_t) (remaining & 0xff);
           eventual_status_index += 2;
