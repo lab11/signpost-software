@@ -94,21 +94,26 @@ function on_discover_characteristics(error, characteristics) {
           signpost_notify_char = characteristic
             signpost_notify_char.notify(true, function(err) {console.log("Enabled notify on signpost update char")})
             signpost_notify_char.on('data', on_signpost_notify_data) // Callback for when we get new data
+            timeout = setTimeout(timed_out, 5000)
         }
         else if (characteristic.uuid == signpost_read_char_uuid) {
           signpost_read_char = characteristic
         }
     }
-  console.log("Time to request some data")
+
+    console.log("Beginning transfer from Signpost " + argv.a)
     var buffer = Buffer.from(logname) // put whatever string you need here
 
-    signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost_u")})
+    signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
 }
 
 // data is a nodejs buffer.
 // you can use functions like data.readUInt8 to get data from the node.
 function on_signpost_notify_data(data, isNotify) {
     console.log("Got notify from the signpost")
+    clearTimeout(timeout)
+    timeout = setTimeout(timed_out, 5000)
+
     if(data.readUInt32LE() == 1) {
       signpost_peripheral.disconnect();
     }
@@ -126,4 +131,8 @@ function on_signpost_notify_data(data, isNotify) {
     });
 }
 
-
+function timed_out() {
+    console.log("Timed out waiting for Signpost")
+    signpost_peripheral.disconnect();
+    process.exit()
+}
