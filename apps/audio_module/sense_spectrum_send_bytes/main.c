@@ -43,8 +43,23 @@ bool still_sampling = false;
 #define MAGIC_NUMBER 43.75
 #define OTHER_MAGIC 35.5
 
-static uint16_t convert_to_db(uint16_t output) {
-    return (uint8_t)(((20*log10(output/MAGIC_NUMBER)) + OTHER_MAGIC));
+static uint8_t convert_to_db(uint16_t output) {
+    float out;
+    if(output == 0) {
+        out = 50;
+    } else {
+        out = (((20*log10(output/MAGIC_NUMBER)) + OTHER_MAGIC));
+    }
+
+    if(out < 50) {
+        out = 50;
+    } else if(out > 75) {
+        out = 75;
+    }
+
+    out -= 50;
+
+    return (uint8_t)(out*10);
 }
 
 static void delay(void) {
@@ -218,7 +233,7 @@ int main (void) {
     gpio_clear(8);
     gpio_clear(9);
 
-    send_buf[0] = 0x02;
+    send_buf[0] = 0x03;
 
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);
