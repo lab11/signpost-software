@@ -1,16 +1,31 @@
 #!/usr/bin/env node
 
 var noble = require('noble')
+var http = require('http')
 var argv = require('yargs')
            .demand('a')
            .alias('a', 'address')
            .describe('a', 'address of Signpost to read from in XX:XX:XX:XX:XX:XX format')
+           .demand('t')
+           .alias('t', 'topic')
+           .describe('t', 'Signpost topic to read from')
            //.demand('s')
            //.alias('s', 'sendto')
            //.describe('s', 'http server address to send read data to')
            .help('h')
            .alias('h', 'help')
            .argv
+
+function post_callback (res) {
+  var response_string = ""
+    res.setEncoding('utf8');
+  res.on('data', function (data) {
+    response_string += data
+  })
+  res.on("end", function () {
+    console.log('Got response from aws: ' + response_string);
+  })
+}
 
 var signpost_service_uuid = '75e96f00b766568f7a49286d140dc25c'
 var signpost_update_char_uuid = '75e96f01b766568f7a49286d140dc25c' // use this to write request to signpost
@@ -21,8 +36,6 @@ var signpost_service = 0
 var signpost_update_char = 0
 var signpost_read_char = 0
 var signpost_notify_char = 0
-
-var logname = "testtopic" // logname we are looking for
 
 var signpost_peripheral = 0
 var packets = []
@@ -62,7 +75,23 @@ function explore(peripheral) {
   peripheral.on('disconnect', function() {
     console.log("disconnected")
     // send or consume any packets collected now!
-    process.exit()
+    console.log("Sending " + packets.length.toString() + " collected packets")
+    for(var i = 0; i < packets.length; i++) {
+      var post_options = {
+        host: 'ec2-35-166-179-172.us-west-2.compute.amazonaws.com',
+        path: '/signpost',
+        port: '80',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': Buffer.byteLength(packets[i])
+        }
+      }
+
+      var post_req = http.request(post_options, post_callback)
+      post_req.write(packets[i])
+      post_req.end()
+    }
   });
 
   peripheral.connect(function(error) { peripheral.discoverServices([], on_discover_services); });
@@ -102,7 +131,7 @@ function on_discover_characteristics(error, characteristics) {
     }
 
     console.log("Beginning transfer from Signpost " + argv.a)
-    var buffer = Buffer.from(logname) // put whatever string you need here
+    var buffer = Buffer.from(argv.t) // put whatever string you need here
 
     signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
 }
@@ -121,11 +150,11 @@ function on_signpost_notify_data(data, isNotify) {
     signpost_read_char.read(function(error, data) {
       console.log("Got some data from the signpost")
 
-      console.log(data)
+      console.log(data.toString('hex'))
       packets.push(data)
 
       // Write ack back
-      var buffer = Buffer.from(logname) // put whatever string you need here
+      var buffer = Buffer.from(argv.t) // put whatever string you need here
       signpost_update_char.write(buffer)
 
     });
