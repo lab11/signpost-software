@@ -742,7 +742,7 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     }
     if (search == index) {
       //done, so notify disconnect
-      printf("disconnect\n");
+      printf("disconnect and delete record\n");
       uint8_t stop = 0x1;
       simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       simple_ble_notify_char(&log_notify_char);
