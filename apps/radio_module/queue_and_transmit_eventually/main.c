@@ -688,11 +688,29 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
     }
     if (saved_records[selected_record].length == 0) {
       uint8_t stop = 0x1;
+      // clear update value
+      memset(log_update_value, 0, STORAGE_LOG_LEN);
+      simple_ble_stack_char_set(&log_update_char, STORAGE_LOG_LEN, log_update_value);
+      // set stop
+      simple_ble_stack_char_set(&log_notify_char, 1, &stop);
+      simple_ble_notify_char(&log_notify_char);
+      return;
+    }
+    else if (strncmp(saved_records[selected_record].logname, (const char*) log_update_value, STORAGE_LOG_LEN)) {
+      printf("requested logname does not exist!\n");
+      uint8_t stop = 0x1;
+      // clear update value
+      memset(log_update_value, 0, STORAGE_LOG_LEN);
+      simple_ble_stack_char_set(&log_update_char, STORAGE_LOG_LEN, log_update_value);
+      // set stop
       simple_ble_stack_char_set(&log_notify_char, 1, &stop);
       simple_ble_notify_char(&log_notify_char);
       return;
     }
     printf("selected logname: %s\n", saved_records[selected_record].logname);
+    // clear update value
+    memset(log_update_value, 0, STORAGE_LOG_LEN);
+    simple_ble_stack_char_set(&log_update_char, STORAGE_LOG_LEN, log_update_value);
 
     size_t index = 0;
 
