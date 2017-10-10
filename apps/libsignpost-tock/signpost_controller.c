@@ -513,7 +513,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49A8000A;
+    const unsigned FRAM_MAGIC_VALUE = 0x49B8000A;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
