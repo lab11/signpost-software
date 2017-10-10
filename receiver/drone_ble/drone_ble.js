@@ -1,6 +1,16 @@
 #!/usr/bin/env node
 
 var noble = require('noble')
+var argv = require('yargs')
+           .demand('a')
+           .alias('a', 'address')
+           .describe('a', 'address of Signpost to read from in XX:XX:XX:XX:XX:XX format')
+           //.demand('s')
+           //.alias('s', 'sendto')
+           //.describe('s', 'http server address to send read data to')
+           .help('h')
+           .alias('h', 'help')
+           .argv
 
 var signpost_service_uuid = '75e96f00b766568f7a49286d140dc25c'
 var signpost_update_char_uuid = '75e96f01b766568f7a49286d140dc25c' // use this to write request to signpost
@@ -30,19 +40,19 @@ noble.on('discover', on_discovery)
 function on_discovery(peripheral) {
   var advertisement = peripheral.advertisement;
 
-  var localName = advertisement.localName;
-  var ble_address = advertisement.address;
+  var local_name = advertisement.localName;
+  var ble_address = peripheral.address;
 
-  if (localName) {
-    console.log('Found peripheral with localName ' + localName)
-      if(localName == "Signpost") {
+  if (local_name) {
+    console.log('Found peripheral with local_name ' + local_name + ' address ' + ble_address)
+      if(local_name === "Signpost" && ble_address.toString() == ble_address) {
         signpost_peripheral = peripheral
         noble.stopScanning()
           explore(peripheral) // set up disconnect callback and connect to the peripheral
       }
   }
   else {
-    console.log('Found peripheral with no localName')
+    console.log('Found peripheral with no local_name')
   }
 }
 
