@@ -159,72 +159,72 @@ static void check_module_init_cb( __attribute__ ((unused)) int now,
     //tickle watchdog
     app_watchdog_combine(WATCH_LIB_INIT);
 
-    if (mod_isolated_out < 0) {
-        for (size_t i = 0; i < NUM_MOD_IO; i++) {
-            if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i] && last_mod_out_state[i] == 1 &&
-                                                module_state[MODOUT_pin_to_mod_name(MOD_OUTS[i])].isolation_state == ModuleEnabled) {
+    //if (mod_isolated_out < 0) {
+    //    for (size_t i = 0; i < NUM_MOD_IO; i++) {
+    //        if (gpio_read(MOD_OUTS[i]) == 0 && last_mod_isolated_out != MOD_OUTS[i] && last_mod_out_state[i] == 1 &&
+    //                                            module_state[MODOUT_pin_to_mod_name(MOD_OUTS[i])].isolation_state == ModuleEnabled) {
 
-                printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
-                // module requesting isolation
-                mod_isolated_out = MOD_OUTS[i];
-                mod_isolated_in = MOD_INS[i];
-                last_mod_isolated_out = MOD_OUTS[i];
-                last_mod_out_state[i] = 0;
-                isolated_count = 0;
+    //            printf("ISOLATION: Module %d granted isolation\n", MODOUT_pin_to_mod_name(MOD_OUTS[i]));
+    //            // module requesting isolation
+    //            mod_isolated_out = MOD_OUTS[i];
+    //            mod_isolated_in = MOD_INS[i];
+    //            last_mod_isolated_out = MOD_OUTS[i];
+    //            last_mod_out_state[i] = 0;
+    //            isolated_count = 0;
 
-                // create private channel for this module
-                //XXX warn modules of i2c disable
-                controller_all_modules_disable_i2c();
-                controller_module_enable_i2c(MODOUT_pin_to_mod_name(mod_isolated_out));
-                // signal to module that it has a private channel
-                // XXX this should be a controller function operating on the
-                // module number, not index
-                gpio_clear(mod_isolated_in);
-                delay_ms(1000);
-                break;
-            }
-            // didn't isolate anyone, reset last_mod_isolated_out
-            last_mod_isolated_out = -1;
-        }
-    } else {
-        if (gpio_read(mod_isolated_out) == 1) {
-            printf("ISOLATION: Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
-            gpio_set(mod_isolated_in);
-            mod_isolated_out = -1;
-            mod_isolated_in  = -1;
-            enable_all_enabled_i2c();
-            module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures = 0;
-        }
-        // this module took too long to talk to controller
-        // XXX need more to police bad modules (repeat offenders)
-        else if (isolated_count > isolation_timeout_seconds) {
-            printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
-            gpio_set(mod_isolated_in);
-            module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures++;
-            if(module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures > 4) {
-                //power cycle the module
-                printf("Module %d has too many initialization failures - resetting\n",MODOUT_pin_to_mod_name(mod_isolated_out));
-                controller_module_disable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
-                delay_ms(1000);
-                controller_module_enable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
-                module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures = 0;
-            }
-            mod_isolated_out = -1;
-            mod_isolated_in  = -1;
-            enable_all_enabled_i2c();
-        } else {
-          isolated_count++;
-        }
-    }
+    //            // create private channel for this module
+    //            //XXX warn modules of i2c disable
+    //            controller_all_modules_disable_i2c();
+    //            controller_module_enable_i2c(MODOUT_pin_to_mod_name(mod_isolated_out));
+    //            // signal to module that it has a private channel
+    //            // XXX this should be a controller function operating on the
+    //            // module number, not index
+    //            gpio_clear(mod_isolated_in);
+    //            delay_ms(1000);
+    //            break;
+    //        }
+    //        // didn't isolate anyone, reset last_mod_isolated_out
+    //        last_mod_isolated_out = -1;
+    //    }
+    //} else {
+    //    if (gpio_read(mod_isolated_out) == 1) {
+    //        printf("ISOLATION: Module %d done with isolation\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+    //        gpio_set(mod_isolated_in);
+    //        mod_isolated_out = -1;
+    //        mod_isolated_in  = -1;
+    //        enable_all_enabled_i2c();
+    //        module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures = 0;
+    //    }
+    //    // this module took too long to talk to controller
+    //    // XXX need more to police bad modules (repeat offenders)
+    //    else if (isolated_count > isolation_timeout_seconds) {
+    //        printf("ISOLATION: Module %d took too long\n", MODOUT_pin_to_mod_name(mod_isolated_out));
+    //        gpio_set(mod_isolated_in);
+    //        module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures++;
+    //        if(module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures > 4) {
+    //            //power cycle the module
+    //            printf("Module %d has too many initialization failures - resetting\n",MODOUT_pin_to_mod_name(mod_isolated_out));
+    //            controller_module_disable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
+    //            delay_ms(1000);
+    //            controller_module_enable_power(MODOUT_pin_to_mod_name(mod_isolated_out));
+    //            module_state[MODOUT_pin_to_mod_name(mod_isolated_out)].module_init_failures = 0;
+    //        }
+    //        mod_isolated_out = -1;
+    //        mod_isolated_in  = -1;
+    //        enable_all_enabled_i2c();
+    //    } else {
+    //      isolated_count++;
+    //    }
+    //}
 
     //this give a module another chance if they pull their isolation pin up;
-    for(size_t i = 0; i < NUM_MOD_IO; i++) {
-        if(last_mod_out_state[i] == 0 && gpio_read(MOD_OUTS[i]) == 1) {
-            last_mod_out_state[i] = 1;
-        }
-    }
+    //for(size_t i = 0; i < NUM_MOD_IO; i++) {
+    //    if(last_mod_out_state[i] == 0 && gpio_read(MOD_OUTS[i]) == 1) {
+    //        last_mod_out_state[i] = 1;
+    //    }
+    //}
 
-    checking_init = false;
+    //checking_init = false;
 }
 
 typedef struct duty_cycle_struct {
@@ -608,10 +608,8 @@ int signpost_controller_init (void) {
     static tock_timer_t energy_update_timer;
     timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
 
-    /*
     static tock_timer_t check_init_timer;
     timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
-    */
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
