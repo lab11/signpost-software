@@ -194,12 +194,16 @@ void controller_all_modules_enable_usb (void) {
 
 // Shut off power to a given module
 void controller_module_disable_power (module_num_t module_number) {
+    /*
     gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_POWER);
+    */
 }
 
 // Disable a module's I2C
 void controller_module_disable_i2c (module_num_t module_number) {
+    /*
     gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_I2C);
+    */
 }
 
 // Disable a module's USB
@@ -207,22 +211,28 @@ void controller_module_disable_usb (module_num_t module_number) {
     gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_USB);
 }
 
+static void controller_module_disable_power_real (module_num_t module_number) {
+    gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_POWER);
+}
+
 void controller_all_modules_disable_power (void) {
-    controller_module_disable_power(MODULE0);
-    controller_module_disable_power(MODULE1);
-    controller_module_disable_power(MODULE2);
-    controller_module_disable_power(MODULE5);
-    controller_module_disable_power(MODULE6);
-    controller_module_disable_power(MODULE7);
+    controller_module_disable_power_real(MODULE0);
+    controller_module_disable_power_real(MODULE1);
+    controller_module_disable_power_real(MODULE2);
+    controller_module_disable_power_real(MODULE5);
+    controller_module_disable_power_real(MODULE6);
+    controller_module_disable_power_real(MODULE7);
 }
 
 void controller_all_modules_disable_i2c (void) {
+    /*
     controller_module_disable_i2c(MODULE0);
     controller_module_disable_i2c(MODULE1);
     controller_module_disable_i2c(MODULE2);
     controller_module_disable_i2c(MODULE5);
     controller_module_disable_i2c(MODULE6);
     controller_module_disable_i2c(MODULE7);
+    */
 }
 
 void controller_all_modules_disable_usb (void) {

@@ -729,6 +729,7 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
     // Begin listening for replies
     signpost_api_start_new_async_recv();
 
+    /*
     // Initialize Mod Out/In GPIO
     // both are active low
     port_signpost_mod_out_set();
@@ -743,6 +744,8 @@ int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api
 
     init_state = RequestIsolation;
     return signpost_initialization_initialize_loop();
+    */
+    return SB_PORT_SUCCESS;
 }
 
 int signpost_initialization_initialize_with_module(uint8_t module_address) {

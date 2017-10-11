@@ -333,7 +333,7 @@ static void energy_api_callback(uint8_t source_address,
 
         //now send the report to the energy
         printf("Sending energy report to energy policy handler\n");
-        signpost_energy_policy_update_energy_from_report(signpost_api_addr_to_mod_num(source_address), &report);
+        //signpost_energy_policy_update_energy_from_report(signpost_api_addr_to_mod_num(source_address), &report);
 
         free(reps);
 
@@ -608,8 +608,10 @@ int signpost_controller_init (void) {
     static tock_timer_t energy_update_timer;
     timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
 
+    /*
     static tock_timer_t check_init_timer;
     timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
+    */
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
