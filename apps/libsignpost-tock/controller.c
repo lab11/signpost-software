@@ -211,17 +211,13 @@ void controller_module_disable_usb (module_num_t module_number) {
     gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_USB);
 }
 
-static void controller_module_disable_power_real (module_num_t module_number) {
-    gpio_async_clear_sync(module_to_async_port_num[module_number], PIN_IDX_ISOLATE_POWER);
-}
-
 void controller_all_modules_disable_power (void) {
-    controller_module_disable_power_real(MODULE0);
-    controller_module_disable_power_real(MODULE1);
-    controller_module_disable_power_real(MODULE2);
-    controller_module_disable_power_real(MODULE5);
-    controller_module_disable_power_real(MODULE6);
-    controller_module_disable_power_real(MODULE7);
+    controller_module_disable_power(MODULE0);
+    controller_module_disable_power(MODULE1);
+    controller_module_disable_power(MODULE2);
+    controller_module_disable_power(MODULE5);
+    controller_module_disable_power(MODULE6);
+    controller_module_disable_power(MODULE7);
 }
 
 void controller_all_modules_disable_i2c (void) {
