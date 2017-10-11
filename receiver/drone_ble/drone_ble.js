@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 var noble = require('noble')
-var http = require('http')
 var fs = require('fs')
 var argv = require('yargs')
            .demand('a')
@@ -16,17 +15,6 @@ var argv = require('yargs')
            .help('h')
            .alias('h', 'help')
            .argv
-
-function post_callback (res) {
-  var response_string = ""
-    res.setEncoding('utf8');
-  res.on('data', function (data) {
-    response_string += data
-  })
-  res.on("end", function () {
-    console.log('Got response from aws: ' + response_string);
-  })
-}
 
 
 var signpost_service_uuid = '75e96f00b766568f7a49286d140dc25c'
