@@ -25,9 +25,26 @@ Signpost will also report data based on their currently installed modules.
 Installed and working modules are listed below next to the signpost mac address.
 
 Currently the following signposts are deployed:
-  - c098e5120001 (audio, rf spectrum, ambient)
-  - c098e5120003 (audio, rf spectrum, ambient)
-  - c098e5120004 (audio, rf spectrum, ambient)
+  - c098e5120001 (audio, rf spectrum, ambient) - North Campus
+  - c098e5120003 (audio, rf spectrum, ambient) - North Campus
+  - c098e512000a (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
+  - c098e512000d (audio, rf spectrum, ambient) - Clark Kerr 
+  - c098e512000e (audio, rf spectrum, ambient) - Clark Kerr
+  - c098e512000f (audio, rf spectrum, ambient) - Clark Kerr
+  - c098e5120010 (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
+  - c098e5120011 (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
+  - c098e5120012 (audio, rf spectrum, ambient) - Clark Kerr
+  - c098e5120013 (audio, rf spectrum, ambient) - Clark Kerr
+  - c098e5120015 (audio, rf spectrum, ambient) - North Campus
+  - c098e5120016 (audio, rf spectrum, ambient) - North Campus
+  - c098e5120017 (audio, rf spectrum, ambient) - North Campus
+  - c098e5120018 (audio, rf spectrum, ambient) - North Campus
+  - c098e512001a (audio, rf spectrum, ambient) - North Campus
+  - c098e512001b (audio, rf spectrum, ambient) - North Campus
+  - c098e512001c (audio, rf spectrum, ambient) - North Campus
+  - c098e512001d (audio, rf spectrum, ambient) - North Campus
+  - c098e512001e (audio, rf spectrum, ambient) - North Campus
+  - c098e512001f (audio, rf spectrum, ambient) - North Campus
 
 Schemas
 -------
