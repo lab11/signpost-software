@@ -8,6 +8,7 @@ use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 
 // Syscall driver number.
 pub const DRIVER_NUM: usize = 0x11002;
+pub const DRIVER_NUM_HOLDING: usize = 0x51000;
 
 /// This module is either waiting to do something, or handling a read/write.
 #[derive(Clone,Copy,Debug,PartialEq)]

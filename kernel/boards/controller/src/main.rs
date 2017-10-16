@@ -49,9 +49,6 @@ struct SignpostController {
     alarm: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     smbus_interrupt: &'static signpost_drivers::smbus_interrupt::SMBUSIntDriver<'static>,
     gpio_async: &'static capsules::gpio_async::GPIOAsync<'static, capsules::mcp23008::MCP23008<'static>>,
-    coulomb_counter_i2c_mux_0: &'static capsules::pca9544a::PCA9544A<'static>,
-    coulomb_counter_i2c_mux_1: &'static capsules::pca9544a::PCA9544A<'static>,
-    coulomb_counter_i2c_mux_2: &'static capsules::pca9544a::PCA9544A<'static>,
     coulomb_counter_generic: &'static capsules::ltc294x::LTC294XDriver<'static>,
     battery_monitor: &'static capsules::max17205::MAX17205Driver<'static>,
     nonvolatile_storage: &'static capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
@@ -83,16 +80,13 @@ impl Platform for SignpostController {
             capsules::nonvolatile_storage_driver::DRIVER_NUM => f(Some(self.nonvolatile_storage)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            capsules::pca9544a::DRIVER_NUM => f(Some(self.coulomb_counter_i2c_mux_0)),
-            capsules::pca9544a::DRIVER_NUM => f(Some(self.coulomb_counter_i2c_mux_1)),
-            capsules::pca9544a::DRIVER_NUM => f(Some(self.coulomb_counter_i2c_mux_2)),
             capsules::max17205::DRIVER_NUM => f(Some(self.battery_monitor)),
             signpost_drivers::smbus_interrupt::DRIVER_NUM => f(Some(self.smbus_interrupt)),
             signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
             signpost_drivers::gps_console::DRIVER_NUM => f(Some(self.gps_console)),
 
             signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
-            capsules::nonvolatile_storage_driver::DRIVER_NUM => f(Some(self.stfu_holding)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM_HOLDING => f(Some(self.stfu_holding)),
 
             kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
@@ -619,9 +613,6 @@ pub unsafe fn reset_handler() {
         led: led,
         alarm: alarm,
         gpio_async: gpio_async,
-        coulomb_counter_i2c_mux_0: pca9544a_0,
-        coulomb_counter_i2c_mux_1: pca9544a_1,
-        coulomb_counter_i2c_mux_2: pca9544a_2,
         coulomb_counter_generic: ltc294x_driver,
         battery_monitor: max17205_driver,
         smbus_interrupt: smbusint_driver,
