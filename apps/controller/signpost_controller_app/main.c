@@ -19,8 +19,6 @@
 #include "signpost_api.h"
 #include "signpost_energy_monitors.h"
 
-#include "bonus_timer.h"
-
 static void get_energy (void);
 static void gps_callback (gps_data_t* gps_data);
 
