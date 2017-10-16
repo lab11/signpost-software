@@ -7,7 +7,7 @@
 #include "sara_u260.h"
 #include "tock.h"
 
-#define SARA_CONSOLE 110
+#define SARA_CONSOLE 0x81001
 
 int sara_u260_init(void) {
     int ret = at_send(SARA_CONSOLE,"AT\r");
