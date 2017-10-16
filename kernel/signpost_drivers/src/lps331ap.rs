@@ -6,6 +6,9 @@ use kernel::hil::i2c;
 use kernel::hil::gpio;
 use kernel::returncode::ReturnCode;
 
+// Syscall driver number.
+pub const DRIVER_NUM: usize = 0x61000;
+
 // Buffer to use for I2C messages
 pub static mut BUFFER : [u8; 4] = [0; 4];
 
@@ -203,7 +206,7 @@ impl<'a> Driver for LPS331AP<'a> {
         }
     }
 
-    fn command(&self, command_num: usize, _: usize, _: AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, _: usize, _: usize, _: AppId) -> ReturnCode {
         match command_num {
             // Take a pressure measurement
             0 => {

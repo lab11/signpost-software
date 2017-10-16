@@ -6,6 +6,9 @@ use kernel::hil::i2c;
 use kernel::{AppId, Callback, Driver};
 use kernel::returncode::ReturnCode;
 
+// Syscall driver number.
+pub const DRIVER_NUM: usize = 0x81001;
+
 pub static mut BUFFER: [u8; 8] = [0; 8];
 
 #[derive(Clone,Copy,PartialEq)]
@@ -137,7 +140,7 @@ impl<'a> Driver for SMBUSIntDriver<'a> {
             _ => ReturnCode::ENOSUPPORT,
         }
     }
-    fn command(&self, command_num: usize, _data: usize, _:AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, _data: usize, _:usize, _:AppId) -> ReturnCode {
         match command_num {
             // issue alert response
             0 => {

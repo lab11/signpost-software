@@ -5,9 +5,6 @@
 
 #[macro_use(debug)]
 extern crate kernel;
-extern crate signpost_hil;
-
-pub mod max17205;
 
 pub mod lps331ap;
 

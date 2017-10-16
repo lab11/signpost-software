@@ -6,6 +6,8 @@ use kernel::hil;
 use kernel::hil::time;
 use kernel::hil::time::Frequency;
 
+// Syscall driver number.
+pub const DRIVER_NUM: usize = 0x11001;
 
 
 pub struct WatchdogKernel<'a, A: time::Alarm + 'a> {
