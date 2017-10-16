@@ -14,7 +14,7 @@ int signpost_tock_firmware_update_go(uint32_t source,
   ret = allow(DRIVER_NUM_STFU, 0, (uint8_t*) config, 16);
   if (ret < 0) return ret;
 
-  return command(DRIVER_NUM_STFU, 1, 0);
+  return command(DRIVER_NUM_STFU, 1, 0, 0);
 }
 
 struct stfu_holding_data {
@@ -42,7 +42,7 @@ int signpost_tock_firmware_update_write_buffer(uint8_t* buffer, uint32_t offset,
   if (ret < 0) return ret;
 
   uint32_t arg0 = (length << 8) | 3;
-  ret = command(DRIVER_NUM_STFU_HOLDING, (int) arg0, (int) offset);
+  ret = command(DRIVER_NUM_STFU_HOLDING, (int) arg0, (int) offset, 0);
   if (ret < 0) return ret;
 
   // Wait for the callback.
