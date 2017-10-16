@@ -7,7 +7,7 @@ use kernel::{AppId, Callback, Driver};
 use kernel::returncode::ReturnCode;
 
 // Syscall driver number.
-pub const DRIVER_NUM: usize = 0x81001;
+pub const DRIVER_NUM: usize = 0x81003;
 
 pub static mut BUFFER: [u8; 8] = [0; 8];
 

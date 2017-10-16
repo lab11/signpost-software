@@ -5,7 +5,7 @@ use kernel::hil::uart::{self, UARTAdvanced, Client};
 use kernel::process::Error;
 
 // Syscall driver number.
-pub const DRIVER_NUM: usize = 0x82002;
+pub const DRIVER_NUM: usize = 0x81002;
 
 pub struct App {
     read_callback: Option<Callback>,
