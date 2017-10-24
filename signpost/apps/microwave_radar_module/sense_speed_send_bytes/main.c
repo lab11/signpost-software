@@ -37,15 +37,16 @@ static void timer_callback (
     uint32_t motion_index = mr_motion_index();
     printf("Got motion index of %lu\n",motion_index);
 
-    // uint32_t, max speed in milli-meters per second detected since last transmission
-    send_buf[5+count*4] = ((motion_index >> 24) & 0xFF);
-    send_buf[5+count*4+1] = ((motion_index >> 16) & 0xFF);
-    send_buf[5+count*4+2] = ((motion_index >> 8) & 0xFF);
-    send_buf[5+count*4+3] = ((motion_index) & 0xFF);
+    // uint8_t of the index/2000 (deterimined analytically - if we are at 512000 there is definitely motion).
+    if(motion_index > 510000) {
+        send_buf[5+count] = 255;
+    } else {
+        send_buf[5+count] = (uint8_t)((motion_index/2000) & 0xFF);
+    }
 
     count++;
 
-    if(count == 10) {
+    if(count == 20) {
         printf("About to send data to radio\n");
         int rc = signpost_networking_send("lab11/radar",send_buf,5+count*4);
         printf("Sent data with return code %d\n\n\n",rc);
@@ -107,7 +108,6 @@ int main (void) {
 
     //turn on mr radar
     gpio_set(3);
-
     mr_init();
 
     send_buf[0] = 0x02;
