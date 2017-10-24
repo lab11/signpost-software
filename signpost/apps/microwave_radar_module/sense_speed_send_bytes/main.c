@@ -89,8 +89,7 @@ int main (void) {
     printf("[Microwave Radar] Start\n");
 
     // initialize LED
-    gpio_enable_output(LED_PIN);
-    gpio_set(LED_PIN);
+    led_on(2);
 
     //turn off mr radar
     gpio_enable_output(3);
@@ -105,6 +104,8 @@ int main (void) {
         }
     } while (rc < 0);
     printf(" * Bus initialized\n");
+
+    led_off(2);
 
     //turn on mr radar
     gpio_set(3);
