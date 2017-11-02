@@ -63,7 +63,7 @@ static void timer_callback (
         printf("Got time with %d satellites\n",stime.satellite_count);
         if(rc < 0 || stime.satellite_count < 2) {
             printf("Failed to get time - assuming 10 seconds\n");
-            utime += 10;
+            utime += 20;
             send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
             send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
