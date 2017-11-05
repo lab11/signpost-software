@@ -596,14 +596,17 @@ void ble_error(uint32_t error_code __attribute__ ((unused))) {
 }*/
 
 void ble_evt_write(ble_evt_t* p_ble_evt) {
+  static bool added_queue = false;
+
   if(simple_ble_is_char_event(p_ble_evt, &log_update_char)) {
    
     //This write is like an Ack for reading the previous packet
-    printf("BLE send succeeded!\n");
-    seq_num++;
-    increment_queue_pointer(&queue_head);
-
-    //a write to the update char acks that ble received the log data
+    if(added_queue) {
+        printf("BLE send succeeded!\n");
+        seq_num++;
+        increment_queue_pointer(&queue_head);
+    }
+        //a write to the update char acks that ble received the log data
     if (queue_head == queue_tail) {
         //No these is not another value
         //Send a stop notify
@@ -614,6 +617,7 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
         // set stop
         simple_ble_stack_char_set(&log_notify_char, 1, &stop);
         simple_ble_notify_char(&log_notify_char);
+        added_queue = false;
     } else {
         //There is another value - form a packet and notify
 
@@ -638,6 +642,8 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
           printf("read update error: %d\n", rc);
         }
         simple_ble_notify_char(&log_read_char);
+
+        added_queue = true;
     }
   }
 }
