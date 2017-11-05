@@ -20,6 +20,7 @@ var packet_num = 0
 
 noble.on('stateChange', function(state) {
   if (state === 'poweredOn') {
+    console.log("Start scanning...");
     noble.startScanning();
   } else {
     noble.stopScanning();
@@ -32,12 +33,12 @@ function on_discovery(peripheral) {
   var advertisement = peripheral.advertisement;
 
   var local_name = advertisement.localName;
-  var ble_address = peripheral.address;
 
   if (local_name) {
-    console.log('Found peripheral with local_name ' + local_name + ' address ' + ble_address)
+    console.log('Found peripheral with local_name ' + local_name)
       if(local_name === "Signpost") {
         signpost_peripheral = peripheral
+        noble.stopScanning();
         explore(peripheral) // set up disconnect callback and connect to the peripheral
       }
   }
@@ -71,6 +72,7 @@ function on_discover_services(error, services) {
   }
 }
 
+var one_done = false;
 
 function on_discover_characteristics(error, characteristics) {
   console.log("Discover characteristics")
@@ -82,22 +84,37 @@ function on_discover_characteristics(error, characteristics) {
         }
         else if (characteristic.uuid == signpost_notify_char_uuid) {
           signpost_notify_char = characteristic
-            signpost_notify_char.notify(true, function(err) {console.log("Enabled notify on signpost update char")})
+            signpost_notify_char.notify(true, function(err) {
+                console.log("Enabled notify on signpost notify char")
+                if(one_done == true) {
+                    console.log("Beginning transfer from Signpost")
+                    var buffer = Buffer.from("") // put whatever string you need here
+
+                    signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
+                } else {
+                    one_done = true;
+                }
+            })
             signpost_notify_char.on('data', on_signpost_notify_stop) // Callback for when we get new data
-            timeout = setTimeout(timed_out, 5000)
+            //timeout = setTimeout(timed_out, 5000)
         }
         else if (characteristic.uuid == signpost_read_char_uuid) {
           signpost_read_char = characteristic
-            signpost_read_char.notify(true, function(err) {console.log("Enabled notify on signpost update char")})
+            signpost_read_char.notify(true, function(err) {
+                console.log("Enabled notify on signpost read char")
+                if(one_done == true) {
+                    console.log("Beginning transfer from Signpost")
+                    var buffer = Buffer.from("") // put whatever string you need here
+
+                    signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
+                } else {
+                    one_done = true;
+                }
+            })
             signpost_read_char.on('data', on_signpost_notify_data) // Callback for when we get new data
-            timeout = setTimeout(timed_out, 5000)
+            //timeout = setTimeout(timed_out, 5000)
         }
     }
-
-    console.log("Beginning transfer from Signpost")
-    var buffer = Buffer.from("") // put whatever string you need here
-
-    signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
 }
 
 // you can use functions like data.readUInt8 to get data from the node.
@@ -110,7 +127,7 @@ function on_signpost_notify_stop(data, isNotify) {
 
             signpost_update_char.write(buffer, false, function() {console.log("Wrote request to signpost")})
         }
-    }, 60000);
+    }, 15000);
 }
 
 function post_callback (res) {
@@ -127,9 +144,11 @@ function post_callback (res) {
 // data is a nodejs buffer.
 // you can use functions like data.readUInt8 to get data from the node.
 function on_signpost_notify_data(data, isNotify) {
+    if(!isNotify) {
+        return;
+    }
+
     console.log("Got notify from the signpost")
-    clearTimeout(timeout)
-    timeout = setTimeout(timed_out, 5000)
 
     signpost_read_char.read(function(error, data) {
         console.log("Got some data from the signpost")
