@@ -5,46 +5,60 @@ Signpost Software
 
 This repository holds all of the software for the [Signpost City-Scale
 sensing project](https://github.com/lab11/signpost). Please see that 
-repository for more information. 
+repository for more information on the project as a whole. 
 
-Software for the Signpost platform and its modules.
+The software for the Signpost project mainly consists of code
+that runs on the Cortex-M class microcontrollers that we use
+on the Signpost modules. Some of the software runs on Signpost
+*core* modules (such as the radio module and control module) and provides
+resources including networking, time, location and storage to the sensor
+modules. Sensor modules can access these resources through the *Signpost API*,
+which defines the full networking stack for interacting with a Signpost.
+The goal of the Signpost API is to significantly simplify sensor
+module applications.
 
-Although not a requirement for modules, most hardware on signpost uses the
-[Tock](https://github.com/helena-project/tock) operating system. Tock is an
-embedded operating system targeted towards low-power ARM Cortex-M class devices
-that provides safety and robustness guarantees. The Tock kernel is written in
-Rust, but application code can be written in any language that can be compiled
-to a valid binary. Most Signpost boards have applications written in C, with a
-few written in C++.
 
-## Apps
+## Signpost API
 
-Tock application code for Signpost platform and modules.
+The Signpost API exists as a shim between the application and the hardware
+on your microcontroller, and can easily be ported to multiple platforms
+by implementing several calls to I2C, GPIO and Timer peripherals.
+Currently most sensors (and the core modules) run [Tock](https://github.com/helena-project/tock),
+but we currently have one sensor module running ARM Mbed, and we have an
+Arduino port working and nearly ready to merge.
 
-## Docs
+<img src="https://raw.githubusercontent.com/lab11/signpost/master/media/signpost_software_transparent.png" width="70%" />
 
-Documentation on various aspects of Signpost software. 
+## Current Status
 
-## Edison
+We are currently working to reorganize this repo,
+and get much needed API updates merged into master for a 'Signpost 1.0'
+release. These changes should include cleaner networking API, a standardized
+method for over the air updates, and stable core signpost code. Please 
+feel free to contact us at <signpost-admin@eecs.berkeley.edu> if you have
+any questions!
 
-Tools for loading a Signpost image onto an Intel Edison, such as exists on the
-Control Module.
+## Current Organization
 
-## Kernel
+### apps 
+All code running on signposts exists in this folder including applications
+for each module and libraries for our supported platforms.
 
-Tock kernel code for Signpost platform and modules. Get started [here](kernel/).
+#### docs
+Documentation that is currently being updated
 
-## Receiver
+### edison
+In-progress code for the Intel Edison running on each Signpost
 
-Various methods for collecting data from Signposts.
+### kernel
+Tock kernel code.
 
-## Signbus
+#### receiver
+Tools that run on your desktop to help with signpost development.
 
-Tools for interacting directly with the I2C bus on a Signpost Backplane.
+### summon
+The signpost summon application.
 
-## Summon
-
-A Summon interface for the Signpost project
 
 ## License
 
