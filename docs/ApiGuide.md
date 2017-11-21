@@ -14,16 +14,16 @@ the APIs. To use these APIs you must
 
 at the top of your application.
 
+All Signpost API calls return an error code, which can be used
+to determine success or failure.
+
 ## Contents
 1. [Initialization](#initialization)
 2. [Storage](#storage)
 3. [Networking](#networking)
-4. [Simple Networking](#simple-networking)
-5. [Posting to GDP](#posting-to-gdp)
+4. [Time](#time)
+5. [Location](#location)
 6. [Energy](#energy)
-7. [Time](#time)
-8. [Location](#location)
-9. [Processing](#processing)
 
 ## Initialization
 
@@ -36,18 +36,12 @@ declare that service here.
 The prototype of the initialization function is:
 
 ```c
-int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api);
+int signpost_init(char* module_name);
 ```
 
-In practice, most modules will simply call:
-
-```c
-int result =  signpost_initialization_module_init(0x30, NULL);
-```
-
-Where 0x30 should be replaced by an I2C address not currently being used
-by other modules. Addresses 0x20,0x21, and 0x22 are reserved. In the future
-we plan to add automatic address resolution so conflicting is not an issue.
+The "module\_name" string should be unique to your module type and 
+sixteen characters or less. This name will be used to identify
+your module throughout the signpost stack.
 
 This is the first Signpost API function every module should call.
 
@@ -57,140 +51,143 @@ Modules can storage data on an SD card that is on the control module.
 
 They can access this SD card through the storage API. Currently modules
 can only write to the SD card in an append only log. This would be good for
-storing long term data, and allowing the Intel Edison to access and
-process that data. In the future we plan to allow modules to
-read data from the SD card, and make the SD card format the data in
-a filesystem readable by your computer, but these are still being implemented.
+storing long term data, and allowing the Intel Edison 
+or other modules to access and process that data. 
 
-To store data to the SD card:
+To store data to the SD card you must have a log name (which is in
+practice the file name on the SD cards FAT32 file system). Logs for
+your module are store in the file "module\_name/log\_name". 
+
+Currently you may read, write and delete your own logs, and a 
+module may see and read the logs of other modules. Log names
+containing forward slashes will fail unless they successfully
+read the log of another module.
+
+To store data to the SD card then retrieve it: 
 
 ```c
-uint8_t data = {0x01, 0x02, 0x03};
+uint8_t* data = {0x01, 0x02, 0x03};
 Storage_Record_t record;
+strcpy(record.logname, "my_log");
 int result = signpost_storage_write(data, 3, &record);
+if(result < SIGNPOST_ERROR) { //handle error}
+
+uint8_t* read_data[3];
+int result = signpost_storage_read(read_data, 3, &record);
 ```
 
-where record could then be used by the Intel Edison to access the data,
-or in the future by your module to read the data.
+To read the data from another module (assuming the data exists):
+
+```c
+uint8_t* read_data[3];
+Storage_Record_t record;
+strcpy(record.logname, "other_module/log");
+record.offset = 0;
+record.length = 3;
+int result = signpost_storage_read(read_data, 3, &record);
+```
+
 
 ## Networking
 
-Currently the signpost API provides an http post abstraction. The prototype
-of this function is
+Currently the signpost API provides an HTTP POST abstraction, and
+a pub/sub abstraction. 
+
+
+### Pub/Sub
+
+We recommend the pub/sub abstraction because 
+it supports both cellular and lora networks (and is therefore both
+more reliable and can be lower power). 
 
 ```c
-int signpost_networking_post(char* url, http_request request, http_response* response);
+//int signpost_networking_publish(char* topic, uint8_t* data, uint8_t data_len);
+
+uint8_t* data = {0x01, 0x02, 0x03};
+
+//will appear at signpost/mac_address/module_name/my_topic
+int result = signpost_networking_publish("my_topic", data, 3);
 ```
 
-where `http_request` is a structure containing the fields for a post and
-`http_response` is a structure which you provide and will be populated upon
-completion of the post. Note that API will fill in
-content-length for you. A simple call to `http_post` would look like:
+where topic is a string less than 12 bytes, and data is a buffer less
+than 90 bytes. You can retrieve published data by subscribing to
+the signpost MQTT stream at signpost/mac\_address/module\_name/topic. Please
+see the additional [Signpost Networking Architecture](https://github.com/lab11/signpost-software/blob/master/docs/NetworkArch.md) 
+for more information about integrating with the Signpost backend. 
+
+Just as you can receive data from Signpost MQTT stream, it can
+also be used send data to modules by publishing to signpost/mac\_address/module\_name/topic.
+Modules can receive this data by subscribing to these messages with
+a callback:
 
 ```c
-uint8_t test[200];
+//int signpost_networking_subscribe(subscribe_callback_type* cb);
 
-const char* url = "httpbin.org/post";
-http_request request;
-http_header h;
-h.header = "content-type";
-h.value = "application/octet-stream";
-r.num_headers = 1;
-r.headers = &h;
-r.body_len = 20;
-r.body = test;
+void subscribe_callback(char* topic, uint8_t* data, uint8_t data_len) {
+    //process the topic and data here
+}
 
-http_response response;
-r2.num_headers = 0;
-r2.headers = NULL;
-r2.reason_len = 0;
-r2.body_len = 200;
-r2.body = test;
-
-int result = signpost_networking_post(url, request, &response);
+//subscribe to incoming data
+signpost_networking_subscribe(subscribe_callback);
 ```
 
-The result is 0 on success, and negative on error.
+The module\_name/update topic is reserved and used by the signpost API to 
+trigger the software update process.
 
-Note that the response will only populate as much as you provide (i.e. to get
-a response with multiple headers, you would need to declare multiple
-`http_response_header` structures and initialize them with buffers and lengths;
-to get a longer post body, you would need to declare a longer buffer to put that post
-body).
+We hope to enable internal module-to-module messaging through
+this pub/sub services as well, and are planning this in a future release.
 
-### Simple Networking
+### HTTP Post
 
-Because the above code is both longer and more flexible than most people need,
-we created a simple wrapper around it called `simple_post`. To use it:
+The HTTP Post method is meant to be a simple way of sending data outside
+the Signpost ecosystem. To allow for end-to-end responses, it uses
+the cellular modem on Signpost, and is therefore always higher power and
+potentially less reliable than the Pub/Sub methods in situations where
+a LoRa network is available but cellular coverage is poor.
+
+Currently we only support extremely simple HTTP Post, which posts
+data with an octetstream content-type and only returns the status code.
 
 ```c
-#include "simple_post.h"
+//int signpost_networking_post(char* url, uint8_t* data, uint16_t data_len);
+
+uint8_t* data = {0x01, 0x02, 0x03};
+
+//result is either a signpost error, or a valid http result code
+int result = signpost_networking_post("httpbin.org/post", data, 3);
 ```
 
-Simple post only posts binary data with application/octet-stream
-content-type, which should be appropriate for most sensor data.
-To use `simple_post`:
-
-```c
-uint8_t data = {0x01, 0x02, 0x03};
-int status = simple_octetstream_post("httpbin.org/post", data, 3);
-```
-
-Where the status is the http status returned by the website, or the error
-code if negative.
-
-### Posting to GDP
-While GDP does not currently have a rest API, your
-[signpost-debug-radio](../receiver/debug_radio/)
-will append to gdp if you post to the url `gdp.lab11.eecs.umich.edu/gdp/v1/<log_name>/append`
-where `<log_name>` is the name of the log. This log will be created if it does
-not already exist. Therefore, posting sensor data to GDP would look like:
-
-```c
-uint8_t data = {0x01, 0x02, 0x03};
-int status = simple_octetstream_post("gdp.lab11.eecs.umich.edu/gdp/v1/
-                                      edu.umich.eecs.lab11/fake-data/append", data, 3);
-```
+We may expand the HTTP post method to include responses in the future.
 
 ## Time
 
-The time API returns current time. If you care about time synchronization,
-this _should_ be correlated with the pulse per second (PPS) line routed to your module.
-To get time synchronization we recommend the following procedure:
-
-    1. Listen for PPS
-    2. Start timer
-    3. Perform time request
-    4. Wait for response
-    5. If response happens in <1s, the next PPS will be `response_time` + 1s, otherwise, retry.
-
-This should be able to provide every module with global time sync with error
-around the delay it takes for tock to propagate the PPS signal up to your app (which
-we believe to be much greater than error from GPS or propagation delay). Tock is
-not an RTOS.
+The time API returns current time. It returns GPS time (which is notably off
+from UTC by ~9 seconds at time of writing) as a c time structure of time\_t
+type.
 
 To use the time API declare a time structure, and call the time API function:
 
 ```c
-signpost_timelocation_time_t time;
+#include <time.h>
+
+//int signpost_timelocation_get_time(time_t* time);
+
+time_t time;
 int result_code = signpost_timelocation_get_time(&time);
+if(result_code == SIGNPOST_ENOSAT) {
+    //time invalid due to lack of satellites
+}
+
+struct tm* calendar_time;
+result_code = signpost_timelocation_get_calendar_time(calendar_time);
+if(result_code == SIGNPOST_ENOSAT) {
+    //time invalid due to lack of satellites
+}
 ```
-
-The time structure provides the fields:
-
-```c
-typedef struct __attribute__((packed)) {
-    uint16_t year;
-    uint8_t month;
-    uint8_t day;
-    uint8_t hours;
-    uint8_t minutes;
-    uint8_t seconds;
-    uint8_t satellite_count;
-} signpost_timelocation_time_t;
-```
-
-The time will be valid if `satellite_count` > 0.
+The time API handles synchronization for you. It uses the PPS line and 
+a timer to ensure that the time it returns is the current GPS time. Apps
+can then be sure that the next PPS occurs on the returned time + 1s, and
+use this for global time synchronization.
 
 ## Location
 
@@ -199,6 +196,9 @@ The location API provides location from the GPS. To use the location API:
 ```c
 signpost_timelocation_location_t location;
 int result_code = signpost_timelocation_get_location(&location);
+if(result_code == SIGNPOST_ENOSAT) {
+    //location invalid due to lack of satellites
+}
 ```
 
 The location structure provides the fields:
@@ -215,9 +215,19 @@ Location is valid if `satellite_count` >= 4.
 
 ## Energy
 
-This API is not implemented yet (it returns junk data).
+Signpost modules may need to adapt to varying energy conditions, and
+may want to be turned off for periods of time to save their
+energy allocations. You can read the [Energy Allocation Strategy](https://github.com/lab11/signpost-software/blob/master/docs/Energy.md)
+for more information on Signpost  energy policies.
 
-Here is our API proposal:
+The API consists of a concept akin to an energy timer and an overall energy budget.
+Modules can read and reset their timer for internal use (such as to
+measure their average energy over time), and modules can read
+their total energy budget to make sure they don't exceed available energy.
+Modules can also request to be duty-cycled, or powered off and turned on
+again at some time in the future.
+
+To use the energy query API:
 
 ```c
 signpost_energy_information_t energy;
@@ -228,46 +238,18 @@ where the energy structure is:
 
 ```c
 typedef struct __attribute__((packed)) energy_information {
-    uint32_t    energy_limit_24h_mJ;
-    uint32_t    energy_used_24h_mJ;
-    uint16_t    current_average_mJDay;
+    uint32_t    energy_used_since_reset_uWh;
+    uint32_t    energy_limite_uWh;
+    uint32_t    time_since_reset_s;
     uint8_t     energy_limit_warning_threshold;
     uint8_t     energy_limit_critical_threshold;
 } signpost_energy_information_t;
 ```
 
-The goal of this is to tell a module if they are using too much energy. The controller
-will occasionally update `energy_limit_24h_mJ` based on incoming energy from
-the solar panel. A module can see how much energy it has used
-over the past 24h window and the `current_average_mJDay` should allow a
-module to easily compare its current usage to the limit and see if it
-will exceed the limit.
-
-## Processing
-
-The processing API allows a module to use the Intel Edison Linux computer
-on the signpost controller. Modules can access the Intel Edison
-through an RPC Abstraction. It consists of two parts:
-
-**Note that this is not completely working, but we are close.**
-
-#### Initialization
+and to use the duty cycle API:
 
 ```c
-int result = signpost_processing_init("/path/to/RPC")
+//int signopst_energy_duty_cycle(uint32_t time_in_s)
+
+int result = signpost_energy_duty_cycle(600);
 ```
-
-where path to RPC is the location of a python module that implements
-your RPC functions on the Intel Edison (we eventually plan to allow this to also be a remote
-path to a server or git repo).
-
-#### RPC Calls
-
-In module code, using the RPC interface is as simple as including
-your RPC header and calling the RPC. The RPC library handles getting
-this call from your module to the Intel Edison and returning a result.
-Writing the RPC definitions
-and implementing the python module to execute the RPC is more
-than we will cover in this document. Please see the [RPC documentation](./RPCApi.md)
-for more information.
-
