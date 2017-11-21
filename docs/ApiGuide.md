@@ -109,7 +109,7 @@ uint8_t* data = {0x01, 0x02, 0x03};
 int result = signpost_networking_publish("my_topic", data, 3);
 ```
 
-where topic is a string less than 12 bytes, and data is a buffer less
+where topic is a string less than 12 characters, and data is a buffer less
 than 90 bytes. You can retrieve published data by subscribing to
 the signpost MQTT stream at signpost/mac\_address/module\_name/topic. Please
 see the additional [Signpost Networking Architecture](https://github.com/lab11/signpost-software/blob/master/docs/NetworkArch.md) 
