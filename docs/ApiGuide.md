@@ -159,13 +159,23 @@ int result = signpost_networking_post("httpbin.org/post", data, 3);
 
 We may expand the HTTP post method to include responses in the future.
 
+### Other Networking Notes
+
+Currently the networking is not implemented to be real-time. It does not
+offer any determinism in delay times, nor does it have mechanisms to
+elevate packet priority for immediate transmission. All networking is implemented
+as a FIFO queue,
+and packets will on average incur a 3-5s delay, but the delay could be much
+longer in the case of high network load or failure. If your application
+needs real-time networking let us know in an issue.
+
 ## Time
 
 The time API returns current time. It returns GPS time (which is notably off
-from UTC by ~9 seconds at time of writing) as a c time structure of time\_t
-type.
+from UTC by ~9 seconds at time of writing) as specified by the "time.h"
+library in either calendar time or unix time.
 
-To use the time API declare a time structure, and call the time API function:
+To use the time API declare a time structure and call the time API functions:
 
 ```c
 #include <time.h>
@@ -184,10 +194,15 @@ if(result_code == SIGNPOST_ENOSAT) {
     //time invalid due to lack of satellites
 }
 ```
+
 The time API handles synchronization for you. It uses the PPS line and 
 a timer to ensure that the time it returns is the current GPS time. Apps
 can then be sure that the next PPS occurs on the returned time + 1s, and
 use this for global time synchronization.
+
+Note that when packets are *received* in the pub/sub system they are timestamped,
+however there may be a delay (average 3-5s, but potentially minutes) between
+when the modules sends data and when it is received as noted above. 
 
 ## Location
 
@@ -212,6 +227,11 @@ typedef struct __attribute__((packed)) {
 ```
 
 Location is valid if `satellite_count` >= 4.
+
+Note that apps do not need to explicitly send the current location if
+using the pub/sub system because a current\_location tag, which is
+the average location of a signpost over the past two hours, is appended
+to all signpost packets.
 
 ## Energy
 
