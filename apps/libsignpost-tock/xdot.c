@@ -265,6 +265,30 @@ int xdot_send(uint8_t* buf, uint8_t len) {
     return at_wait_for_response(LORA_CONSOLE,3,5000);
 }
 
+int xdot_receive(uint8_t* buf, uint8_t len) {
+
+    uint8_t* buf_str = malloc(len*2+1);
+    if(!buf_str) return XDOT_ERROR;
+
+    int ret = at_send(LORA_CONSOLE, "AT+RECV");
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
+
+    ret = at_get_response(LORA_CONSOLE, 3, 3000, buf_str, len*2);
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
+
+    for(uint16_t i = 0; i < ret/2 && i < len; i++) {
+        sscanf((const char*)buf_str + i*2, "%2hhx", &buf[i]);
+    }
+
+    return ret/2;
+}
+
 int xdot_sleep(void) {
     int ret = at_send(LORA_CONSOLE, "AT+WM=1\n");
     if(ret < 0) return XDOT_ERROR;

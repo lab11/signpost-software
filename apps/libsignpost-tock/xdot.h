@@ -1,4 +1,4 @@
-//This is a driver for the Multitech XDOT. 
+//This is a driver for the Multitech XDOT.
 //http://www.multitech.com/brands/multiconnect-xdot
 #pragma once
 
@@ -41,6 +41,9 @@ int xdot_set_ack(uint8_t ack);
 
 //sends binary buffer
 int xdot_send(uint8_t* buf, uint8_t len);
+
+//gets the last buffer received in the xdot
+int xdot_receive(uint8_t* buf, uint8_t len);
 
 int xdot_reset(void);
 int xdot_sleep(void);
