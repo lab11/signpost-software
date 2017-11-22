@@ -21,6 +21,8 @@ static uint8_t accumulator_pointer = 0;
 static uint32_t accumulator_counter = 0;
 static uint32_t mr_index = 0;
 static uint32_t motion_frequency = 0;
+static uint32_t last_average = 0;
+static uint32_t average_accumulator = 0;
 
 #define RISING 0
 #define FALLING 1
@@ -91,18 +93,25 @@ static void adc_callback(__attribute__((unused)) uint8_t channel,
 
     //add the sample to the accumulator
     int s = sample;
-    s = s-2024;
+    s = s-last_average;
     if(s < 0) {
         s = s * -1;
     }
 
     accumulator_buffer[accumulator_pointer] += s;
 
+    //take the average
+    average_accumulator += sample;
+
     //increment accumulator counter
     accumulator_counter++;
 
     //are we done with this slot?
     if(accumulator_counter == COUNTER_SIZE) {
+        //update last average
+        last_average = average_accumulator/COUNTER_SIZE;
+        average_accumulator = 0;
+
         //update the mr_index
         mr_index = 0;
         for(uint8_t i = 0; i < ACCUMULATOR_SIZE; i++) {
@@ -134,6 +143,11 @@ int mr_init(void) {
     //start ADC sampling at 4khz
     int ret = adc_set_continuous_sample_callback(adc_callback, NULL);
     ret |= adc_continuous_sample(MR_ADC_CHANNEL, SAMPLE_FREQ);
+
+    //zero out the accumulator buffer
+    for(int i = 0; i < ACCUMULATOR_SIZE; i++) {
+        accumulator_buffer[i] = 0;
+    }
 
     return ret;
 }
