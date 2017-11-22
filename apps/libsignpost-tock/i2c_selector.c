@@ -2,9 +2,9 @@
 #include "tock.h"
 #include "i2c_selector.h"
 
-#define DRIVER_NUM_I2C_SELECTOR_0 1001
-#define DRIVER_NUM_I2C_SELECTOR_1 1002
-#define DRIVER_NUM_I2C_SELECTOR_2 1003
+#define DRIVER_NUM_I2C_SELECTOR_0 0x81004
+#define DRIVER_NUM_I2C_SELECTOR_1 0x81005
+#define DRIVER_NUM_I2C_SELECTOR_2 0x81006
 
 struct i2c_selector_data {
   bool fired;
@@ -38,11 +38,11 @@ int i2c_selector_set_callback(int selector_num, subscribe_cb callback, void* cal
 
 int i2c_selector_select_channels(int selector_num, uint32_t channels) {
     if(selector_num == 0) {
-	    return command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0000000F);
+	    return command(DRIVER_NUM_I2C_SELECTOR_0, 1, channels & 0x0000000F, 0);
     } else if (selector_num == 1) {
-	    return command(DRIVER_NUM_I2C_SELECTOR_1, 1, channels & 0x0000000F);
+	    return command(DRIVER_NUM_I2C_SELECTOR_1, 1, channels & 0x0000000F, 0);
     } else if (selector_num == 2) {
-	    return command(DRIVER_NUM_I2C_SELECTOR_2, 1, channels & 0x0000000F);
+	    return command(DRIVER_NUM_I2C_SELECTOR_2, 1, channels & 0x0000000F, 0);
     } else {
         return TOCK_ENODEVICE;
     }
@@ -50,11 +50,11 @@ int i2c_selector_select_channels(int selector_num, uint32_t channels) {
 
 int i2c_selector_disable_all_channels(int selector_num) {
     if(selector_num == 0) {
-        return command(DRIVER_NUM_I2C_SELECTOR_0, 2, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 2, 0, 0);
     } else if (selector_num == 1) {
-        return command(DRIVER_NUM_I2C_SELECTOR_1, 2, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 2, 0, 0);
     } else if (selector_num == 2) {
-        return command(DRIVER_NUM_I2C_SELECTOR_2, 2, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 2, 0, 0);
     } else {
         return TOCK_ENODEVICE;
     }
@@ -62,11 +62,11 @@ int i2c_selector_disable_all_channels(int selector_num) {
 
 int i2c_selector_read_interrupts(int selector_num) {
     if(selector_num == 0) {
-        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0, 0);
     } else if (selector_num == 1) {
-        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0, 0);
     } else if (selector_num == 2) {
-        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0, 0);
     } else {
         return TOCK_ENODEVICE;
     }
@@ -74,11 +74,11 @@ int i2c_selector_read_interrupts(int selector_num) {
 
 int i2c_selector_read_selected(int selector_num) {
     if(selector_num == 0) {
-        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_0, 3, 0, 0);
     } else if (selector_num == 1) {
-        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_1, 3, 0, 0);
     } else if (selector_num == 2) {
-        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0);
+        return command(DRIVER_NUM_I2C_SELECTOR_2, 3, 0, 0);
     } else {
         return TOCK_ENODEVICE;
     }

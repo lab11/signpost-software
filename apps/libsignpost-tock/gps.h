@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_NUM_GPS 109
+#define DRIVER_NUM_GPS 0x81000
 
 typedef struct {
     // date

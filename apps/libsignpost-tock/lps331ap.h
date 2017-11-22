@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_NUM_LPS331AP 106
+#define DRIVER_NUM_LPS331AP 0x61000
 
 int lps331ap_set_callback (subscribe_cb callback, void* callback_args);
 int lps331ap_get_pressure (void);

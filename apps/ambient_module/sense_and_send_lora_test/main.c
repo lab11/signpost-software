@@ -9,10 +9,11 @@
 #include <unistd.h>
 
 // tock includes
-#include <isl29035.h>
+#include <ambient_light.h>
+#include <humidity.h>
 #include <led.h>
 #include <lps25hb.h>
-#include <si7021.h>
+#include <temperature.h>
 #include <timer.h>
 #include <tock.h>
 
@@ -50,7 +51,7 @@ static void sample_sensors (void) {
 
   // get light
   int light = 0;
-  int err_code = isl29035_read_light_intensity();
+  int err_code = ambient_light_read_intensity();
   if (err_code < TOCK_SUCCESS) {
     printf("Error reading from light sensor: %d\n", light);
   } else {
@@ -61,7 +62,9 @@ static void sample_sensors (void) {
   // get temperature and humidity
   int temperature = 0;
   unsigned humidity = 0;
-  int err = si7021_get_temperature_humidity_sync(&temperature, &humidity);
+  int err = humidity_read_sync(&humidity);
+  err |= temperature_read_sync(&temperature);
+
   if (err < TOCK_SUCCESS) {
     printf("Error reading from temperature/humidity sensor: %d\n", err);
     err_code = err;

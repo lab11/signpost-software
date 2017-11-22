@@ -6,6 +6,10 @@ use kernel::common::take_cell::MapCell;
 use kernel::hil;
 use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 
+// Syscall driver number.
+pub const DRIVER_NUM: usize = 0x11002;
+pub const DRIVER_NUM_HOLDING: usize = 0x51000;
+
 /// This module is either waiting to do something, or handling a read/write.
 #[derive(Clone,Copy,Debug,PartialEq)]
 enum State {}
@@ -108,7 +112,7 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     ///
     /// - `0`: Return SUCCESS if this driver is included on the platform.
     /// - `1`: Do it.
-    fn command(&self, command_num: usize, _arg1: usize, _appid: AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, _arg1: usize, _: usize, _appid: AppId) -> ReturnCode {
 
         match command_num {
             0 => /* This driver exists. */ ReturnCode::SUCCESS,

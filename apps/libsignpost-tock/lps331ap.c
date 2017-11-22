@@ -23,7 +23,7 @@ int lps331ap_set_callback (subscribe_cb callback, void* callback_args) {
 }
 
 int lps331ap_get_pressure (void) {
-    return command(DRIVER_NUM_LPS331AP, 0, 0);
+    return command(DRIVER_NUM_LPS331AP, 0, 0, 0);
 }
 
 int lps331ap_get_pressure_sync (void) {

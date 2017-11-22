@@ -1,8 +1,11 @@
 use core::cell::Cell;
-use kernel::{AppId, AppSlice, Container, Callback, Shared, Driver, ReturnCode};
+use kernel::{AppId, AppSlice, Grant, Callback, Shared, Driver, ReturnCode};
 use kernel::common::take_cell::TakeCell;
 use kernel::hil::uart::{self, UARTAdvanced, Client};
 use kernel::process::Error;
+
+// Syscall driver number.
+pub const DRIVER_NUM: usize = 0x81002;
 
 pub struct App {
     read_callback: Option<Callback>,
@@ -35,7 +38,7 @@ pub static mut READ_BUF: [u8; 1024] = [0; 1024];
 
 pub struct Console<'a, U: UARTAdvanced + 'a> {
     uart: &'a U,
-    apps: Container<App>,
+    apps: Grant<App>,
     in_progress: Cell<Option<AppId>>,
     tx_buffer: TakeCell<'static, [u8]>,
     rx_buffer: TakeCell<'static, [u8]>,
@@ -47,7 +50,7 @@ impl<'a, U: UARTAdvanced> Console<'a, U> {
                baud_rate: u32,
                tx_buffer: &'static mut [u8],
                rx_buffer: &'static mut [u8],
-               container: Container<App>)
+               container: Grant<App>)
                -> Console<'a, U> {
         Console {
             uart: uart,
@@ -216,7 +219,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
         }
     }
 
-    fn command(&self, cmd_num: usize, arg1: usize, _: AppId) -> ReturnCode {
+    fn command(&self, cmd_num: usize, arg1: usize, _:usize, _: AppId) -> ReturnCode {
         match cmd_num {
             0 /* check if present */ => ReturnCode::SUCCESS,
             1 /* putc */ => {

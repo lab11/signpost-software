@@ -9,8 +9,9 @@
 #include "console.h"
 #include "lps331ap.h"
 #include "i2c_master_slave.h"
-#include "isl29035.h"
-#include "si7021.h"
+#include "humidity.h"
+#include "temperature.h"
+#include "ambient_light.h"
 #include "timer.h"
 #include "led.h"
 #include "app_watchdog.h"
@@ -37,11 +38,14 @@ static void sample_and_send (void) {
   // Start a pressure measurement
   int pressure = lps331ap_get_pressure_sync();
   // Get light
-  int light = isl29035_read_light_intensity();
+  int light = ambient_light_read_intensity();
   // Get temperature and humidity
   int temperature;
   unsigned humidity;
-  si7021_get_temperature_humidity_sync(&temperature, &humidity);
+  //si7021_get_temperature_humidity_sync(&temperature, &humidity);
+  humidity_read_sync(&humidity);
+  temperature_read_sync(&temperature);
+
 
   // Encode readings in txbuf
   txbuf[2] = (uint8_t) ((temperature >> 8) & 0xFF);

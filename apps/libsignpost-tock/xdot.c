@@ -13,7 +13,7 @@
 #include "multi_console.h"
 #include "at_command.h"
 
-#define LORA_CONSOLE 109
+#define LORA_CONSOLE 0x81002
 
 #define LORA_WAKE_PIN 10
 
@@ -31,7 +31,7 @@ int xdot_init(void) {
 int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     int ret = at_send(LORA_CONSOLE, "AT\n");
     if(ret < 0) return XDOT_ERROR;
-    
+
     ret = at_wait_for_response(LORA_CONSOLE,3);
     if(ret < 0) return XDOT_ERROR;
 
@@ -63,7 +63,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_wait_for_response(LORA_CONSOLE,3);
     if(ret < 0) return XDOT_ERROR;
 
-   
+
     ret = at_send(LORA_CONSOLE, "AT+NK=0,");
     if(ret < 0) return XDOT_ERROR;
 
@@ -112,7 +112,7 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
 }
 
 int xdot_get_txdr(void) {
-    
+
     int ret = at_send(LORA_CONSOLE,"AT+TXDR?\n");
     if(ret < 0) return XDOT_ERROR;
 
@@ -165,7 +165,7 @@ int xdot_set_adr(uint8_t adr) {
 
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
-    
+
     return at_wait_for_response(LORA_CONSOLE,3);
 }
 
@@ -211,10 +211,10 @@ int xdot_save_settings(void) {
 }
 
 int xdot_reset(void) {
-    
+
     int ret = at_send(LORA_CONSOLE, "ATZ\n");
     if(ret < 0) return XDOT_ERROR;
-    
+
     ret = at_wait_for_response(LORA_CONSOLE,3);
     if(ret < 0) return XDOT_ERROR;
 
@@ -227,7 +227,7 @@ int xdot_reset(void) {
 }
 
 int xdot_send(uint8_t* buf, uint8_t len) {
-    
+
     int ret = at_send(LORA_CONSOLE, "AT+send=");
     if(ret < 0) return XDOT_ERROR;
 
@@ -236,7 +236,7 @@ int xdot_send(uint8_t* buf, uint8_t len) {
 
     ret = at_send(LORA_CONSOLE, "\n");
     if(ret < 0) return XDOT_ERROR;
-    
+
     return at_wait_for_response(LORA_CONSOLE,3);
 }
 
