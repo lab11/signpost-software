@@ -20,17 +20,19 @@ int main (void) {
 
     sara_u260_init();
 
-    delay_ms(1000);
+    delay_ms(10000);
 
     uint8_t buf[5] = {'L','a','b','1','1'};
     printf("Posting...\n");
     int ret = sara_u260_basic_http_post("httpbin.org","/post",buf,5);
 
-    if(ret == SARA_U260_NO_SERVICE) {
-        printf("No Service! try again in a bit.\n");
+    if(ret < SARA_U260_SUCCESS) {
+        if(ret == SARA_U260_NO_SERVICE) {
+            printf("No Service! try again in a bit.\n");
+        } else {
+            printf("Post failed with error code %d\n",ret);
+        }
     }
-
-    delay_ms(10000);
 
     if(ret >= 0) {
         uint8_t dbuf[500] = {0};
@@ -45,16 +47,17 @@ int main (void) {
         }
     }
 
-    delay_ms(10000);
 
     printf("Now trying http get\n");
     ret = sara_u260_basic_http_get("rawgit.com","/lab11/signpost-software/master/apps/radio_module/cellular_test/README.md");
 
-    if(ret == SARA_U260_NO_SERVICE) {
-        printf("No Service! try again in a bit.\n");
+    if(ret < SARA_U260_SUCCESS) {
+        if(ret == SARA_U260_NO_SERVICE) {
+            printf("No Service! try again in a bit.\n");
+        } else {
+            printf("Get failed with error code %d\n",ret);
+        }
     }
-
-    delay_ms(10000);
 
     if(ret >= 0) {
         uint8_t dbuf[1000] = {0};
