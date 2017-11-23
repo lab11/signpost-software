@@ -66,6 +66,7 @@ int main (void) {
             } else if(ret == 0) {
                 printf("No data to receive\n");
             } else {
+                printf("Data: 0x");
                 for (uint8_t i = 0; i < ret; i++) {
                     printf("%02X",rx[i]);
                 }

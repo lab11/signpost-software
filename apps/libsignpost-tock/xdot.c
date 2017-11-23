@@ -267,10 +267,10 @@ int xdot_send(uint8_t* buf, uint8_t len) {
 
 int xdot_receive(uint8_t* buf, uint8_t len) {
 
-    uint8_t* buf_str = malloc(len*2+1);
+    uint8_t* buf_str = malloc(len*2+9);
     if(!buf_str) return XDOT_ERROR;
 
-    int ret = at_send(LORA_CONSOLE, "AT+RECV");
+    int ret = at_send(LORA_CONSOLE, "AT+RECV\n");
     if(ret < 0)  {
         free(buf_str);
         return XDOT_ERROR;
@@ -282,8 +282,21 @@ int xdot_receive(uint8_t* buf, uint8_t len) {
         return XDOT_ERROR;
     }
 
+    if(ret < 9) {
+        //something went wrong - we should get at least 9 characters
+        free(buf_str);
+        return XDOT_ERROR;
+    } else if (ret == 9) {
+        //we just got not data return 0
+        return 0;
+    } else {
+        //when we get data it throws two more chars in for some reason??
+        ret -= 11;
+    }
+
     for(uint16_t i = 0; i < ret/2 && i < len; i++) {
-        sscanf((const char*)buf_str + i*2, "%2hhx", &buf[i]);
+        char tbuf[5] = {'0','x',buf_str[3+i*2],buf_str[4+i*2], 0};
+        buf[i] = strtol(tbuf, NULL, 0);
     }
 
     return ret/2;
