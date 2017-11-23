@@ -9,7 +9,7 @@ without over-complicating the API.
 ## Uplink Data
 
 The Signpost API provides two methods of data uplink, [publish](https://github.com/lab11/signpost-software/blob/master/docs/ApiGuide.md#networking)
-and [post](https://github.com/lab11/signpost-software/blob/master/docs/ApiGuide.md#networking).
+and [post](https://github.com/lab11/signpost-software/blob/deployment/docs/ApiGuide.md#networking).
 
 The Post method is simple - it uses the cellular radio directly to send
 and HTTP post and communicates the HTTP status code in its response. While
@@ -25,7 +25,7 @@ and device ID metadata, and published to an MQTT broker (which you can access
 with a username and password). A full picture of the networking
 stack is shown below.
 
-<img src="https://raw.githubusercontent.com/lab11/signpost-software/deployment/media/uplink_network_arch.jpg" width="35%" />
+<img src="https://raw.githubusercontent.com/lab11/signpost-software/deployment/docs/img/uplink_network_arch.jpg" width="35%" />
 
 ## Downlink Data
 
@@ -40,6 +40,6 @@ a Post.
 
 The downlink architecture is shown below:
 
-<img src="https://raw.githubusercontent.com/lab11/signpost-software/deployment/media/downlink_network_arch.jpg" width="35%" />
+<img src="https://raw.githubusercontent.com/lab11/signpost-software/deployment/docs/img/downlink_network_arch.jpg" width="35%" />
 
 
