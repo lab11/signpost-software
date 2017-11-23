@@ -8,7 +8,7 @@ without over-complicating the API.
 
 ## Uplink Data
 
-The Signpost API provides two methods of data uplink, [publish](https://github.com/lab11/signpost-software/blob/master/docs/ApiGuide.md#networking)
+The Signpost API provides two methods of data uplink, [publish](https://github.com/lab11/signpost-software/blob/deployment/docs/ApiGuide.md#networking)
 and [post](https://github.com/lab11/signpost-software/blob/deployment/docs/ApiGuide.md#networking).
 
 The Post method is simple - it uses the cellular radio directly to send
