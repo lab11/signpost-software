@@ -1,0 +1,13 @@
+[Unit]
+Description=Receives lora packets for signpost.
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/uplink/lora-receiver/lora-receiver.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lora-receiver
+
+[Install]
+WantedBy=multi-user.target

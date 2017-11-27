@@ -1,0 +1,13 @@
+[Unit]
+Description=Public Posts from signpost to local MQTT stream
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/uplink/http-receiver/http-receiver.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=http-receiver
+
+[Install]
+WantedBy=multi-user.target

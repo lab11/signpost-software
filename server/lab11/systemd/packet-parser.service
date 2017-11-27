@@ -1,0 +1,13 @@
+[Unit]
+Description=Take the internal mqtt and parse them
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/lab11/packet-parser/packet-parser.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=packet-parser
+
+[Install]
+WantedBy=multi-user.target

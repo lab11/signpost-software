@@ -1,0 +1,13 @@
+[Unit]
+Description=Tag signpost packets with location
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/uplink/metadata-tagger/metadata-tagger.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=metadata-tagger
+
+[Install]
+WantedBy=multi-user.target

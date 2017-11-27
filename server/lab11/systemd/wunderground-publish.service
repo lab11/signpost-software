@@ -1,0 +1,13 @@
+[Unit]
+Description=wunderground-publish
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/lab11/wunderground-publish/wunderground-publish.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=wunderground-publish
+
+[Install]
+WantedBy=multi-user.target
