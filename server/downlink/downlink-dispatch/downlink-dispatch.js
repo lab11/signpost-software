@@ -97,15 +97,31 @@ mqtt_external.on('connect', function () {
 var messageQueue = {};
 
 function sendMessage(deviceID) {
-    sendObj =  {
+    
+    //package the downlink data so that it's parsable
+    //1byte topic len
+    //topic
+    //1byte data len
+    //data
+    var dataBuf = Buffer.from(messageQueue[deviceID][0], 'base64');
+    var topicBuf = Buffer.from(messageQueue[deviceID][0].topic);
+    var len = topicBuf.length + dataBuf.length + 2;
+    var sendBuf = Buffer.alloc(len);
+    var sendBuf[0] = topicBuf.len;
+    topicBuf.copy(sendBuf, 1);
+    sendBuf[topicBuf.length + 1] = dataBuf.length;
+    dataBuf.copy(sendBuf, topicBuf.length + 2);
+
+    var sendObj =  {
         confirmed: true,
-        data: messageQueue[deviceID][0].data,
+        data: sendBuf.toString('base64'),
         devEUI: nodeDict.deviceID,
         fPort: 1,
         reference: deviceID,
     }
-
-    mqtt_lora.publish('application/5/node/' + nodeDict[deviceID] + '/tx', json.stringify(sendObj));
+    
+    console.log('Publishing to device ' + deviceID);
+    mqtt_lora.publish('application/5/node/' + nodeDict[deviceID] + '/tx', JSON.stringify(sendObj));
 }
 
 // Callback for each packet
@@ -209,6 +225,7 @@ mqtt_lora.on('connect', function() {
 
 mqtt_lora.on('message', function(topic, message) {
     //parse acks - send next packet
+    console.log('Received ack: ' + topic);
     json = JSON.parse(message.toString());
     devID = json.reference;
     messageQueue[devID].pop();
