@@ -141,32 +141,58 @@ mqtt_external.on('message', function (topic, message) {
 
 
     var json = JSON.parse(message.toString());
-    if('data' in json && !('receiver' in json)) {
+    if(json.data && !(json.receiver)) {
         console.log('Got downlink message on topic ' + topic);
-
+        
         //this was published for downlink (i.e. not by our scripts)
-        if(json['data'].data.length <= 96) {
-            //this is a valid sized array
-            //form and publish the lora request
-            if(!(node in messageQueue)) {
-                messageQueue[node] = [];
+        datstring = '';
+        if(json.data.type) {
+            if(json.data.type == "Buffer" && json.data.data) {
+                //this is a buffer object that we should parse
+                if(json.data.data.length < 96) {
+                    datstring = json.data.data.toString('base64');
+                }
+            } else {
+                //We don't know what to do with this
+                console.log('Invalid downlink type! Dropping.');
+                return;
             }
-
-            downobj = {
-                deviceID: node,
-                topic: downtopic,
-                data: json['data'].data.toString('base64'),
+        } else {
+            //try to interpret the data as base64
+            try {
+                testString = btoa(json.data);
+            } catch(e) {
+                console.log('Not properly formatted base64! Dropping.');
+                return;
             }
-
-            messageQueue[node].push(downobj);
-
-            //is this the only message in the queue? If so - send it
-            if(messageQueue[node].length == 1) {
-                sendMessage(node);
-            }
+            datstring = json.data
         }
+
+        //this is a valid sized array
+        //form and publish the lora request
+        if(!(node in messageQueue)) {
+            messageQueue[node] = [];
+        }
+
+        downobj = {
+            deviceID: node,
+            topic: downtopic,
+            data: datstring,
+        }
+
+        messageQueue[node].push(downobj);
+
+        //is this the only message in the queue? If so - send it
+        if(messageQueue[node].length == 1) {
+            sendMessage(node);
+        }
+
     } else {
-        console.log('Got uplink message on topic ' + topic);
+        if(json.data) {
+            console.log('Got uplink message on topic ' + topic);
+        } else {
+            console.log('Invalid Message!');
+        }
     }
 });
 
