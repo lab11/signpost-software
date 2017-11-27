@@ -103,7 +103,7 @@ function sendMessage(deviceID) {
     //topic
     //1byte data len
     //data
-    var dataBuf = Buffer.from(messageQueue[deviceID][0], 'base64');
+    var dataBuf = Buffer.from(messageQueue[deviceID][0].data, 'base64');
     var topicBuf = Buffer.from(messageQueue[deviceID][0].topic);
     var len = topicBuf.length + dataBuf.length + 2;
     var sendBuf = Buffer.alloc(len);
