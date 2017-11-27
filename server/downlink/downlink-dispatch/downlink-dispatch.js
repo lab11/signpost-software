@@ -107,7 +107,7 @@ function sendMessage(deviceID) {
     var topicBuf = Buffer.from(messageQueue[deviceID][0].topic);
     var len = topicBuf.length + dataBuf.length + 2;
     var sendBuf = Buffer.alloc(len);
-    sendBuf[0] = topicBuf.len;
+    sendBuf[0] = topicBuf.length;
     topicBuf.copy(sendBuf, 1);
     sendBuf[topicBuf.length + 1] = dataBuf.length;
     dataBuf.copy(sendBuf, topicBuf.length + 2);
@@ -152,7 +152,7 @@ mqtt_external.on('message', function (topic, message) {
         //topic name too long
         return;
     } else  {
-        downtopic = topic.slice(20);
+        downtopic = topic.slice(22);
     }
 
     try {
