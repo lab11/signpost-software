@@ -110,7 +110,6 @@ function sendMessage(deviceID) {
 
 // Callback for each packet
 mqtt_external.on('message', function (topic, message) {
-    console.log('Got message on topic ' + topic);
     //is the topic valid?
     var parts = topic.split('/');
     var node = '';
@@ -143,6 +142,8 @@ mqtt_external.on('message', function (topic, message) {
 
     var json = JSON.parse(message.toString());
     if('data' in json && !('receiver' in json)) {
+        console.log('Got downlink message on topic ' + topic);
+
         //this was published for downlink (i.e. not by our scripts)
         if(json['data'].data.length <= 96) {
             //this is a valid sized array
@@ -164,6 +165,8 @@ mqtt_external.on('message', function (topic, message) {
                 sendMessage(node);
             }
         }
+    } else {
+        console.log('Got uplink message on topic ' + topic);
     }
 });
 
