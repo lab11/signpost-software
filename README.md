@@ -40,24 +40,18 @@ any questions!
 
 ## Current Organization
 
-### apps 
-All code running on signposts exists in this folder including applications
-for each module and libraries for our supported platforms.
+#### Signpost
+All code running on the signpost is in this folder.
 
 #### docs
 Documentation that is currently being updated
 
-### edison
-In-progress code for the Intel Edison running on each Signpost
+#### Server
+The signpost backend and lab11-specific packet parsers.
 
-### kernel
-Tock kernel code.
-
-#### receiver
+#### tools
 Tools that run on your desktop to help with signpost development.
 
-### summon
-The signpost summon application.
 
 
 ## License

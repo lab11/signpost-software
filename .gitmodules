@@ -1,18 +1,18 @@
 [submodule "kernel/tock"]
-    path = kernel/tock
+    path = signpost/kernel/tock
     url = https://github.com/helena-project/tock
 [submodule "apps/support/erpc/erpc"]
-    path = apps/support/erpc/erpc
+    path = signpost/apps/support/erpc/erpc
     url = https://github.com/lab11/erpc
 [submodule "apps/support/mbedtls/mbedtls"]
-    path = apps/support/mbedtls/mbedtls
+    path = signpost/apps/support/mbedtls/mbedtls
     url = https://github.com/lab11/mbedtls
 [submodule "kernel/boards/bootloader/tock-bootloader"]
-	path = kernel/boards/bootloader/tock-bootloader
+	path = signpost/kernel/boards/bootloader/tock-bootloader
 	url = https://github.com/lab11/tock-bootloader
 [submodule "apps/support/mbed/mbed-os"]
-    path = apps/support/mbed/mbed-os
+    path = signpost/apps/support/mbed/mbed-os
     url = https://github.com/armmbed/mbed-os
 [submodule "apps/support/RFExplorer_3GP_IoT_Arduino"]
-	path = apps/support/RFExplorer_3GP_IoT_Arduino
+	path = signpost/apps/support/RFExplorer_3GP_IoT_Arduino
 	url = https://github.com/lab11/RFExplorer_3GP_IoT_Arduino.git
