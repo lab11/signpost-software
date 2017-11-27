@@ -165,7 +165,7 @@ mqtt_external.on('message', function (topic, message) {
         } else {
             //try to interpret the data as base64
             try {
-                testString = btoa(json.data);
+                testString = Buffer.from(json.data, 'base64').toString();
             } catch(e) {
                 console.log('Not properly formatted base64! Dropping.');
                 return;
