@@ -542,7 +542,7 @@ mqtt_client.on('connect', function () {
     mqtt_external.on('message', function (topic, message) {
         var json = JSON.parse(message.toString());
         try {
-            if(json.data) {
+            if(json.data && json.receiver && json.geohash) {
                 buf = Buffer.from(json.data);
                 console.log("Got " + topic + " packet from " + json.device_id);
                 //console.log(buf.toString('hex'));
