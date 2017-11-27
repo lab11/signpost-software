@@ -11,12 +11,12 @@ blue=$(tput setaf 4)
 set -e
 
 echo "${bold}Building all boards...${normal}"
-pushd kernel/boards > /dev/null
+pushd signpost/kernel/boards > /dev/null
 ./build_all.sh
 popd > /dev/null
 
 echo "${bold}Building all apps...${normal}"
-pushd apps > /dev/null
+pushd signpost/apps > /dev/null
 ./clean_all.sh
 ./build_all.sh
 popd > /dev/null
