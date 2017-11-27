@@ -107,7 +107,7 @@ function sendMessage(deviceID) {
     var topicBuf = Buffer.from(messageQueue[deviceID][0].topic);
     var len = topicBuf.length + dataBuf.length + 2;
     var sendBuf = Buffer.alloc(len);
-    var sendBuf[0] = topicBuf.len;
+    sendBuf[0] = topicBuf.len;
     topicBuf.copy(sendBuf, 1);
     sendBuf[topicBuf.length + 1] = dataBuf.length;
     dataBuf.copy(sendBuf, topicBuf.length + 2);
