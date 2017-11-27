@@ -225,9 +225,9 @@ mqtt_lora.on('connect', function() {
 
 mqtt_lora.on('message', function(topic, message) {
     //parse acks - send next packet
-    console.log('Received ack: ' + topic);
     json = JSON.parse(message.toString());
     devID = json.reference;
+    console.log('Received ack: ' + devID);
     messageQueue[devID].pop();
     
     if(messageQueue[devID].length > 0) {
