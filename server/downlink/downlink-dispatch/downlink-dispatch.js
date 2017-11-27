@@ -139,8 +139,13 @@ mqtt_external.on('message', function (topic, message) {
         downtopic = topic.slice(20);
     }
 
+    try {
+        var json = JSON.parse(message.toString());
+    } catch(e) {
+        console.log('Invalid Message!');
+        return;
+    }
 
-    var json = JSON.parse(message.toString());
     if(json.data && !(json.receiver)) {
         console.log('Got downlink message on topic ' + topic);
         
