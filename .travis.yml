@@ -25,7 +25,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export PATH="$PATH:$HOME/uncrustify-uncrustify-0.65/build"; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then pip install --user mbed-cli; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then pip install --user colorama pyserial prettytable jinja2 intelhex junit_xml pyyaml requests mbed_ls mbed_host_tests mbed_greentea beautifulsoup4 fuzzywuzzy; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa -y; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install mosquitto; fi
 #  - if [[ "$TRAVIS_OS_NAME" == "osx" ]] && [[ "$TRAVIS_BRANCH$TRAVIS_EVENT_TYPE" == "masterpush" ]]; then brew tap ARMmbed/homebrew-formulae; fi
