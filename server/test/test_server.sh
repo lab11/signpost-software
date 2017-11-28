@@ -21,4 +21,4 @@ node ../uplink/lora-receiver/lora-receiver.js ./conf/signpost/uplink/lora-receiv
 node ../uplink/lora-receiver/metadata-tagger.js ./conf/signpost/uplink/metadata-tagger.conf &
 node ../lab11/packet-parser/packet-parser.js ./conf/signpost/lab11/packet-parser.conf &
 
-node ./test_server/test_server.js
+node ./test-server/test-server.js
