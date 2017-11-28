@@ -13,6 +13,12 @@ var addr          = require('os').networkInterfaces();
 var express       = require('express');
 var expressBodyParser       = require('body-parser');
 
+if(process.argv.length < 3) {
+    listen_port = 80;
+} else if (process.argv[2] == '--test'){
+    listen_port = 8080;
+}
+
 function pad (s, len) {
     for (var i=s.length; i<len; i++) {
         s = '0' + s;
@@ -88,7 +94,7 @@ function parse (buf) {
 var _app = express();
 _app.use(expressBodyParser.raw({limit: '1000kb'}));
 
-_app.listen(80, function() {
+_app.listen(listen_port, function() {
     console.log('Listening for HTTP Requests');
 });
 
