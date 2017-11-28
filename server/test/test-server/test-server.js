@@ -9,6 +9,7 @@ var child_process = require('child_process');
 var fs            = require('fs');
 var ini           = require('ini');
 var mqtt          = require('mqtt');
+var http          = require('http');
 
 try {
     var config_file = fs.readFileSync('./test-server/test-server.conf', 'utf-8');
@@ -43,8 +44,48 @@ function build_lora_packet_buffer(addr, topic, data) {
     return pBuf;
 }
 
+function build_http_packet_buffer(addr, dlist) {
+    addrBuf = Buffer.from(addr, 'hex');
+    if(addrBuf.length != 6) {
+        console.log('Invalid Address');
+        console.log(addrBuf.length);
+        return;
+    }
+    
+    var len = 7;
+    for (var i = 0; i < dlist.length; i++) {
+        len += 4;
+        len += dlist[i].topic.length;
+        len += dlist[i].data.length;
+    }
+    
+    pBuf = Buffer.alloc(len);
+    addrBuf.copy(pBuf);
+    pBuf[6] = seq;
+    seq += 1;
+    var index = 7;
+    for (var i = 0; i < dlist.length; i++) {
+        topicBuf = Buffer.from(dlist[i].topic);
+        dataBuf = Buffer.from(dlist[i].data);
+        var tlen = topicBuf.length + dataBuf.length + 2;
+        pBuf.writeUInt16BE(tlen,index);
+        index += 2;
+        pBuf[index] = topicBuf.length;
+        index += 1;
+        topicBuf.copy(pBuf, index);
+        index += topicBuf.length;
+        pBuf[index] = dataBuf.length;
+        index += 1;
+        dataBuf.copy(pBuf, index);
+        index += dataBuf.length;
+    }
+
+    return pBuf;
+}
+
 var testQueue = [];
 var answerQueue = [];
+var httpList = [];
 
 function build_test_queue() {
     energy = Buffer.alloc(48);
@@ -73,6 +114,7 @@ function build_test_queue() {
     energy.writeUInt16BE(140, 46);
 
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/energy', energy));
+    httpList.push({'topic': 'lab11/energy', 'data': energy});
 
     energy_answer =  {
                     device: "signpost_energy",
@@ -98,7 +140,6 @@ function build_test_queue() {
                     module6_energy_average_mW: 130,
                     module7_energy_average_mW: 140,
                 }
-    answerQueue.push(energy_answer);
  
     gps = Buffer.alloc(17);
     gps.writeUInt8(0x01, 0);
@@ -113,6 +154,7 @@ function build_test_queue() {
     gps.writeUInt8(3, 15);
     gps.writeUInt8(10, 16);
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/gps', gps));
+    httpList.push({'topic': 'lab11/gps', 'data': gps});
 
     gps_answer =  {
             device: 'signpost_gps',
@@ -124,7 +166,6 @@ function build_test_queue() {
             satellite_count: 10,
         }
 
-    answerQueue.push(gps_answer);
 
     ambient = Buffer.alloc(10);
     ambient.writeUInt8(0x01, 0);
@@ -136,6 +177,7 @@ function build_test_queue() {
     ambient.writeUInt8(0x02, 9);
 
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/ambient', ambient));
+    httpList.push({'topic': 'lab11/ambient', 'data': ambient});
 
     ambient_answer =  {
                 device: 'signpost_ambient',
@@ -145,7 +187,6 @@ function build_test_queue() {
                 pressure_pascals: 101325,
             }
 
-    answerQueue.push(ambient_answer);
 
     audio = Buffer.alloc(75);
     audio.writeUInt8(0x03, 0);
@@ -154,6 +195,7 @@ function build_test_queue() {
         audio.writeUInt8(125, i+5);
     }
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/audio', audio));
+    httpList.push({'topic': 'lab11/audio', 'data': audio});
 
     audio_answer = {
             device: 'signpost_audio_frequency',
@@ -166,9 +208,7 @@ function build_test_queue() {
             '16000Hz': 62.5,
     }
 
-    for(var i = 0; i < 10; i++) {
-        answerQueue.push(audio_answer);
-    }
+    
 
     radar = Buffer.alloc(25);
     radar.writeUInt8(0x02, 0);
@@ -177,15 +217,14 @@ function build_test_queue() {
         radar.writeUInt8(125, i+5);
     }
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/radar', radar));
+    httpList.push({'topic': 'lab11/radar', 'data': radar});
 
     radar_answer = {
                     device: 'signpost_microwave_radar',
                      "motion_index": 125,
     }
 
-    for(var i = 0; i < 20; i++) {
-        answerQueue.push(radar_answer);
-    }
+    
  
     spectrum = Buffer.alloc(81);
     spectrum.writeUInt8(0x01, 0);
@@ -193,6 +232,7 @@ function build_test_queue() {
         spectrum.writeInt8(-50, 1+i);
     }
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/spectrum', spectrum));
+    httpList.push({'topic': 'lab11/spectrum', 'data': spectrum});
 
     spectrum_answer = {};
     spectrum_answer['device'] = 'signpost_rf_spectrum_max';
@@ -202,7 +242,31 @@ function build_test_queue() {
             var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+"max";
             spectrum_answer[fullstr] = -50;
     }
+
+
+    answerQueue.push(energy_answer);
+    answerQueue.push(gps_answer);
+    answerQueue.push(ambient_answer);
+    for(var i = 0; i < 10; i++) {
+        answerQueue.push(audio_answer);
+    }
+    for(var i = 0; i < 20; i++) {
+        answerQueue.push(radar_answer);
+    }
     answerQueue.push(spectrum_answer);
+
+    //now add the http part of the answer queue
+    answerQueue.push(energy_answer);
+    answerQueue.push(gps_answer);
+    answerQueue.push(ambient_answer);
+    for(var i = 0; i < 10; i++) {
+        answerQueue.push(audio_answer);
+    }
+    for(var i = 0; i < 20; i++) {
+        answerQueue.push(radar_answer);
+    }
+    answerQueue.push(spectrum_answer);
+
 }
 
 
@@ -220,10 +284,40 @@ mqtt_internal.on('connect', function () {
     
     //send the first buffer to the lora topic
     var pubInt = setInterval( function() {
-        buf = testQueue.shift();
-        mqtt_lora.publish("application/5/node/0/rx", JSON.stringify({"data": buf.toString('base64')}));
         if(testQueue.length == 0) {
+            //stop the mqtt messages
             clearInterval(pubInt);
+
+            //set the http message
+            console.log('Posting to http receiver...');
+            var buf = build_http_packet_buffer('c098e5120000',httpList);
+            /*request.post( {
+                method: 'POST',
+                uri: 'http://localhost:8080/signpost',
+                body: buf,
+                encoding: null});*/
+
+            var options = {
+                host: 'localhost',
+                port: 8080,
+                path: '/signpost',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Length': buf.length,
+                }
+            }
+
+            var req = http.request(options, function(res) {
+
+            });
+
+            req.write(buf);
+            req.end();
+            
+        } else {
+            buf = testQueue.shift();
+            mqtt_lora.publish("application/5/node/0/rx", JSON.stringify({"data": buf.toString('base64')}));
         }
     }, 2000);
 });

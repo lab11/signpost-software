@@ -13,11 +13,27 @@ var addr          = require('os').networkInterfaces();
 var express       = require('express');
 var expressBodyParser       = require('body-parser');
 
+//check to see if there was a conf file passed in
+var conf_file_location = '';
 if(process.argv.length < 3) {
-    listen_port = 80;
-} else if (process.argv[2] == '--test'){
-    listen_port = 8080;
+    conf_file_location = '/etc/signpost/uplink/http-receiver.conf';
+} else {
+    conf_file_location = process.argv[2];
 }
+
+try {
+    var config_file = fs.readFileSync(conf_file_location, 'utf-8');
+    var config = ini.parse(config_file);
+    if(config.incoming_port == undefined ||
+        config.outgoing_port == undefined) {
+        console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
+        process.exit(1);
+    }
+} catch (e) {console.log(e)
+    console.log('No configuration file found. Either pass a configuration path or place a file at /etc/signpost/uplink/http-receiver.conf.');
+    process.exit(1);
+}
+
 
 function pad (s, len) {
     for (var i=s.length; i<len; i++) {
@@ -80,7 +96,7 @@ function parse (buf) {
         ret[pcount.toString()].topublish.received_time = new Date().toISOString();
         ret[pcount.toString()].topublish.device_id = addr;
         ret[pcount.toString()].topublish.sequence_number = sequence_number;
-
+    
         if(buf.length <= index) {
             console.log("Done parsing " + pcount + " packets");
             done = true;
@@ -94,11 +110,11 @@ function parse (buf) {
 var _app = express();
 _app.use(expressBodyParser.raw({limit: '1000kb'}));
 
-_app.listen(listen_port, function() {
-    console.log('Listening for HTTP Requests');
+_app.listen(config.incoming_port, function() {
+    console.log('Listening for HTTP Requests on port ' + config.incoming_port);
 });
 
-var mqtt_client_outgoing = mqtt.connect('mqtt://localhost');
+var mqtt_client_outgoing = mqtt.connect('mqtt://localhost:' + config.outgoing_port);
 _app.post('/signpost', function(req, res) {
     // Callback for each packet
     buf = req.body;
