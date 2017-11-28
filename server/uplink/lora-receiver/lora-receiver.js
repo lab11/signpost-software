@@ -53,14 +53,16 @@ function parse (buf) {
     if(typeof parse.last_sequence_numbers == 'undefined') {
         parse.last_sequence_numbers = {};
     }
-
+    
+    var first = false;
     if(typeof parse.last_sequence_numbers[addr] == 'undefined') {
+        first = true;
         parse.last_sequence_numbers[addr] = 0;
     }
     
     var sequence_number = buf.readUInt8(6);
     
-    if(parse.last_sequence_numbers[addr] == sequence_number) {
+    if(parse.last_sequence_numbers[addr] == sequence_number && !first) {
         return {};
     } else {
         parse.last_sequence_numbers[addr] = sequence_number;
