@@ -21,3 +21,7 @@ pushd signpost/apps > /dev/null
 ./build_all.sh
 popd > /dev/null
 
+echo "${bold}Testing backend server...${normal}"
+pushd server/test > /dev/null
+./test_server.sh
+popd > /dev/null
