@@ -573,8 +573,8 @@ mqtt_client.on('connect', function () {
                         }
 
                         pkt[i]['_meta'].receiver = json.receiver;
-                        pkt[i]['_meta'].geohash = json.geohash;
-                        pkt[i]['_meta'].sequence_number = json.sequence_number;
+                        pkt[i].geohash = json.geohash;
+                        pkt[i].sequence_number = json.sequence_number;
 
                         mqtt_client.publish('gateway-data', JSON.stringify(pkt[i]));
                         mqtt_client.publish('signpost/processed/'+topic, JSON.stringify(pkt[i]));
