@@ -8,9 +8,13 @@
 #define SARA_U260_ERROR -1
 #define SARA_U260_INVALIDPARAM -2
 #define SARA_U260_NO_SERVICE -3
+#define SARA_U260_OPERATION_FAILED -4
 
 //initializes and turns off command echo
 int sara_u260_init(void);
+
+//returns whether there is service or not
+int sara_u260_check_connection(void);
 
 //Attempts to perform an HTTP Post
 //Will attempt to join the network and setup a packet switch connect if one does not exist
@@ -21,6 +25,12 @@ int sara_u260_get_post_response(uint8_t* buf, size_t max_len);
 
 //Returns part of the response from the most recent successful post
 int sara_u260_get_post_partial_response(uint8_t* buf, size_t offset, size_t max_len);
+
+//writes to a file the the internal FS
+int sara_u260_write_to_file(const char* fname, uint8_t* buf, size_t len);
+
+//reads from a file in the interal FS
+int sara_u260_read_file(const char* fname, uint8_t* buf, size_t offset, size_t max_len);
 
 //Attempts to perform HTTP GET
 int sara_u260_basic_http_get(const char* url, const char* path);

@@ -23,7 +23,7 @@ int xdot_init(void) {
     int ret = at_send(LORA_CONSOLE, "ATE0\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
     else return XDOT_SUCCESS;
 }
@@ -31,14 +31,14 @@ int xdot_init(void) {
 int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     int ret = at_send(LORA_CONSOLE, "AT\n");
     if(ret < 0) return XDOT_ERROR;
-    
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE, "AT+NJM=1\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
 
@@ -60,10 +60,10 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_send(LORA_CONSOLE,"\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,6,500);
     if(ret < 0) return XDOT_ERROR;
 
-   
+
     ret = at_send(LORA_CONSOLE, "AT+NK=0,");
     if(ret < 0) return XDOT_ERROR;
 
@@ -81,22 +81,22 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_send(LORA_CONSOLE,"\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,6,500);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"AT+PN=1\n");
     if(ret < 0) return XDOT_ERROR;
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"AT+FSB=1\n");
     if(ret < 0) return XDOT_ERROR;
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
     ret = at_send(LORA_CONSOLE,"AT&W\n");
     if(ret < 0) return XDOT_ERROR;
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,2000);
     if(ret < 0) return XDOT_ERROR;
 
     ret = xdot_reset();
@@ -105,19 +105,19 @@ int xdot_join_network(uint8_t* AppEUI, uint8_t* AppKey) {
     ret = at_send(LORA_CONSOLE,"AT+JOIN\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,15000);
     if(ret < 0) return XDOT_ERROR;
 
     return XDOT_SUCCESS;
 }
 
 int xdot_get_txdr(void) {
-    
+
     int ret = at_send(LORA_CONSOLE,"AT+TXDR?\n");
     if(ret < 0) return XDOT_ERROR;
 
     uint8_t buf[200];
-    ret = at_get_response(LORA_CONSOLE, 3, buf, 200);
+    ret = at_get_response(LORA_CONSOLE, 3, 500, buf, 200);
 
     if(ret <= 0) {
         return ret;
@@ -148,7 +148,7 @@ int xdot_set_txdr(uint8_t dr) {
     int ret = at_send(LORA_CONSOLE, cmd);
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
 int xdot_set_adr(uint8_t adr) {
@@ -165,8 +165,8 @@ int xdot_set_adr(uint8_t adr) {
 
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
-    
-    return at_wait_for_response(LORA_CONSOLE,3);
+
+    return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
 int xdot_set_txpwr(uint8_t tx) {
@@ -183,7 +183,7 @@ int xdot_set_txpwr(uint8_t tx) {
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
 int xdot_set_ack(uint8_t ack) {
@@ -200,57 +200,82 @@ int xdot_set_ack(uint8_t ack) {
     ret = at_send(LORA_CONSOLE,cmd);
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
 int xdot_save_settings(void) {
     int ret = at_send(LORA_CONSOLE, "AT&W\n");
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    return at_wait_for_response(LORA_CONSOLE,3,2000);
 }
 
 int xdot_reset(void) {
-    
+
     int ret = at_send(LORA_CONSOLE, "ATZ\n");
     if(ret < 0) return XDOT_ERROR;
-    
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
     for(volatile uint32_t i = 0; i < 1500000; i++);
 
     ret = at_send(LORA_CONSOLE, "AT\n");
     if(ret < 0) return XDOT_ERROR;
+    delay_ms(100);
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    //return at_wait_for_response(LORA_CONSOLE,6,500);
+    return XDOT_SUCCESS;
+}
+
+static void buf_to_hex_string(char* dest_buf, uint32_t dest_len, uint8_t* source_buf, uint32_t source_len) {
+    char* cpt = dest_buf;
+    for(uint32_t i = 0; i < source_len && i*2 < dest_len; i++) {
+        snprintf(cpt,3,"%02X",source_buf[i]);
+        cpt += 2;
+    }
 }
 
 int xdot_send(uint8_t* buf, uint8_t len) {
-    
-    int ret = at_send(LORA_CONSOLE, "AT+send=");
-    if(ret < 0) return XDOT_ERROR;
 
-    ret = at_send_buf(LORA_CONSOLE,buf,len);
-    if(ret < 0) return XDOT_ERROR;
+    char* buf_str = malloc(len*2+1);
+    if(!buf_str) return XDOT_ERROR;
+
+    buf_to_hex_string(buf_str, len*2+1, buf, len);
+
+    int ret = at_send(LORA_CONSOLE, "AT+sendb=");
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
+
+    ret = at_send_buf(LORA_CONSOLE, (uint8_t*)buf_str,len*2);
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
 
     ret = at_send(LORA_CONSOLE, "\n");
-    if(ret < 0) return XDOT_ERROR;
-    
-    return at_wait_for_response(LORA_CONSOLE,3);
+    if(ret < 0)  {
+        free(buf_str);
+        return XDOT_ERROR;
+    }
+
+    free(buf_str);
+    return at_wait_for_response(LORA_CONSOLE,3,5000);
 }
 
 int xdot_sleep(void) {
     int ret = at_send(LORA_CONSOLE, "AT+WM=1\n");
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_wait_for_response(LORA_CONSOLE,3);
+    ret = at_wait_for_response(LORA_CONSOLE,3,500);
     if(ret < 0) return XDOT_ERROR;
 
-    ret = at_send(LORA_CONSOLE, "AT+sleep\n");
+    ret = at_send(LORA_CONSOLE, "AT+sleep=1\n");
     if(ret < 0) return XDOT_ERROR;
 
-    return at_wait_for_response(LORA_CONSOLE,3);
+    return at_wait_for_response(LORA_CONSOLE,3,500);
 }
 
 int xdot_wake(void) {
