@@ -12,12 +12,15 @@
 #include "xdot.h"
 #include "led.h"
 
+#ifndef APP_KEY
+#error Missing required define APP_KEY of format: 0x00, 0x00,... (x32)
+#endif
+static uint8_t appKey[16] = { APP_KEY };
+static uint8_t appEUI[8] = {0};
+
 int main (void) {
     printf("Starting Lora Test\n");
 
-    uint8_t AppEUI[8] = {0xc0, 0x98, 0xe5, 0xc0, 0x00, 0x00, 0x00, 0x00};
-    uint8_t AppKey[16] = {0};
-    AppKey[15] = 0x01;
 
     printf("Initializing...\n");
     xdot_wake();
@@ -26,15 +29,22 @@ int main (void) {
         printf("Error Initializing\n");
     }
 
-    printf("Joining network...\n");
-    ret = xdot_join_network(AppEUI, AppKey);
-    if(ret < 0) {
-        printf("Error joining the network\n");
-    }
+    ret = xdot_set_ack(1);
+    ret |= xdot_set_txdr(3);
+    ret |= xdot_set_txpwr(20);
+    ret |= xdot_set_adr(0);
+    if(ret < 0) printf("Settings error\n");
 
-    xdot_set_txdr(4);
-    xdot_set_ack(1);
-    xdot_set_txpwr(20);
+    do {
+        printf("Joining network...\n");
+        ret = xdot_join_network(appEUI, appKey);
+        if(ret < 0) {
+            printf("Error joining the network\n");
+            delay_ms(5000);
+            xdot_wake();
+        }
+    } while(ret < 0);
+
 
     while(1) {
         xdot_wake();
