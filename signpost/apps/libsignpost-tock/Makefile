@@ -24,8 +24,6 @@ $(LIBNAME)_SRCS += $(wildcard $($(LIBNAMETOCK)_DIR)/*.cpp)
 # External libraries
 override CPPFLAGS += -I$(TOCK_USERLAND_BASE_DIR)/libtock
 override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/mbedtls/mbedtls/include
-override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/http-parser
-override CPPFLAGS += -I$(SIGNPOST_USERLAND_BASE_DIR)/support/fatfs
 include $(SIGNPOST_USERLAND_BASE_DIR)/support/erpc/AppLibERPC.mk
 
 include $(TOCK_USERLAND_BASE_DIR)/TockLibrary.mk
