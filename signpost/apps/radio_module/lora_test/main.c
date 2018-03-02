@@ -50,8 +50,31 @@ int main (void) {
         xdot_wake();
 
         printf("Sending data\n\n");
-        xdot_send((uint8_t*)"Hi From Lab11",13);
+        ret = xdot_send((uint8_t*)"Hi From Lab11",13);
+
+        if(ret < 0) {
+            printf("Xdot send failed\n");
+        } else {
+
+            printf("Xdot send succeeded\n");
+
+            printf("Receiving data\n\n");
+            uint8_t rx[100];
+            ret = xdot_receive(rx, 100);
+            if(ret < 0) {
+                printf("Error receiving data\n");
+            } else if(ret == 0) {
+                printf("No data to receive\n");
+            } else {
+                printf("Data: 0x");
+                for (uint8_t i = 0; i < ret; i++) {
+                    printf("%02X",rx[i]);
+                }
+                printf("\n");
+            }
+        }
+
         xdot_sleep();
-        delay_ms(1000);
+        delay_ms(5000);
     }
 }
