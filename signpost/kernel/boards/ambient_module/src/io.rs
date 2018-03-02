@@ -2,6 +2,7 @@ use core::fmt::*;
 use kernel::hil::uart::{self, UART};
 use kernel::process;
 use sam4l;
+use cortexm4;
 
 pub struct Writer {
     initialized: bool,
@@ -64,6 +65,12 @@ pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u3
     for idx in 0..procs.len() {
         procs[idx].as_mut().map(|process| { process.statistics_str(writer); });
     }
+
+    // Optional reset after hard fault
+    for _ in 0..1000000 {
+        asm!("nop");
+    }
+    cortexm4::scb::reset();
 
     // blink the panic signal
     let led = &sam4l::gpio::PA[13];
