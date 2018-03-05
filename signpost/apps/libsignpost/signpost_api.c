@@ -762,6 +762,48 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
     }
 }
 
+int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len) {
+    uint8_t slen;
+    if(strlen(topic) > 29) {
+        slen = 29;
+    } else {
+        slen = strlen(topic);
+    }
+
+    uint32_t len = slen + data_len + 2;
+    uint8_t* buf = malloc(len);
+    if(!buf) {
+        return SB_PORT_ENOMEM;
+    }
+
+    buf[0] = slen;
+    memcpy(buf+1, topic, slen);
+    buf[slen+1] = data_len;
+    memcpy(buf+1+slen+1, data, data_len);
+
+
+    incoming_active_callback = signpost_networking_callback;
+    networking_ready = false;
+    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
+                        NetworkingSendEventuallyMessage, len, buf);
+
+    free(buf);
+    if(rc < SB_PORT_SUCCESS) {
+      return rc;
+    }
+
+    rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
+    if(rc < SB_PORT_SUCCESS) {
+        return rc;
+    }
+
+    if(incoming_message_length >= 4) {
+        return *(int*)incoming_message;
+    } else {
+        return SB_PORT_FAIL;
+    }
+}
+
 void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {
 
    int rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
