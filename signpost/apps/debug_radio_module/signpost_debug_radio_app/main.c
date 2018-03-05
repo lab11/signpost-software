@@ -34,13 +34,13 @@ static void tx_callback (
 static bool waiting_for_response = 0;
 
 static void rx_callback (
-            int len,
+            __attribute__ ((unused)) int len,
             __attribute__ ((unused)) int u2,
             __attribute__ ((unused)) int u3,
             __attribute__ ((unused)) void* userdata) {
 
     waiting_for_response = 0;
-    signpost_networking_post_reply(src, rx_buffer, len);
+    signpost_networking_send_reply(src, 0, 1);
 }
 
 static void watchdog_timer_cb (

@@ -109,7 +109,7 @@ static void networking_api_callback(uint8_t source_address,
         uint8_t message_type, size_t message_length, uint8_t* message) {
 
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
-        if(message_type == NetworkingSend) {
+        if(message_type == NetworkingSendMessage) {
             switch(source_address) {
             case 0x20:
                 // controller

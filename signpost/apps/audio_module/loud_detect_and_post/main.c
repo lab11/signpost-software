@@ -12,7 +12,6 @@
 #include <tock.h>
 
 #include "app_watchdog.h"
-#include "simple_post.h"
 #include "signpost_api.h"
 
 static const uint8_t i2c_address = 0x33;
@@ -27,12 +26,9 @@ static bool posted = false;
 static void post_over_http (void) {
   // post sensor data over HTTP and get response
 
-  // URL for an HTTP POST testing service
-  const char* url = "httpbin.org/post";
-
   // http post data
   printf("--POSTing data--\n");
-  int response = simple_octetstream_post(url, (uint8_t*)"LOUD", 5);
+  int response = signpost_networking_send("lab11/loud", (uint8_t*)"LOUD", 5);
   if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
   } else {

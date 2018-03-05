@@ -19,7 +19,6 @@
 // signpost includes
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "simple_post.h"
 
 // module-specific settings
 #define AMBIENT_MODULE_I2C_ADDRESS 0x32
@@ -104,7 +103,7 @@ static void post_to_radio (void) {
 
   //send radio the data
   printf("--Sendinging data--\n");
-  int response = signpost_networking_send_bytes(ModuleAddressRadio, message_buf, 11);
+  int response = signpost_networking_send("lab11/audio", message_buf, 11);
   message_buf[1]++;
   if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);

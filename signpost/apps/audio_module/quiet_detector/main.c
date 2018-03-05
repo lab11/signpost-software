@@ -14,7 +14,6 @@
 
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "simple_post.h"
 
 #define ZERO_MAGNITUDE 2048 // middle value for a 12-bit ADC
 

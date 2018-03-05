@@ -81,7 +81,7 @@ static void timer_callback (
 
 
     // write data
-    int rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,15);
+    int rc = signpost_networking_send("lab11/radar",send_buf,15);
     send_buf[1]++;
     if(rc >= 0) {
         app_watchdog_tickle_kernel();

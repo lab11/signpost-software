@@ -129,7 +129,7 @@ static void timer_callback (
         send_buf[2+j*2+1] = (uint8_t)(bands_max[j] & 0xff);
     }
 
-    rc = signpost_networking_send_bytes(ModuleAddressRadio,send_buf,16);
+    rc = signpost_networking_send("lab11/audio",send_buf,16);
     send_buf[1]++;
     printf("Sent data with return code %d\n\n\n",rc);
 
