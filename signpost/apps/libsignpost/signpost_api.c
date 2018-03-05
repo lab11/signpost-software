@@ -720,12 +720,6 @@ static void signpost_networking_callback(int result) {
     networking_result = result;
 }
 
-int signpost_networking_send_bytes(uint8_t destination_address, uint8_t* data, uint16_t data_len) {
-    return signpost_api_send(destination_address,
-            NotificationFrame, NetworkingApiType, NetworkingSend,
-            data_len, data);
-}
-
 int signpost_networking_post(const char* url, http_request request, http_response* response) {
 
     //form the sending array
@@ -929,48 +923,6 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
     }
 
     rc = port_signpost_wait_for_with_timeout(&networking_ready, 3000);
-    if(rc < SB_PORT_SUCCESS) {
-        return rc;
-    }
-
-    if(incoming_message_length >= 4) {
-        return *(int*)incoming_message;
-    } else {
-        return SB_PORT_FAIL;
-    }
-}
-
-int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len) {
-    uint8_t slen;
-    if(strlen(topic) > 29) {
-        slen = 29;
-    } else {
-        slen = strlen(topic);
-    }
-
-    uint32_t len = slen + data_len + 2;
-    uint8_t* buf = malloc(len);
-    if(!buf) {
-        return SB_PORT_ENOMEM;
-    }
-
-    buf[0] = slen;
-    memcpy(buf+1, topic, slen);
-    buf[slen+1] = data_len;
-    memcpy(buf+1+slen+1, data, data_len);
-
-
-    incoming_active_callback = signpost_networking_callback;
-    networking_ready = false;
-    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
-                        NetworkingSendEventuallyMessage, len, buf);
-
-    free(buf);
-    if(rc < SB_PORT_SUCCESS) {
-      return rc;
-    }
-
-    rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
     if(rc < SB_PORT_SUCCESS) {
         return rc;
     }
