@@ -7,5 +7,4 @@ APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 C_SRCS   := main.c
 
 # include makefile settings that are shared between applications
-include ../../AppMakefileTock.mk
-
+include ../../../AppMakefileTock.mk
