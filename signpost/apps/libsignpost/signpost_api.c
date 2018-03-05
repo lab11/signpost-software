@@ -12,6 +12,7 @@
 #include "mbedtls/ecp.h"
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#pragma GCC diagnostic ignored "-Wformat-truncation="
 
 static struct module_struct {
     uint8_t                 i2c_address;
