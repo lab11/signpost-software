@@ -16,7 +16,6 @@
 #include "msgeq7.h"
 #include "i2c_master_slave.h"
 #include "timer.h"
-#include "bonus_timer.h"
 #include "signpost_api.h"
 
 #define STROBE 3

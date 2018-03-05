@@ -13,6 +13,11 @@ APP_HEAP_SIZE=4096
 ifeq ($(CI),true)
 ID=0
 endif
+# Set a default key for CI builds
+ifeq ($(CI),true)
+PASSWORD=0
+endif
+
 
 ifneq ($(ID),)
 ADDRESS ?= c098e51200$(ID)
@@ -20,6 +25,11 @@ endif
 ifneq ($(ADDRESS),)
 C_ADDRESS ?= $(shell python -c "print('0x' + ',0x'.join([\"$(ADDRESS)\"[i:i+2] for i in range(0, len(\"$(ADDRESS)\"), 2 )]))")
 endif
+
+ifneq ($(PASSWORD),)
+KEY ?= $(shell python -c "print '0x' + ',0x'.join([elem.encode('hex') for elem in '$(PASSWORD)'])")
+endif
+
 
 
 # The trick here is to only include the rule to build .address if the
@@ -36,6 +46,17 @@ else
 	$(Q)bash -c "diff <(echo $(C_ADDRESS)) .address &>/dev/null || echo $(C_ADDRESS) > .address"
 endif
 
+ifeq ($(KEY),)
+.key:
+	@echo "You must supply a password for the lora radio"
+	@exit 1
+else
+.PHONY: force_key
+.key: force_key
+	$(Q)bash -c "diff <(echo $(KEY)) .key &>/dev/null || echo $(KEY) > .key"
+endif
+
+override CFLAGS += -DAPP_KEY="$(KEY)"
 override CFLAGS += -DCOMPILE_TIME_ADDRESS="$(C_ADDRESS)"
 
 LIBRARY_PATHS += .
