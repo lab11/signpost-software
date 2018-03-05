@@ -59,7 +59,8 @@ static void send_gps_update (__attribute__((unused)) int now,
   }
   gps_buf[16] = time.satellite_count;
   printf("Sending GPS packet\n");
-  int rc = signpost_networking_send("lab11/gps",gps_buf,18);
+  //int rc = signpost_networking_send("lab11/gps",gps_buf,18);
+  int rc = 0;
   if(rc < 0) printf("Error sending GPS packet\n");
   else {
     signpost_controller_app_watchdog_tickle();
@@ -164,7 +165,8 @@ static void send_energy_update (__attribute__((unused)) int now,
 
   int rc;
   printf("Sending energy update packet\n");
-  rc = signpost_networking_send("lab11/energy",energy_buf,51);
+  //rc = signpost_networking_send("lab11/energy",energy_buf,51);
+  rc = 0;
 
   if(rc < 0) printf("Error sending energy packet\n");
   else {

@@ -4,8 +4,7 @@
 APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # files needed for this code
-C_SRCS   := main.c
+C_SRCS   := $(wildcard *.c)
 
 # include makefile settings that are shared between applications
-include ../../AppMakefileTock.mk
-
+include ../../../AppMakefileTock.mk
