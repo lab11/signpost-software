@@ -720,184 +720,6 @@ static void signpost_networking_callback(int result) {
     networking_result = result;
 }
 
-int signpost_networking_send_bytes(uint8_t destination_address, uint8_t* data, uint16_t data_len) {
-    return signpost_api_send(destination_address,
-            NotificationFrame, NetworkingApiType, NetworkingSend,
-            data_len, data);
-}
-
-int signpost_networking_post(const char* url, http_request request, http_response* response) {
-
-    //form the sending array
-    uint16_t header_size = 0;
-    for(uint8_t i = 0; i < request.num_headers; i++) {
-        header_size += strlen(request.headers[i].header);
-        header_size += strlen(request.headers[i].value);
-        header_size += 2;
-    }
-    uint16_t message_size = request.body_len + strlen(url) + header_size + 6 + 25;
-
-    //this is the max message size
-    //You probably can't get a stack big enough for this to work
-    //but if you could, we are stopping at 15000 because out networking stack
-    //is uint16_t size limited
-    if(message_size > 15000) {
-        //this is an error - we can't send this
-        return -1;
-    }
-
-    //we need to serialize the post structure
-    uint8_t send[message_size];
-    uint16_t send_index = 0;
-    uint16_t len = strlen(url);
-    //first length of url
-    send[0] = (len & 0x00ff);
-    send[1] = ((len & 0xff00) >> 8);
-    send_index += 2;
-    //then url
-    memcpy(send+send_index,url,len);
-    send_index += len;
-    //number of headers
-    uint16_t num_headers_index = send_index;
-    send[send_index] = request.num_headers;
-    send_index++;
-    bool has_content_length = false;
-
-    //pack headers
-    //len_key
-    //key
-    //len_value
-    //value
-    for(uint8_t i = 0; i < request.num_headers; i++) {
-        uint8_t f_len = strlen(request.headers[i].header);
-        send[send_index] = f_len;
-        send_index++;
-        if(!strcasecmp(request.headers[i].header,"content-length")) {
-            has_content_length = true;
-        }
-        memcpy(send+send_index,request.headers[i].header,f_len);
-        send_index += f_len;
-        f_len = strlen(request.headers[i].value);
-        send[send_index] = f_len;
-        send_index++;
-        memcpy(send+send_index,request.headers[i].value,f_len);
-        send_index += f_len;
-    }
-    len = request.body_len;
-
-    //add a content length header if the sender doesn't
-    if(!has_content_length) {
-        send[num_headers_index]++;
-        uint8_t clen = strlen("content-length");
-        send[send_index] = clen;
-        send_index++;
-        memcpy(send+send_index,(uint8_t*)"content-length",clen);
-        send_index += clen;
-        char cbuf[5];
-        snprintf(cbuf,5,"%d",len);
-        clen = strnlen(cbuf,5);
-        send[send_index] = clen;
-        send_index++;
-        memcpy(send+send_index,cbuf,clen);
-        send_index += clen;
-    }
-
-    //body len
-    send[send_index] = (len & 0x00ff);
-    send[send_index + 1] = ((len & 0xff00) >> 8);
-    send_index += 2;
-    //body
-    memcpy(send + send_index, request.body, request.body_len);
-    send_index += len;
-
-    //setup the response callback
-    incoming_active_callback = signpost_networking_callback;
-    networking_ready = false;
-
-    //call app_send
-    int rc;
-    rc = signpost_api_send(ModuleAddressRadio,  CommandFrame,
-            NetworkingApiType, NetworkingPostMessage, send_index + 1, send);
-    if (rc < 0) return rc;
-
-    //wait for a response
-    port_signpost_wait_for(&networking_ready);
-
-    //parse the response
-    //deserialize
-    //Note, we just fill out to the max_lens that the app has provided
-    //and drop the rest
-    uint8_t *b = incoming_message;
-    uint16_t i = 0;
-    //status
-    response->status = b[i] + (((uint16_t)b[i+1]) >> 8);
-    i += 2;
-    //reason_len
-    uint16_t reason_len = b[i] + (((uint16_t)b[i+1]) >> 8);
-    i += 2;
-    //reason
-    if(reason_len < response->reason_len) {
-        response->reason_len = reason_len;
-        memcpy(response->reason,b+i,reason_len);
-        i += reason_len;
-    } else {
-        memcpy(response->reason,b+i,response->reason_len);
-        i += response->reason_len;
-    }
-    //
-    uint8_t num_headers = b[i];
-    i += 1;
-    uint8_t min;
-    if(num_headers < response->num_headers) {
-        min = num_headers;
-        response->num_headers = num_headers;
-    } else {
-        min = response->num_headers;
-    }
-    for(uint8_t j = 0; j < min; j++) {
-        uint8_t hlen = b[i];
-        i += 1;
-        if(hlen < response->headers[j].header_len) {
-            response->headers[j].header_len = hlen;
-            memcpy(response->headers[j].header,b + i,hlen);
-        } else {
-            memcpy(response->headers[j].header,b + i,response->headers[j].header_len);
-        }
-        i += hlen;
-        hlen = b[i];
-        i += 1;
-        if(hlen < response->headers[j].value_len) {
-            response->headers[j].value_len = hlen;
-            memcpy(response->headers[j].value,b + i,hlen);
-        } else {
-            memcpy(response->headers[j].value,b + i ,response->headers[j].value_len);
-        }
-        i += hlen;
-    }
-    //we need to jump to the spot the body begins if we didn't
-    //go through all the headers
-    if(min < num_headers) {
-        for(uint8_t j = 0; j < num_headers-min; j++) {
-            uint8_t hlen = b[i];
-            i += 1;
-            i += hlen;
-            hlen = b[i];
-            i += 1;
-            i += hlen;
-        }
-    }
-    uint16_t body_len = b[i] + (((uint16_t)b[i+1]) >> 8);
-    i += 2;
-    if(body_len < response->body_len) {
-        response->body_len = body_len;
-        memcpy(response->body,b+i,body_len);
-    } else {
-        memcpy(response->body,b+i,response->body_len);
-    }
-
-    return 0;
-}
-
 int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len) {
     uint8_t slen;
     if(strlen(topic) > 29) {
@@ -940,58 +762,10 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
     }
 }
 
-int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len) {
-    uint8_t slen;
-    if(strlen(topic) > 29) {
-        slen = 29;
-    } else {
-        slen = strlen(topic);
-    }
-
-    uint32_t len = slen + data_len + 2;
-    uint8_t* buf = malloc(len);
-    if(!buf) {
-        return SB_PORT_ENOMEM;
-    }
-
-    buf[0] = slen;
-    memcpy(buf+1, topic, slen);
-    buf[slen+1] = data_len;
-    memcpy(buf+1+slen+1, data, data_len);
-
-
-    incoming_active_callback = signpost_networking_callback;
-    networking_ready = false;
-    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
-                        NetworkingSendEventuallyMessage, len, buf);
-
-    free(buf);
-    if(rc < SB_PORT_SUCCESS) {
-      return rc;
-    }
-
-    rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
-    if(rc < SB_PORT_SUCCESS) {
-        return rc;
-    }
-
-    if(incoming_message_length >= 4) {
-        return *(int*)incoming_message;
-    } else {
-        return SB_PORT_FAIL;
-    }
-}
-
-void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
-                                    uint16_t response_len) {
-   int rc;
-   rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
-                        NetworkingPostMessage, response_len, response);
-   if (rc < 0) {
-      port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
-      signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
-            NetworkingPostMessage, rc, true, true, 1);
-   }
+int signpost_networking_send_bytes(uint8_t destination_address, uint8_t* data, uint16_t data_len) {
+    return signpost_api_send(destination_address,
+            NotificationFrame, NetworkingApiType, NetworkingSendModule,
+            data_len, data);
 }
 
 void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {
@@ -1005,6 +779,7 @@ void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_c
             NetworkingSendMessage, rc, true, true, 1);
    }
 }
+
 
 /**************************************************************************/
 /* ENERGY API                                                             */
