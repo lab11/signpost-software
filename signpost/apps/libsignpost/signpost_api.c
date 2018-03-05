@@ -715,7 +715,7 @@ int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t* r
 
 static bool networking_ready;
 static bool networking_result;
-static void signpost_networking_post_callback(int result) {
+static void signpost_networking_callback(int result) {
     networking_ready = true;
     networking_result = result;
 }
@@ -811,7 +811,7 @@ int signpost_networking_post(const char* url, http_request request, http_respons
     send_index += len;
 
     //setup the response callback
-    incoming_active_callback = signpost_networking_post_callback;
+    incoming_active_callback = signpost_networking_callback;
     networking_ready = false;
 
     //call app_send
@@ -898,6 +898,90 @@ int signpost_networking_post(const char* url, http_request request, http_respons
     return 0;
 }
 
+int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len) {
+    uint8_t slen;
+    if(strlen(topic) > 29) {
+        slen = 29;
+    } else {
+        slen = strlen(topic);
+    }
+
+    uint32_t len = slen + data_len + 2;
+    uint8_t* buf = malloc(len);
+    if(!buf) {
+        return SB_PORT_ENOMEM;
+    }
+
+    buf[0] = slen;
+    memcpy(buf+1, topic, slen);
+    buf[slen+1] = data_len;
+    memcpy(buf+1+slen+1, data, data_len);
+
+
+    incoming_active_callback = signpost_networking_callback;
+    networking_ready = false;
+    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
+                        NetworkingSendMessage, len, buf);
+
+    free(buf);
+    if(rc < SB_PORT_SUCCESS) {
+        return rc;
+    }
+
+    rc = port_signpost_wait_for_with_timeout(&networking_ready, 3000);
+    if(rc < SB_PORT_SUCCESS) {
+        return rc;
+    }
+
+    if(incoming_message_length >= 4) {
+        return *(int*)incoming_message;
+    } else {
+        return SB_PORT_FAIL;
+    }
+}
+
+int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len) {
+    uint8_t slen;
+    if(strlen(topic) > 29) {
+        slen = 29;
+    } else {
+        slen = strlen(topic);
+    }
+
+    uint32_t len = slen + data_len + 2;
+    uint8_t* buf = malloc(len);
+    if(!buf) {
+        return SB_PORT_ENOMEM;
+    }
+
+    buf[0] = slen;
+    memcpy(buf+1, topic, slen);
+    buf[slen+1] = data_len;
+    memcpy(buf+1+slen+1, data, data_len);
+
+
+    incoming_active_callback = signpost_networking_callback;
+    networking_ready = false;
+    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
+                        NetworkingSendEventuallyMessage, len, buf);
+
+    free(buf);
+    if(rc < SB_PORT_SUCCESS) {
+      return rc;
+    }
+
+    rc = port_signpost_wait_for_with_timeout(&networking_ready, 10000);
+    if(rc < SB_PORT_SUCCESS) {
+        return rc;
+    }
+
+    if(incoming_message_length >= 4) {
+        return *(int*)incoming_message;
+    } else {
+        return SB_PORT_FAIL;
+    }
+}
+
 void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
                                     uint16_t response_len) {
    int rc;
@@ -906,7 +990,19 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    if (rc < 0) {
       port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
-            NetworkingPostMessage, true, true, 1, 0);
+            NetworkingPostMessage, rc, true, true, 1);
+   }
+}
+
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {
+
+   int rc = signpost_api_send(src_addr, ResponseFrame, NetworkingApiType,
+                        type, 4, (uint8_t*)(&return_code));
+
+   if (rc < 0) {
+      port_printf(" - %d: Error sending networking reply (code: %d)\n", __LINE__, rc);
+      signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
+            NetworkingSendMessage, rc, true, true, 1);
    }
 }
 

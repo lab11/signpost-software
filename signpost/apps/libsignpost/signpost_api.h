@@ -173,7 +173,9 @@ int signpost_storage_write_reply (uint8_t destination_address, uint8_t* record_p
 /**************************************************************************/
 enum networking_message_type {
     NetworkingPostMessage = 0,
-    NetworkingSend = 1
+    NetworkingSendMessage = 1,
+    NetworkingSendEventuallyMessage = 2,
+    NetworkingSend = 3
 };
 
 
@@ -209,8 +211,15 @@ typedef struct{
 __attribute__((warn_unused_result))
 int signpost_networking_post(const char* url, http_request request, http_response* response);
 __attribute__((warn_unused_result))
-int signpost_networking_send_bytes(uint8_t destination_address, uint8_t* data, uint16_t data_len);
+int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len);
+__attribute__((warn_unused_result))
+int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len);
+
+void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code);
 void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response, uint16_t response_len);
+
+//This allows modules to send bytes to any random address
+int signpost_networking_send_bytes(uint8_t destination_address, uint8_t* data, uint16_t data_len);
 
 /**************************************************************************/
 /* PROCESSING API                                                         */
