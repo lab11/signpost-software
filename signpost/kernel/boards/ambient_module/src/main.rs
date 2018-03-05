@@ -78,10 +78,10 @@ impl Platform for AmbientModule {
             8 => f(Some(self.led)),
 
             10 => f(Some(self.si7021)),
-            11 => f(Some(self.lps25hb)),
             12 => f(Some(self.tsl2561)),
             13 => f(Some(self.i2c_master_slave)),
             14 => f(Some(self.rng)),
+            22 => f(Some(self.lps25hb)),
             30 => f(Some(self.app_flash)),
 
             108 => f(Some(self.app_watchdog)),
@@ -182,24 +182,6 @@ pub unsafe fn reset_handler() {
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
             capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
     sam4l::trng::TRNG.set_client(rng);
-
-    // Nonvolatile Pages
-    pub static mut PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
-    let nv_to_page = static_init!(
-        capsules::nonvolatile_to_pages::NonvolatileToPages<'static, sam4l::flashcalw::FLASHCALW>,
-        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
-            &mut sam4l::flashcalw::FLASH_CONTROLLER,
-            &mut PAGEBUFFER));
-    hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, nv_to_page);
-
-    // App Flash
-    pub static mut APP_FLASH_BUFFER: [u8; 512] = [0; 512];
-    let app_flash = static_init!(
-        capsules::app_flash_driver::AppFlash<'static>,
-        capsules::app_flash_driver::AppFlash::new(nv_to_page,
-            kernel::Container::create(), &mut APP_FLASH_BUFFER));
-    hil::nonvolatile_storage::NonvolatileStorage::set_client(nv_to_page, app_flash);
-    sam4l::flashcalw::FLASH_CONTROLLER.configure();
 
     //
     // I2C Buses
@@ -365,6 +347,30 @@ pub unsafe fn reset_handler() {
         capsules::virtual_flash::MuxFlash<'static, sam4l::flashcalw::FLASHCALW>,
         capsules::virtual_flash::MuxFlash::new(&sam4l::flashcalw::FLASH_CONTROLLER));
     hil::flash::HasClient::set_client(&sam4l::flashcalw::FLASH_CONTROLLER, mux_flash);
+    sam4l::flashcalw::FLASH_CONTROLLER.configure();
+
+    //
+    // App Flash
+    //
+    let virtual_flash_app_holding = static_init!(
+        capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>,
+        capsules::virtual_flash::FlashUser::new(mux_flash));
+    pub static mut APP_HOLDING_PAGEBUFFER: sam4l::flashcalw::Sam4lPage = sam4l::flashcalw::Sam4lPage::new();
+
+    let app_holding_nv_to_page = static_init!(
+        capsules::nonvolatile_to_pages::NonvolatileToPages<'static,
+            capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
+        capsules::nonvolatile_to_pages::NonvolatileToPages::new(
+            virtual_flash_app_holding,
+            &mut APP_HOLDING_PAGEBUFFER));
+    hil::flash::HasClient::set_client(virtual_flash_app_holding, app_holding_nv_to_page);
+
+    pub static mut APP_FLASH_BUFFER: [u8; 512] = [0; 512];
+    let app_flash = static_init!(
+        capsules::app_flash_driver::AppFlash<'static>,
+        capsules::app_flash_driver::AppFlash::new(app_holding_nv_to_page,
+            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+    hil::nonvolatile_storage::NonvolatileStorage::set_client(app_holding_nv_to_page, app_flash);
 
     //
     // Firmware Update

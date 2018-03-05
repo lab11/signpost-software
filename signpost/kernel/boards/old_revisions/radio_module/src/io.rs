@@ -2,6 +2,7 @@ use core::fmt::*;
 use kernel::hil::uart::{self, UART};
 use kernel::process;
 use sam4l;
+use cortexm4;
 
 pub struct Writer {
     initialized: bool,
@@ -11,7 +12,7 @@ pub static mut WRITER: Writer = Writer { initialized: false };
 
 impl Write for Writer {
     fn write_str(&mut self, s: &str) -> ::core::fmt::Result {
-        let uart = unsafe { &mut sam4l::usart::USART2 };
+        let uart = unsafe { &mut sam4l::usart::USART1 };
         if !self.initialized {
             self.initialized = true;
             uart.init(uart::UARTParams {
@@ -39,6 +40,15 @@ impl Write for Writer {
 #[lang="panic_fmt"]
 pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u32) -> ! {
 
+    // Let any outstanding uart DMA's finish
+    asm!("nop");
+    asm!("nop");
+    for _ in 0..200000 {
+        asm!("nop");
+    }
+    asm!("nop");
+    asm!("nop");
+
     let writer = &mut WRITER;
     let _ = writer.write_fmt(format_args!("Kernel panic at {}:{}:\r\n\t\"", file, line));
     let _ = write(writer, args);
@@ -56,6 +66,12 @@ pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u3
     for idx in 0..procs.len() {
         procs[idx].as_mut().map(|process| { process.statistics_str(writer); });
     }
+
+    // Optional reset after hard fault
+    for _ in 0..1000000 {
+        asm!("nop");
+    }
+    cortexm4::scb::reset();
 
     // blink the panic signal
     let led = &sam4l::gpio::PA[04];
