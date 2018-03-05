@@ -11,8 +11,12 @@
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstack-usage="
+#if CC_VERSION_MAJOR >= 7
 #pragma GCC diagnostic ignored "-Wformat-truncation="
+#endif
+
 
 static struct module_struct {
     uint8_t                 i2c_address;
@@ -1179,3 +1183,4 @@ int signpost_json_send(uint8_t destination_address, size_t field_count, ... ) {
             NetworkingApiType, NetworkingSend, size, (uint8_t*)json_blob);
 }
 
+#pragma GCC diagnostic pop

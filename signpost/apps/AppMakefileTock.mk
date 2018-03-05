@@ -74,13 +74,15 @@ include $(CURRENT_DIR)support/erpc/AppLibERPC.mk
 # include userland master makefile. Contains rules and flags for actually
 # 	building the application
 TOCK_KERNEL_ROOT := $(SIGNPOST_USERLAND_BASE_DIR)/../kernel
+CC_VERSION_MAJOR := $(shell $(CC) -dumpversion | cut -d '.' -f1)
+
+
 include $(TOCK_USERLAND_BASE_DIR)/AppMakefile.mk
 
 # XXX(Pat)
 # Turn off some of the less critical warnings while we're developing heavily
 override CPPFLAGS += -Wno-unused-macros
-
+override CPPFLAGS += -DCC_VERSION_MAJOR=$(CC_VERSION_MAJOR)
 override CXXFLAGS += -Wno-suggest-override
 override CXXFLAGS += -Wno-suggest-final-methods
 override CXXFLAGS += -Wno-suggest-final-types
-
