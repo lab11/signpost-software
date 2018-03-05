@@ -41,7 +41,7 @@ static void processing_api_callback(uint8_t source_address,
     int rc;
 
     if(api_type != ProcessingApiType) {
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1, 0);
         return;
     }
 
@@ -159,7 +159,7 @@ static void storage_api_callback(uint8_t source_address,
   int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, true, true, 1, 0);
     return;
   }
 

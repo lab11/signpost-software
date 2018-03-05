@@ -22,4 +22,3 @@ include ../../AppMakefileTock.mk
 # $(info $(foreach arch,$(TOCK_ARCHS),$(call FATFS_RULES,$(arch))))
 # Actually generate the rules for each architecture
 $(foreach arch, $(TOCK_ARCHS), $(eval $(call FATFS_RULES,$(arch))))
-
