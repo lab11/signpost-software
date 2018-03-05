@@ -231,7 +231,9 @@ int signpost_storage_delete_reply (uint8_t destination_address, Storage_Record_t
 /**************************************************************************/
 enum networking_message_type {
     NetworkingSendMessage = 0,
+    NetworkingSendEventuallyMessage = 2,
 };
+
 
 __attribute__((warn_unused_result))
 int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len);
