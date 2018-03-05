@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "CRC16.h"
 #include "signbus_app_layer.h"
@@ -17,6 +18,8 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation="
 #endif
 
+#define NUM_MODULES 8
+
 
 static struct module_struct {
     uint8_t                 i2c_address;
@@ -27,9 +30,6 @@ static struct module_struct {
     uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
 } module_info = {.i2c_address_mods = {ModuleAddressController, ModuleAddressStorage, ModuleAddressRadio}};
 
-
-uint8_t* signpost_api_addr_to_key(uint8_t addr);
-int      signpost_api_addr_to_mod_num(uint8_t addr);
 
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
@@ -56,14 +56,18 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
     return SB_PORT_FAIL;
 }
 
+uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
+    return signpost_api_addr_to_mod_num(appid);
+}
+
 int signpost_api_error_reply(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type) {
+        signbus_api_type_t api_type, uint8_t message_type, int error_code) {
     return signpost_api_send(destination_address,
-            ErrorFrame, api_type, message_type, 0, NULL);
+            ErrorFrame, api_type, message_type, sizeof(int), (uint8_t*)&error_code);
 }
 
 void signpost_api_error_reply_repeating(uint8_t destination_address,
-        signbus_api_type_t api_type, uint8_t message_type,
+        signbus_api_type_t api_type, uint8_t message_type, int error_code,
         bool print_warnings, bool print_on_first_send, unsigned tries) {
    int rc;
    if (print_warnings && print_on_first_send) {
@@ -71,7 +75,7 @@ void signpost_api_error_reply_repeating(uint8_t destination_address,
             destination_address, api_type, message_type);
    }
    do {
-      rc = signpost_api_error_reply(destination_address, api_type, message_type);
+      rc = signpost_api_error_reply(destination_address, api_type, message_type, error_code);
       if (rc < 0) {
          tries--;
          port_printf(" - Error sending API Error reply to 0x%02x (code: %d).\n",
@@ -88,6 +92,7 @@ int signpost_api_send(uint8_t destination_address,
                       uint8_t message_type,
                       size_t message_length,
                       uint8_t* message) {
+
     return signbus_app_send(destination_address, signpost_api_addr_to_key, frame_type, api_type,
                             message_type, message_length, message);
 }
@@ -901,7 +906,7 @@ void signpost_networking_post_reply(uint8_t src_addr, uint8_t* response,
    if (rc < 0) {
       port_printf(" - %d: Error sending POST reply (code: %d)\n", __LINE__, rc);
       signpost_api_error_reply_repeating(src_addr, NetworkingApiType,
-            NetworkingPostMessage, true, true, 1);
+            NetworkingPostMessage, true, true, 1, 0);
    }
 }
 
@@ -913,11 +918,26 @@ static bool energy_query_ready;
 static int  energy_query_result;
 static signbus_app_callback_t* energy_cb = NULL;
 static signpost_energy_information_t* energy_cb_data = NULL;
+static bool energy_report_received;
+static int energy_report_result;
+
+static bool energy_reset_received;
+static int energy_reset_result;
 
 static void energy_query_sync_callback(int result) {
     SIGNBUS_DEBUG("result %d\n", result);
     energy_query_ready = true;
     energy_query_result = result;
+}
+
+static void signpost_energy_report_callback(int result) {
+    energy_report_result = result;
+    energy_report_received = true;
+}
+
+static void signpost_energy_reset_callback(int result) {
+    energy_reset_result = result;
+    energy_reset_received = true;
 }
 
 int signpost_energy_query(signpost_energy_information_t* energy) {
@@ -930,7 +950,8 @@ int signpost_energy_query(signpost_energy_information_t* energy) {
         }
     }
 
-    port_signpost_wait_for(&energy_query_ready);
+    int ret = port_signpost_wait_for_with_timeout(&energy_query_ready, 10000);
+    if(ret < 0) return SB_PORT_FAIL;
 
     return energy_query_result;
 }
@@ -975,9 +996,83 @@ int signpost_energy_query_async(
     rc = signpost_api_send(ModuleAddressController,
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
-    if (rc < 0) return rc;
+
+    // This properly catches the error if the send fails
+    // and allows for subsequent calls to query async to succeed
+    if (rc < 0) {
+        //abort the transaction
+        energy_cb_data = NULL;
+        incoming_active_callback = NULL;
+        energy_cb = NULL;
+        return rc;
+    };
 
     return SB_PORT_SUCCESS;
+}
+
+int signpost_energy_duty_cycle(uint32_t time_ms) {
+    return signpost_api_send(ModuleAddressController,
+            NotificationFrame, EnergyApiType, EnergyDutyCycleMessage,
+            sizeof(uint32_t), (uint8_t*)&time_ms);
+}
+
+int signpost_energy_report(signpost_energy_report_t* report) {
+    // Since we can take in a variable number of reports we
+    // should make a message buffer and pack the reports into it.
+    uint8_t reports_size = report->num_reports*sizeof(signpost_energy_report_module_t);
+    uint8_t report_buf_size = reports_size + 1;
+    uint8_t* report_buf = malloc(report_buf_size);
+    if(!report_buf) {
+        return SB_PORT_ENOMEM;
+    }
+
+    report_buf[0] = report->num_reports;
+    memcpy(report_buf+1,report->reports,reports_size);
+
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            report_buf_size, report_buf);
+    free(report_buf);
+    if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_report_callback;
+    energy_report_received = false;
+    rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
+    if(rc < 0) {
+        return SB_PORT_FAIL;
+    }
+
+
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_report_result < 0) {
+        return SB_PORT_FAIL;
+    } else {
+        return *incoming_message;
+    }
+}
+
+int signpost_energy_reset(void) {
+
+    int rc;
+    rc = signpost_api_send(ModuleAddressController,
+            CommandFrame, EnergyApiType, EnergyResetMessage,
+            0, NULL);
+    if (rc < 0) return rc;
+
+    incoming_active_callback = signpost_energy_reset_callback;
+    energy_reset_received = false;
+    rc = port_signpost_wait_for_with_timeout(&energy_reset_received,10000);
+    if(rc < 0) return SB_PORT_FAIL;
+
+    // There is an integer in the incoming message that should be
+    // sent back as the return code.
+    if(energy_reset_result < 0) {
+        return SB_PORT_FAIL;
+    } else {
+        return *incoming_message;
+    }
 }
 
 int signpost_energy_query_reply(uint8_t destination_address,
@@ -985,6 +1080,21 @@ int signpost_energy_query_reply(uint8_t destination_address,
     return signpost_api_send(destination_address,
             ResponseFrame, EnergyApiType, EnergyQueryMessage,
             sizeof(signpost_energy_information_t), (uint8_t*) info);
+}
+
+int signpost_energy_report_reply(uint8_t destination_address,
+                                             int return_code) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
+            sizeof(int), (uint8_t*)&return_code);
+}
+
+int signpost_energy_reset_reply(uint8_t destination_address, int return_code) {
+
+    return signpost_api_send(destination_address,
+            ResponseFrame, EnergyApiType, EnergyResetMessage,
+            sizeof(int), (uint8_t*)&return_code);
 }
 
 /**************************************************************************/

@@ -35,7 +35,10 @@ for each platform*/
 #define SB_PORT_EINVAL       -6
 #define SB_PORT_ESIZE        -7
 #define SB_PORT_ENOMEM       -9
+#define SB_PORT_ENOSUPPORT   -10
 #define SB_PORT_ENOACK       -13
+#define SB_PORT_EI2C_WRITE   -100
+#define SB_PORT_ECRYPT       -101
 
 // a context for the mbedtls prng
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
