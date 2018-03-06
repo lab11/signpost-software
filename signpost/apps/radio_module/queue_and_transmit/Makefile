@@ -63,9 +63,6 @@ LIBRARY_PATHS += .
 
 TOCK_USERLAND_BASE_DIR := ../../../kernel/tock/userland
 
-# External libraries used
-EXTERN_LIBS += $(TOCK_USERLAND_BASE_DIR)/libnrfserialization
-
 # include makefile settings that are shared between applications
 include ../../AppMakefileTock.mk
 

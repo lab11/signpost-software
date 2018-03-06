@@ -49,6 +49,12 @@ uint8_t status_data_offset = 0;
 static uint8_t sn = 0;
 static bool currently_sending = false;
 
+#ifndef COMPILE_TIME_ADDRESS
+#error Missing required define COMPILE_TIME_ADDRESS of format: 0xC0, 0x98, 0xE5, 0x12, 0x00, 0x00
+#endif
+static uint8_t address[ADDRESS_SIZE] = { COMPILE_TIME_ADDRESS };
+
+
 #define LORA_JOINED 0
 #define LORA_ERROR -1
 int lora_state = LORA_ERROR;
