@@ -11,4 +11,4 @@ LIBRARY_PATHS += .
 TOCK_USERLAND_BASE_DIR := ../../../kernel/tock/userland
 
 # include makefile settings that are shared between applications
-include ../../AppMakefileTock.mk
+include ../../../AppMakefileTock.mk
