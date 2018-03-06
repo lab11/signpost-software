@@ -58,8 +58,11 @@ static simple_ble_service_t signpost_service = {
 static simple_ble_char_t log_update_char = {.uuid16 = 0x6F01};
 static simple_ble_char_t log_read_char = {.uuid16 = 0x6F02};
 static simple_ble_char_t log_notify_char = {.uuid16 = 0x6F03};
-static uint8_t log_update_value [STORAGE_LOG_LEN];
-static uint8_t log_buffer[EVENTUAL_BUFFER_SIZE];
+
+#define UPDATE_VAL_LEN 4
+#define LOG_BUFFER_LEN 128
+static uint8_t log_update_value [UPDATE_VAL_LEN];
+static uint8_t log_buffer[LOG_BUFFER_LEN];
 static size_t  log_bytes_remaining;
 
 //definitions for the i2c
@@ -187,10 +190,10 @@ void services_init(void) {
     simple_ble_add_service(&signpost_service);
 
     simple_ble_add_stack_characteristic(1, 1, 0, 0,
-        STORAGE_LOG_LEN, (uint8_t*) log_update_value,
+        UPDATE_VAL_LEN, (uint8_t*) log_update_value,
         &signpost_service, &log_update_char);
     simple_ble_add_stack_characteristic(1, 0, 0, 0,
-        EVENTUAL_BUFFER_SIZE, (uint8_t*) log_buffer,
+        LOG_BUFFER_LEN, (uint8_t*) log_buffer,
         &signpost_service, &log_read_char);
     simple_ble_add_stack_characteristic(0, 0, 1, 0,
         sizeof(size_t), (uint8_t*) &log_bytes_remaining,
@@ -246,8 +249,8 @@ void ble_evt_write(ble_evt_t* p_ble_evt) {
         //Send a stop notify
         uint8_t stop = 0x1;
         // clear update value
-        memset(log_update_value, 0, STORAGE_LOG_LEN);
-        simple_ble_stack_char_set(&log_update_char, STORAGE_LOG_LEN, log_update_value);
+        memset(log_update_value, 0, UPDATE_VAL_LEN);
+        simple_ble_stack_char_set(&log_update_char, UPDATE_VAL_LEN, log_update_value);
         // set stop
         simple_ble_stack_char_set(&log_notify_char, 1, &stop);
         simple_ble_notify_char(&log_notify_char);
