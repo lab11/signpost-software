@@ -9,5 +9,5 @@ C_SRCS   := $(wildcard *.c)
 TOCK_BOARD = audio_module
 
 # include makefile settings that are shared between applications
-include ../../AppMakefileTock.mk
+include ../../../AppMakefileTock.mk
 
