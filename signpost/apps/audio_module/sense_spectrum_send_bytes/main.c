@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
-//#include <math.h>
+#include <math.h>
+#include <time.h>
 
 #include <tock.h>
 #include <console.h>
@@ -15,7 +16,6 @@
 #include "msgeq7.h"
 #include "i2c_master_slave.h"
 #include "timer.h"
-#include "bonus_timer.h"
 #include "signpost_api.h"
 
 #define STROBE 3
@@ -25,7 +25,8 @@
 #define RED_LED 3
 #define BUFFER_SIZE 20
 
-uint8_t send_buf[20];
+uint8_t send_buf[100];
+uint8_t send_buf2[100];
 bool sample_done = false;
 bool still_sampling = false;
 
@@ -39,14 +40,32 @@ bool still_sampling = false;
 //vpp to rms conversion
 //microphone sensitivity
 #define MAGIC_NUMBER 43.75
+#define OTHER_MAGIC 35.5
 
-/*static uint16_t convert_to_dB(uint16_t output) {
-    return (uint16_t)(((20*log10(output/MAGIC_NUMBER)) + SPL - PREAMP_GAIN - MSGEQ7_GAIN)*10);
-}*/
+static uint8_t convert_to_db(uint16_t output) {
+    float out;
+    if(output == 0) {
+        out = 50;
+    } else {
+        out = (((20*log10(output/MAGIC_NUMBER)) + OTHER_MAGIC));
+    }
+
+    if(out < 50) {
+        out = 50;
+    } else if(out > 75) {
+        out = 75;
+    }
+
+    out -= 50;
+
+    return (uint8_t)(out*10);
+}
 
 static void delay(void) {
     for(volatile uint16_t i = 0; i < 2000; i++);
 }
+
+struct tm current_time;
 
 int bands_total[7] = {0};
 int bands_max[7] = {0};
@@ -62,13 +81,13 @@ static void adc_callback (
 
     static uint8_t i = 0;
 
-    //send_buf[2+i*2] = (uint8_t)((sample >> 8) & 0xff);
-    //send_buf[2+i*2+1] = (uint8_t)(sample & 0xff);
-    bands_total[i] += sample;
+    int db = convert_to_db(sample);
+
+    bands_total[i] += db;
     if(sample > bands_max[i]) {
-        bands_max[i] = sample;
+        bands_max[i] = db;
     }
-    bands_now[i] = sample;
+    bands_now[i] = db;
     bands_num[i]++;
     delay();
     gpio_set(STROBE);
@@ -77,13 +96,13 @@ static void adc_callback (
 
     if(i == 6) {
 
-        if(bands_now[3] > 400) {
+        if(bands_now[3] > 60) {
             //turn on green LED
             led_on(GREEN_LED);
         } else {
             led_off(GREEN_LED);
         }
-        if(bands_now[3] > 3500) {
+        if(bands_now[3] > 60) {
             //turn on red LED
             led_on(RED_LED);
         } else {
@@ -103,7 +122,6 @@ static void adc_callback (
 
         i = 0;
         still_sampling = true;
-        printf("cycled\n");
 
     } else {
 
@@ -114,6 +132,8 @@ static void adc_callback (
     sample_done = true;
 }
 
+static uint32_t utime;
+
 static void timer_callback (
         int callback_type __attribute__ ((unused)),
         int pin_value __attribute__ ((unused)),
@@ -122,16 +142,14 @@ static void timer_callback (
         ) {
 
     int rc;
-    printf("About to send data to radio\n");
+    static int count = 0;
+
+    //calculate the band averages over the timer period
+    //and pack them into the send buf
 
     for(uint8_t j = 0; j < 7; j++) {
-        send_buf[2+j*2] = (uint8_t)((bands_max[j] >> 8) & 0xff);
-        send_buf[2+j*2+1] = (uint8_t)(bands_max[j] & 0xff);
+        send_buf[5+count*7+j] = (uint8_t)(((uint8_t)(bands_total[j]/(float)bands_num[j])) & 0xff);
     }
-
-    rc = signpost_networking_send("lab11/audio",send_buf,16);
-    send_buf[1]++;
-    printf("Sent data with return code %d\n\n\n",rc);
 
     //reset all the variables for the next period
     for(uint8_t j = 0; j < 7; j++) {
@@ -141,9 +159,47 @@ static void timer_callback (
         bands_num[j] = 0;
     }
 
-    if(rc >= 0 && still_sampling == true) {
-        app_watchdog_tickle_kernel();
-        still_sampling = false;
+    printf("Got timer\n");
+    count++;
+
+    if(count == 10) {
+        memcpy(send_buf2,send_buf,100);
+        count = 0;
+
+        printf("About to send data to radio\n");
+        rc = signpost_networking_send("lab11/audio",send_buf2,75);
+        printf("Sent data with return code %d\n\n\n",rc);
+
+        if(rc >= 0 && still_sampling == true) {
+            app_watchdog_tickle_kernel();
+            still_sampling = false;
+        }
+
+        //okay now try to get the time from the controller
+        signpost_timelocation_time_t stime;
+        rc = signpost_timelocation_get_time(&stime);
+        printf("Got time with %d satellites\n",stime.satellite_count);
+        if(rc < 0 || stime.satellite_count < 2) {
+            printf("Failed to get time - assuming 10 seconds\n");
+            utime += 10;
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
+        } else {
+            current_time.tm_year = stime.year - 1900;
+            current_time.tm_mon = stime.month - 1;
+            current_time.tm_mday = stime.day;
+            current_time.tm_hour = stime.hours;
+            current_time.tm_min = stime.minutes;
+            current_time.tm_sec = stime.seconds;
+            current_time.tm_isdst = 0;
+            utime = mktime(&current_time);
+            send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
+            send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
+            send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
+            send_buf[4] = (uint8_t)((utime & 0xff));
+        }
     }
 }
 
@@ -161,24 +217,12 @@ int main (void) {
     } while (rc < 0);
     printf(" * Bus initialized\n");
 
-    /*do {
-        rc = signpost_watchdog_start();
-        if(rc < 0) {
-            delay_ms(1000);
-        }
-    } while (rc < 0);*/
-
-    //printf("Watchdog Started");
-
-
     gpio_enable_output(8);
     gpio_enable_output(9);
     gpio_clear(8);
     gpio_clear(9);
 
-    send_buf[0] = 0x01;
-    send_buf[1] = 0x00;
-
+    send_buf[0] = 0x03;
 
     gpio_enable_output(STROBE);
     gpio_enable_output(RESET);
@@ -188,22 +232,17 @@ int main (void) {
     gpio_clear(STROBE);
     gpio_clear(RESET);
 
-
     // start up the app watchdog
+    printf("Starting watchdog\n");
     app_watchdog_set_kernel_timeout(60000);
     app_watchdog_start();
 
     //init adc
     adc_set_callback(adc_callback, NULL);
+    adc_continuous_sample(0,700);
 
     //start timer
-    static tock_timer_t timer;
-    timer_every(10000, timer_callback, NULL, &timer);
-
-
-    while (1) {
-        sample_done = false;
-        adc_single_sample(0);
-        yield_for(&sample_done);
-    }
+    printf("Starting timer\n");
+    static tock_timer_t send_timer;
+    timer_every(1000, timer_callback, NULL, &send_timer);
 }
