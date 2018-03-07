@@ -237,6 +237,8 @@ enum networking_message_type {
 
 __attribute__((warn_unused_result))
 int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len);
+__attribute__((warn_unused_result))
+int signpost_networking_send_eventually(const char* topic, uint8_t* data, uint8_t data_len);
 
 void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code);
 
