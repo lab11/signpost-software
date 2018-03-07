@@ -19,6 +19,7 @@
 // signpost includes
 #include "app_watchdog.h"
 #include "signpost_api.h"
+#include "simple_post.h"
 
 // module-specific settings
 #define AMBIENT_MODULE_I2C_ADDRESS 0x32
@@ -44,10 +45,12 @@ static void sample_sensors (void) {
   // read data from sensors and save locally
   sample_sensors_successful = true;
 
+  printf("Getting pressure\n");
   //get pressure
   int pressure = lps25hb_get_pressure_sync();
 
   // get light
+  printf("Getting light\n");
   int light = 0;
   int err_code = isl29035_read_light_intensity();
   if (err_code < TOCK_SUCCESS) {
@@ -81,15 +84,15 @@ static void sample_sensors (void) {
   samples.err_code = err_code;
 
   //also put them in the send buffer
-  message_buf[2] = (uint8_t) ((temperature >> 8) & 0xFF);
-  message_buf[3] = (uint8_t) (temperature & 0xFF);
-  message_buf[4] = (uint8_t) ((humidity >> 8) & 0xFF);
-  message_buf[5] = (uint8_t) (humidity & 0xFF);
-  message_buf[6] = (uint8_t) ((light >> 8) & 0xFF);
-  message_buf[7] = (uint8_t) (light & 0xFF);
-  message_buf[8] = (uint8_t) ((pressure >> 16) & 0xFF);
-  message_buf[9] = (uint8_t) ((pressure >> 8) & 0xFF);
-  message_buf[10] = (uint8_t) (pressure & 0xFF);
+  message_buf[1] = (uint8_t) ((temperature >> 8) & 0xFF);
+  message_buf[2] = (uint8_t) (temperature & 0xFF);
+  message_buf[3] = (uint8_t) ((humidity >> 8) & 0xFF);
+  message_buf[4] = (uint8_t) (humidity & 0xFF);
+  message_buf[5] = (uint8_t) ((light >> 8) & 0xFF);
+  message_buf[6] = (uint8_t) (light & 0xFF);
+  message_buf[7] = (uint8_t) ((pressure >> 16) & 0xFF);
+  message_buf[8] = (uint8_t) ((pressure >> 8) & 0xFF);
+  message_buf[9] = (uint8_t) (pressure & 0xFF);
 
   // track success
   if (err_code != TOCK_SUCCESS) {
@@ -102,9 +105,8 @@ static void post_to_radio (void) {
   post_to_radio_successful = true;
 
   //send radio the data
-  printf("--Sendinging data--\n");
-  int response = signpost_networking_send("lab11/audio", message_buf, 11);
-  message_buf[1]++;
+  printf("--Sending data--\n");
+  int response = signpost_networking_send("lab11/ambient", message_buf, 10);
   if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
     post_to_radio_successful = false;
@@ -112,16 +114,6 @@ static void post_to_radio (void) {
     printf("\tResponse: %d\n", response);
   }
 }
-
-static void tickle_watchdog (void) {
-  // keep the watchdog from resetting us if everything is successful
-
-  if (sample_sensors_successful && post_to_radio_successful) {
-    app_watchdog_tickle_kernel();
-    led_toggle(AMBIENT_LED1);
-  }
-}
-
 
 int main (void) {
   printf("\n[Ambient Module] Sample and Post\n");
@@ -138,29 +130,33 @@ int main (void) {
   printf(" * Bus initialized\n");
 
   message_buf[0] = 0x01;
-  message_buf[1] = 0x00;
   // set up watchdog
   // Resets after 30 seconds without a valid response
-  app_watchdog_set_kernel_timeout(60000);
+  app_watchdog_set_kernel_timeout(10000);
   app_watchdog_start();
   printf(" * Watchdog started\n");
 
   printf(" * Initialization complete\n\n");
 
-  // perform main application
-  while (true) {
-    // sample from onboard sensors
-    sample_sensors();
+  // sample from onboard sensors
+  sample_sensors();
+  printf("Done sampling sensors\n");
+  delay_ms(2000);
 
-    // send HTTP POST over Signpost API
-    post_to_radio();
+  // send HTTP POST over Signpost API
+    do {
+        post_to_radio();
+        if(post_to_radio_successful == false) {
+            delay_ms(1000);
+        }
 
-    // check the watchdog
-    tickle_watchdog();
-    printf("\n");
+    } while(post_to_radio_successful == false);
 
-    // sleep for a bit
-    delay_ms(10000);
+  //tell the controller to duty cycle for 3minutes
+  printf("requesting duty cycle\n");
+  while(true) {
+    signpost_energy_duty_cycle(180000);
+    delay_ms(1000);
   }
 }
 
