@@ -19,7 +19,6 @@
 // signpost includes
 #include "app_watchdog.h"
 #include "signpost_api.h"
-#include "simple_post.h"
 
 // module-specific settings
 #define AMBIENT_MODULE_I2C_ADDRESS 0x32
