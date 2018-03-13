@@ -1,6 +1,9 @@
 # Base folder definitions
-TOCK_USERLAND_BASE_DIR ?= ../../../kernel/tock/userland/
-SIGNPOST_USERLAND_BASE_DIR ?= ../..
+CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+SIGNPOST_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)../../)
+TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)../../../kernel/tock/userland/)
+
+
 LIBNAME := fatfs
 $(LIBNAME)_DIR := $(SIGNPOST_USERLAND_BASE_DIR)/support/$(LIBNAME)
 
