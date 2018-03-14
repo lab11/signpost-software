@@ -1,11 +1,12 @@
 #include <stdbool.h>
 
+#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
 
 #include "signpost_entropy.h"
 #include "port_signpost.h"
 
-mbedtls_ctr_drbg_context ctr_drbg_context;
+extern mbedtls_ctr_drbg_context ctr_drbg_context;
 static mbedtls_entropy_context entropy_context;
 static uint8_t drbg_data[32];
 

@@ -8,8 +8,8 @@
 
 #pragma GCC diagnostic ignored "-Wstack-usage="
 
-static uint8_t slave_write_buf[I2C_MAX_LEN];
-static uint8_t packet_buf[I2C_MAX_LEN];
+static uint8_t slave_write_buf[PORT_I2C_MAX_LEN];
+static uint8_t packet_buf[PORT_I2C_MAX_LEN];
 
 typedef struct __attribute__((packed)) signbus_network_flags {
     unsigned int is_fragment   : 1;
@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) signbus_network_header {
 } signbus_network_header_t;
 _Static_assert(sizeof(signbus_network_header_t) == 8, "network header size");
 
-#define MAX_DATA_LEN (I2C_MAX_LEN-sizeof(signbus_network_header_t))
+#define MAX_DATA_LEN (PORT_I2C_MAX_LEN-sizeof(signbus_network_header_t))
 
 typedef struct {
     signbus_network_header_t header;
@@ -172,7 +172,7 @@ int signbus_io_send(uint8_t dest, bool encrypted, uint8_t* data, size_t len) {
 
         //send the packet
         if(morePackets) {
-            rc = port_signpost_i2c_master_write(dest,(uint8_t *) &packet,I2C_MAX_LEN);
+            rc = port_signpost_i2c_master_write(dest,(uint8_t *) &packet,PORT_I2C_MAX_LEN);
 
             if (rc < 0) return rc;
 
@@ -220,7 +220,7 @@ static int get_message(uint8_t* data, size_t len, bool* encrypted, uint8_t* src)
 
         //copy the packet into a header struct
         Packet packet;
-        memcpy(&packet,packet_buf,I2C_MAX_LEN);
+        memcpy(&packet,packet_buf,PORT_I2C_MAX_LEN);
         if(lengthReceived == 0) {
             //this is the first packet
             //save the message_sequence_number
@@ -299,7 +299,7 @@ int signbus_io_recv(
     async = false;
 
     int rc;
-    rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
+    rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, PORT_I2C_MAX_LEN);
     if (rc < 0) return rc;
 
     return get_message(recv_buf, recv_buflen, encrypted, src_address);
@@ -321,7 +321,7 @@ int signbus_io_recv_async(
     async_encrypted = encrypted;
     async_active = true;
 
-    return port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
+    return port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, PORT_I2C_MAX_LEN);
 }
 
 
@@ -368,7 +368,7 @@ static void signbus_iterate_slave_read(void) {
         slave_read_data_bytes_remaining -= data_len;
 
         // setup slave read
-        port_signpost_i2c_slave_read_setup((uint8_t *) &readPacket, I2C_MAX_LEN);
+        port_signpost_i2c_slave_read_setup((uint8_t *) &readPacket, PORT_I2C_MAX_LEN);
 
     } else {
         // all provided data has been sent! Do something about it
@@ -397,7 +397,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
     // from the callback to provide new data
 
     // listen for i2c messages asynchronously
-    int rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, I2C_MAX_LEN);
+    int rc = port_signpost_i2c_slave_listen(signbus_io_slave_write_callback, slave_write_buf, PORT_I2C_MAX_LEN);
     if (rc < 0) {
         return rc;
     }
@@ -430,7 +430,7 @@ int signbus_io_set_read_buffer (uint8_t* data, uint32_t len) {
 
     // actually set up the fragmented read packet
     signbus_iterate_slave_read();
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 // provide callback to be performed when the slave read has completed all data

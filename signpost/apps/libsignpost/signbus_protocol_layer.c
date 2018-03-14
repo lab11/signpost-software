@@ -43,7 +43,7 @@ static int cipher(
     if (operation == MBEDTLS_ENCRYPT) {
         // Get 16 random bits for IV
         ret = signpost_entropy_rand(ivenc, MBEDTLS_MAX_IV_LENGTH, MBEDTLS_MAX_IV_LENGTH);
-        if (ret < 0) return SB_PORT_FAIL;
+        if (ret < 0) return PORT_FAIL;
         // copy to iv, to send with encrypted content
         memcpy(iv, ivenc, MBEDTLS_MAX_IV_LENGTH);
     }
@@ -52,17 +52,17 @@ static int cipher(
     cipher_info = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_256_CTR);
     mbedtls_cipher_init(&cipher_context);
     ret = mbedtls_cipher_setup(&cipher_context, cipher_info);
-    if(ret<0) return SB_PORT_FAIL;
+    if(ret<0) return PORT_FAIL;
     ret = mbedtls_cipher_setkey(&cipher_context, key, ECDH_KEY_LENGTH*8, operation);
-    if(ret<0) return SB_PORT_FAIL;
+    if(ret<0) return PORT_FAIL;
     ret = mbedtls_cipher_reset(&cipher_context);
-    if(ret<0) return SB_PORT_FAIL;
+    if(ret<0) return PORT_FAIL;
     //encrypt/decrypt
     ret = mbedtls_cipher_crypt(&cipher_context, iv, MBEDTLS_MAX_IV_LENGTH, in, inlen, out, olen);
-    if(ret<0) return SB_PORT_FAIL;
+    if(ret<0) return PORT_FAIL;
 
 
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 static int message_digest(uint8_t* key, uint8_t* in, size_t inlen, uint8_t* out) {
@@ -72,29 +72,29 @@ static int message_digest(uint8_t* key, uint8_t* in, size_t inlen, uint8_t* out)
     md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
     mbedtls_md_init(&md_context);
     ret = mbedtls_md_setup(&md_context, md_info, (key!=NULL));
-    if(ret<0) return SB_PORT_FAIL;
+    if(ret<0) return PORT_FAIL;
 
     // switch on performing hmac or hash
     if(key) {
         ret = mbedtls_md_hmac_starts(&md_context, key, ECDH_KEY_LENGTH);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
         ret = mbedtls_md_hmac_update(&md_context, in, inlen);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
         ret = mbedtls_md_hmac_finish(&md_context, out);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
     }
     else {
         ret = mbedtls_md_starts(&md_context);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
         ret = mbedtls_md_update(&md_context, in, inlen);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
         ret = mbedtls_md_finish(&md_context, out);
-        if(ret<0) return SB_PORT_FAIL;
+        if(ret<0) return PORT_FAIL;
     }
 
     mbedtls_md_free(&md_context);
 
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int signbus_protocol_send(
@@ -132,7 +132,7 @@ int signbus_protocol_send(
         ret = cipher(MBEDTLS_ENCRYPT, key, iv,
                 clear_buf, clear_buflen,
                 encrypted_buf, &encrypted_buf_used);
-        if (ret < 0) return SB_PORT_FAIL;
+        if (ret < 0) return PORT_FAIL;
 
         protocol_buf_used += encrypted_buf_used;
         encrypted = 1;
@@ -147,7 +147,7 @@ int signbus_protocol_send(
     // hmac over current protocol payload
     uint8_t* hmac = protocol_buf + protocol_buf_used;
     ret = message_digest(key, protocol_buf, protocol_buf_used, hmac);
-    if (ret < 0) return SB_PORT_FAIL;
+    if (ret < 0) return PORT_FAIL;
     protocol_buf_used += SHA256_LEN;
 
     // pass buffer to message
@@ -172,7 +172,7 @@ static int protocol_encrypted_buffer_received(
     // Basic sanity check
     size_t sane_length = SHA256_LEN + (key == NULL) ? 0 : MBEDTLS_MAX_IV_LENGTH;
     if (protocol_buflen < sane_length) {
-        return SB_PORT_ESIZE;
+        return PORT_ESIZE;
     }
 
     // Check HMAC or hash
@@ -180,7 +180,7 @@ static int protocol_encrypted_buffer_received(
     message_digest(key, protocol_buf, protocol_buflen-SHA256_LEN, hmac_or_hash);
     if (memcmp(hmac_or_hash, protocol_buf+(protocol_buflen-SHA256_LEN), SHA256_LEN) != 0) {
         // TODO: Meaningful return codes. Let's at least try to be unique
-        return SB_PORT_ENOMEM;
+        return PORT_ENOMEM;
     }
 
     // decrypt if needed
@@ -196,7 +196,7 @@ static int protocol_encrypted_buffer_received(
             protocol_buflen - MBEDTLS_MAX_IV_LENGTH - SHA256_LEN;
         if (output_buflen < encrypted_buflen) {
             // This size restriction comes from mbed
-            return SB_PORT_ESIZE;
+            return PORT_ESIZE;
         }
 
         int ret;
@@ -204,11 +204,11 @@ static int protocol_encrypted_buffer_received(
                 key, iv,
                 encrypted_buf, encrypted_buflen,
                 output_buf, &clear_len);
-        if (ret < 0) return SB_PORT_FAIL;
+        if (ret < 0) return PORT_FAIL;
     } else {
         clear_len = protocol_buflen - SHA256_LEN;
         if (output_buflen < clear_len) {
-            return SB_PORT_ESIZE;
+            return PORT_ESIZE;
         }
         memcpy(output_buf, protocol_buf, clear_len);
     }
@@ -294,7 +294,7 @@ int signbus_protocol_recv_async(
     if (async_buf == NULL) {
         // Need to call signbus_protocol_setup_async first
         // TODO: Meaningful return codes. Let's at least try to be unique
-        return SB_PORT_EINVAL;
+        return PORT_EINVAL;
     }
     cb_data.cb = cb;
     cb_data.addr_to_key = addr_to_key;

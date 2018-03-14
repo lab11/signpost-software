@@ -255,7 +255,7 @@ int port_printf(const char *fmt, ...) {
  * Save a struct to a nonvolatile storage
  *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
  * */
-int port_signpost_save_state(module_state_t* state) {
+int port_signpost_save_state(uint8_t* state, uint16_t state_len) {
     return PORT_FAIL;
 }
 
@@ -263,7 +263,7 @@ int port_signpost_save_state(module_state_t* state) {
  * Load a struct from nonvolatile storage
  *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
  * */
-int port_signpost_load_state(module_state_t* state) {
+int port_signpost_load_state(uint8_t* state, uint16_t state_len) {
     return PORT_FAIL;
 }
 

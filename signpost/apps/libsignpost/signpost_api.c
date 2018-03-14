@@ -9,6 +9,7 @@
 #include "port_signpost.h"
 #include "signpost_entropy.h"
 
+#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/ecdh.h"
 #include "mbedtls/ecp.h"
 
@@ -22,6 +23,8 @@
 #define ECDH_KEY_LENGTH 32
 #define NUM_MODULES 8
 #define MOD_STATE_MAGIC 0xDEADBEEF
+
+extern mbedtls_ctr_drbg_context ctr_drbg_context;
 
 typedef struct module_struct {
     uint32_t                magic;
