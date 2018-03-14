@@ -6,7 +6,7 @@
 #include "signpost_entropy.h"
 #include "port_signpost.h"
 
-extern mbedtls_ctr_drbg_context ctr_drbg_context;
+mbedtls_ctr_drbg_context ctr_drbg_context;
 static mbedtls_entropy_context entropy_context;
 static uint8_t drbg_data[32];
 
