@@ -1566,8 +1566,206 @@ int signpost_watchdog_reply(uint8_t destination_address) {
     return rc;
 }
 
-/**************************************************************************/
-/* EDISON API                                                             */
-/**************************************************************************/
+/*************************************************************************/
+/* signpost  update */
+/*************************************************************************/
+
+bool update_message;
+static void update_callback(__attribute__ ((unused)) int result) {
+    update_message = true;
+}
+
+//this will fetch the update and perform it
+int signpost_update(const char* url,
+                    const char* version_string,
+                    uint32_t flash_scratch_start,
+                    uint32_t flash_scratch_length,
+                    uint32_t flash_dest_address) {
+
+    uint32_t update_len;
+    uint32_t crc;
+    int ret = signpost_fetch_update(url, version_string, flash_scratch_start,
+                                         flash_scratch_length, &update_len,
+                                         &crc);
+
+    if(ret == UpdateFetched) {
+        ret = signpost_apply_update(flash_dest_address,
+                                    flash_scratch_start, update_len, crc);
+    }
+
+    return ret;
+}
+
+//this gives the user a bit more control to fetch, then decide when to apply
+int signpost_fetch_update(const char* url,
+                            const char* version_string,
+                            uint32_t flash_scratch_start,
+                            uint32_t flash_scratch_length,
+                            uint32_t* update_length,
+                            uint32_t* crc) {
+
+    //first pack the initial update request to the radio
+    uint32_t url_len = strlen(url);
+    uint32_t version_len = strlen(version_string);
+    char* message = malloc(url_len+version_len+8);
+    if(!message) {
+        return SB_PORT_ENOMEM;
+    }
+
+    memcpy(message,&url_len,4);
+    memcpy(message+4,url,url_len);
+    memcpy(message+4+url_len,&version_len,4);
+    memcpy(message+8+url_len,version_string,version_len);
+
+    int ret = signpost_api_send(ModuleAddressRadio,
+            CommandFrame, UpdateApiType, UpdateRequestMessage,
+            url_len+version_len+8, (uint8_t*) message);
+
+    free(message);
+
+    while(true) {
+        update_message = false;
+        incoming_active_callback = update_callback;
+        int rc = port_signpost_wait_for_with_timeout(&update_message, 60000);
+        if(rc < SB_PORT_SUCCESS) {
+            //timeout
+            return SB_PORT_FAIL;
+        }
+
+        //we got the message, is it a done or a xfer message?
+        if(incoming_message_type == UpdateTransferMessage) {
+            //take the message, unpack it, do a flash write, then respond
+            port_printf("Received transfer message\n");
+            uint32_t data_len;
+            uint32_t offset;
+
+            memcpy(&data_len, incoming_message, 4);
+            uint8_t* data = malloc(data_len);
+            if(!data) {
+                port_printf("Memory error, returning\n");
+                return SB_PORT_ENOMEM;
+            }
+            memcpy(data, incoming_message+4, data_len);
+            memcpy(&offset, incoming_message+4+data_len, 4);
+
+            if(offset+data_len > flash_scratch_length) {
+                port_printf("Memory error, returning\n");
+                return SB_PORT_ENOMEM;
+            }
+
+            port_printf("Writing to flash\n");
+            ret = port_signpost_flash_write(flash_scratch_start + offset, data, data_len);
+
+            free(data);
+            if(ret < 0) {
+                port_printf("Error writing to flash\n");
+                return ret;
+            }
+
+            //send response message so radio can proceed
+            port_printf("Sending response message to get more data\n");
+            ret = signpost_api_send(ModuleAddressRadio,
+                CommandFrame, UpdateApiType, UpdateResponseMessage,
+                0, NULL);
+
+            if(ret < 0)  {
+                port_printf("Error sending response message\n");
+                return ret;
+            };
+        } else if (incoming_message_type == UpdateResponseMessage) {
+            port_printf("Received update done message!\n");
+            signpost_update_done_t resp;
+            memcpy(&resp, incoming_message, sizeof(signpost_update_done_t));
+
+            if(resp.response_code == UpdateUpToDate) {
+                port_printf("Returning - up to date\n");
+                return UpdateUpToDate;
+            } else if(resp.response_code == UpdateFetched) {
+                //copy the crc and length and return update fetched
+                port_printf("Got an update of length: %lu and crc: %lu\n",resp.total_length, resp.crc);
+                memcpy(update_length, &resp.total_length, 4);
+                memcpy(crc, &resp.crc, 4);
+
+                return UpdateFetched;
+            } else {
+                return resp.response_code;
+            }
+        } else if (incoming_message_type == UpdateUpToDateMessage) {
+            return UpdateUpToDate;
+        } else {
+            //this must be an error code
+            return UpdateFetchFailure;
+        }
+    }
+}
+
+//this is the apply function for the fetch counterpart
+int signpost_apply_update(uint32_t flash_dest_address,
+                            uint32_t flash_scratch_start,
+                            uint32_t update_length,
+                            uint32_t crc) {
+
+    port_printf("Calling to port apply update\n");
+    int ret = port_signpost_apply_update(flash_dest_address,
+                                         flash_scratch_start,
+                                         update_length,
+                                         crc);
+    if(ret < 0) {
+        return UpdateApplyFailure;
+    } else {
+        return UpdateApplied;
+    }
+}
+
+int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, uint32_t offset, uint32_t len) {
+
+    uint8_t* message = malloc(len+8);
+    if(!message) {
+        return SB_PORT_ENOMEM;
+    }
+
+    memcpy(message, &len, 4);
+    memcpy(message+4, binary_chunk, len);
+    memcpy(message+4+len, &offset, 4);
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateTransferMessage,
+       8+len, message);
+
+    free(message);
+
+    return ret;
+}
+
+int signpost_update_done_reply(uint8_t dest_addr, uint32_t response_code, uint32_t len, uint32_t crc) {
+    signpost_update_done_t rep;
+    rep.response_code = response_code;
+    rep.total_length = len;
+    rep.crc = crc;
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateResponseMessage,
+       sizeof(signpost_update_done_t), (uint8_t*) &rep);
+
+    return ret;
+}
+
+int signpost_update_error_reply(uint8_t dest_addr) {
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateErrorMessage,
+       0, NULL);
+
+    return ret;
+}
+
+int signpost_update_up_to_date_reply(uint8_t dest_addr) {
+
+    int ret = signpost_api_send(dest_addr,
+       ResponseFrame, UpdateApiType, UpdateUpToDateMessage,
+       0, NULL);
+
+    return ret;
+}
 
 #pragma GCC diagnostic pop
