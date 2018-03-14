@@ -1609,7 +1609,7 @@ int signpost_fetch_update(const char* url,
     uint32_t version_len = strlen(version_string);
     char* message = malloc(url_len+version_len+8);
     if(!message) {
-        return SB_PORT_ENOMEM;
+        return PORT_ENOMEM;
     }
 
     memcpy(message,&url_len,4);
@@ -1627,9 +1627,9 @@ int signpost_fetch_update(const char* url,
         update_message = false;
         incoming_active_callback = update_callback;
         int rc = port_signpost_wait_for_with_timeout(&update_message, 60000);
-        if(rc < SB_PORT_SUCCESS) {
+        if(rc < PORT_SUCCESS) {
             //timeout
-            return SB_PORT_FAIL;
+            return PORT_FAIL;
         }
 
         //we got the message, is it a done or a xfer message?
@@ -1643,14 +1643,14 @@ int signpost_fetch_update(const char* url,
             uint8_t* data = malloc(data_len);
             if(!data) {
                 port_printf("Memory error, returning\n");
-                return SB_PORT_ENOMEM;
+                return PORT_ENOMEM;
             }
             memcpy(data, incoming_message+4, data_len);
             memcpy(&offset, incoming_message+4+data_len, 4);
 
             if(offset+data_len > flash_scratch_length) {
                 port_printf("Memory error, returning\n");
-                return SB_PORT_ENOMEM;
+                return PORT_ENOMEM;
             }
 
             port_printf("Writing to flash\n");
@@ -1721,7 +1721,7 @@ int signpost_update_transfer_reply(uint8_t dest_addr, uint8_t* binary_chunk, uin
 
     uint8_t* message = malloc(len+8);
     if(!message) {
-        return SB_PORT_ENOMEM;
+        return PORT_ENOMEM;
     }
 
     memcpy(message, &len, 4);

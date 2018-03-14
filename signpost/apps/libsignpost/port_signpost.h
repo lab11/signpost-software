@@ -124,6 +124,13 @@ int port_signpost_save_state(uint8_t* state, uint16_t state_len);
  * */
 int port_signpost_load_state(uint8_t* state, uint16_t state_len);
 
+//This write to microcontroller flash
+int port_signpost_flash_write(uint32_t address, uint8_t* data, uint32_t data_len);
+
+//This is used to perform an update
+//it should, check the crc, copy the flash to the destination, then reset
+int port_signpost_apply_update(uint32_t dest_address, uint32_t source_address, uint32_t update_length, uint32_t crc);
+
 #ifdef __cplusplus
 }
 #endif
