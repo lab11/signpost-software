@@ -26,7 +26,7 @@ static void storage_api_callback(uint8_t source_address,
   int err = TOCK_SUCCESS;
 
   if (api_type != StorageApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
     return;
   }
 
