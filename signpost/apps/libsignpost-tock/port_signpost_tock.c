@@ -13,6 +13,7 @@
 #include "tock.h"
 #include "app_state.h"
 #include "app_watchdog.h"
+#include "signpost_tock_firmware_update.h"
 
 #define MOD_OUT 0
 #define MOD_IN  1
@@ -230,4 +231,22 @@ int port_signpost_load_state(uint8_t* state, uint16_t state_len) {
   if (app_state_load_sync() != TOCK_SUCCESS) return PORT_FAIL;
   memcpy(state, &port_tock_module_state, state_len);
   return PORT_SUCCESS;
+}
+
+//This write to microcontroller flash
+int port_signpost_flash_write(uint32_t address, uint8_t* data, uint32_t data_len) {
+    return signpost_tock_firmware_update_write_buffer(data, address, data_len);
+}
+
+//This is used to perform an update
+//it should, check the crc, copy the flash to the destination, then reset
+int port_signpost_apply_update(__attribute__ ((unused)) uint32_t dest_address,
+                                __attribute__ ((unused))uint32_t source_address,
+                                uint32_t update_length, uint32_t crc) {
+    int ret = signpost_tock_firmware_update_go(0x60000,0x30000, update_length, crc);
+    if(ret == 0) {
+        app_watchdog_reset_app();
+    }
+
+    return ret;
 }
