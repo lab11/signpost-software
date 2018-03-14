@@ -31,7 +31,7 @@ int port_signpost_init(uint8_t i2c_address) {
     ModIn.mode(PullUp);
     I2Creader = new I2CSlave(I2C_MASTER_SDA, I2C_MASTER_SCL);
     I2Creader->address(address);
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 //This function is a blocking i2c send call
@@ -59,9 +59,9 @@ int port_signpost_i2c_master_write(uint8_t dest, uint8_t* buf, size_t len) {
     slaveMutex.unlock();
 
     if(rc != 0) {
-        return SB_PORT_FAIL;
+        return PORT_FAIL;
     } else {
-        return SB_PORT_SUCCESS;
+        return PORT_SUCCESS;
     }
 }
 
@@ -87,7 +87,7 @@ static void i2c_listen_loop() {
             if(len < listen_len) {
                 listen_cb(len);
             } else {
-                listen_cb(SB_PORT_FAIL);
+                listen_cb(PORT_FAIL);
             }
             Thread::signal_wait(0x01);
         break;
@@ -113,31 +113,31 @@ int port_signpost_i2c_slave_listen(port_signpost_callback cb, uint8_t* buf, size
             || listenerThread.get_state() == Thread::Deleted) {
         listenerThread.set_priority(osPriorityBelowNormal);
         if(listenerThread.start(i2c_listen_loop) == osOK) {
-            return SB_PORT_SUCCESS;
+            return PORT_SUCCESS;
         } else {
-            return SB_PORT_FAIL;
+            return PORT_FAIL;
         }
     } else {
         listenerThread.signal_set(0x01);
-        return SB_PORT_SUCCESS;
+        return PORT_SUCCESS;
     }
 }
 
 int port_signpost_i2c_slave_read_setup(uint8_t *buf, size_t len) {
     read_buf = buf;
     read_len = len;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 //These functions are used to control gpio outputs
 int port_signpost_mod_out_set(void) {
     ModOut = 1;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_signpost_mod_out_clear(void) {
     ModOut = 0;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_signpost_mod_in_read(void) {
@@ -153,7 +153,7 @@ int port_signpost_pps_read(void) {
 static port_signpost_callback falling_cb = NULL;
 static void in_falling() {
     if(falling_cb) {
-        falling_cb(SB_PORT_SUCCESS);
+        falling_cb(PORT_SUCCESS);
     }
 }
 
@@ -161,7 +161,7 @@ int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb) {
     ModIn.fall(&in_falling);
     falling_cb = cb;
     ModIn.enable_irq();
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 //This function is used to get the input interrupt for the rising edge of
@@ -170,7 +170,7 @@ int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb) {
 static port_signpost_callback rising_cb = NULL;
 static void in_rising() {
     if(rising_cb) {
-        rising_cb(SB_PORT_SUCCESS);
+        rising_cb(PORT_SUCCESS);
     }
 }
 
@@ -178,14 +178,14 @@ int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb) {
     ModIn.rise(&in_rising);
     rising_cb = cb;
     ModIn.enable_irq();
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_signpost_mod_in_disable_interrupt(void) {
     ModIn.disable_irq();
     falling_cb = NULL;
     rising_cb = NULL;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 void port_signpost_wait_for(void* wait_on_true){
@@ -208,9 +208,9 @@ int port_signpost_wait_for_with_timeout(void* wait_on_true, uint32_t ms) {
         Thread::wait(1);
     }
     if(timed_out) {
-        return SB_PORT_FAIL;
+        return PORT_FAIL;
     } else {
-        return SB_PORT_SUCCESS;
+        return PORT_SUCCESS;
     }
 }
 
@@ -220,16 +220,16 @@ void port_signpost_delay_ms(unsigned ms) {
 
 int port_signpost_debug_led_on(void) {
     Debug = 1;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_signpost_debug_led_off(void){
     Debug = 0;
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_rng_init(void) {
-    return SB_PORT_SUCCESS;
+    return PORT_SUCCESS;
 }
 
 int port_rng_sync(uint8_t* buf, uint32_t len, uint32_t num) {
@@ -250,3 +250,20 @@ int port_printf(const char *fmt, ...) {
     va_end(args);
     return rc;
 }
+
+/* port_signpost_save_state
+ * Save a struct to a nonvolatile storage
+ *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_save_state(module_state_t* state) {
+    return PORT_FAIL;
+}
+
+/* port_signpost_load_state
+ * Load a struct from nonvolatile storage
+ *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * */
+int port_signpost_load_state(module_state_t* state) {
+    return PORT_FAIL;
+}
+

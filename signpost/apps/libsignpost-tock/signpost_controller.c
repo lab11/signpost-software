@@ -88,7 +88,7 @@ static void initialization_api_callback(uint8_t source_address,
     uint8_t message_type, __attribute__ ((unused)) size_t message_length,
     uint8_t* message) {
     if (api_type != InitializationApiType) {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
+      signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
       return;
     }
     uint8_t req_mod_num = MODOUT_pin_to_mod_name(mod_isolated_out);
@@ -260,7 +260,7 @@ static void energy_api_callback(uint8_t source_address,
   printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
 
   if (api_type != EnergyApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
     return;
   }
 
@@ -311,7 +311,7 @@ static void energy_api_callback(uint8_t source_address,
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
         printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EI2C_WRITE, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EI2C_WRITE, true, true, 1);
       }
 
     } else if (message_type == EnergyReportModuleConsumptionMessage) {
@@ -347,7 +347,7 @@ static void energy_api_callback(uint8_t source_address,
         //reply
         signpost_energy_reset_reply(source_address, 1);
     } else {
-      signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_ENOSUPPORT, true, true, 1);
+      signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_ENOSUPPORT, true, true, 1);
     }
   } else if (frame_type == ResponseFrame) {
     // XXX unexpected, drop
@@ -363,7 +363,7 @@ static void timelocation_api_callback(uint8_t source_address,
   int rc;
 
   if (api_type != TimeLocationApiType) {
-    signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EINVAL, true, true, 1);
+    signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
     return;
   }
 
@@ -378,7 +378,7 @@ static void timelocation_api_callback(uint8_t source_address,
       rc = signpost_timelocation_get_time_reply(source_address, &time);
       if (rc < 0) {
         printf(" - %d: Error sending TimeLocationGetTimeMessage reply (code: %d).\n", __LINE__, rc);
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EI2C_WRITE, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EI2C_WRITE, true, true, 1);
       }
 
     } else if (message_type == TimeLocationGetLocationMessage) {
@@ -387,7 +387,7 @@ static void timelocation_api_callback(uint8_t source_address,
       rc = signpost_timelocation_get_location_reply(source_address, &location);
       if (rc < 0) {
         printf(" - %d: Error sending TimeLocationGetLocationMessage reply (code: %d).\n", __LINE__, rc);
-        signpost_api_error_reply_repeating(source_address, api_type, message_type, SB_PORT_EI2C_WRITE, true, true, 1);
+        signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EI2C_WRITE, true, true, 1);
       }
     }
   } else if (frame_type == ResponseFrame) {

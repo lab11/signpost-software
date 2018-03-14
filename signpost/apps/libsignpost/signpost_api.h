@@ -54,8 +54,8 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 // params:
 //  module_number: the module number corresponding to the key to revoke
 //
-// returns SB_PORT_SUCCESS if module number is within number of modules on
-// system (NUM_MODULES), and SB_PORT_EINVAL otherwise
+// returns PORT_SUCCESS if module number is within number of modules on
+// system (NUM_MODULES), and PORT_EINVAL otherwise
 //
 int signpost_api_revoke_key(uint8_t module_number);
 
@@ -72,16 +72,21 @@ int signpost_api_revoke_key(uint8_t module_number);
 
 typedef enum initialization_state {
     RequestIsolation = 0,
-    Isolated,
+    Declare,
     KeyExchange,
     FinishExchange,
     Done,
+    CheckKeys,
+    //RegisterWithKeys,
+    //ConfirmChallenge,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
    InitializationDeclare = 0,
    InitializationKeyExchange,
    InitializationGetMods,
+   //InitializationRegister,
+   InitializationRevoke,
 } initialization_message_type_t;
 
 typedef enum module_address {
@@ -112,13 +117,30 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
 // TODO add parameter for which modules to isolate
 int signpost_initialization_request_isolation(void);
 
-// Send a key exchange request to another module
+// Initialize with another module
+// Will first arrange isolation between controller and other module,
+// then complete a key exchange with the module
+//
+// params:
+//  module_address: i2c address of module to initialize with
+int signpost_initialization_initialize_with_module(uint8_t module_address);
+
+// Send a exchange request to another module
 // Assumes controller has already isolated source and target
 //
 // params:
 //  destination_address - The I2C address of the module to exchange keys with
+//__attribute__((warn_unused_result))
+//int signpost_initialization_key_exchange_send(uint8_t destination_address);
+
+// Send a response to a registration request if module key already stored
+//
+// params:
+//  source_address  - The I2C address of the module that sent a registration
+//  request
+//  TODO this should be replaced with appid eventually
 __attribute__((warn_unused_result))
-int signpost_initialization_key_exchange_send(uint8_t destination_address);
+int signpost_initialization_register_respond(uint8_t source_address);
 
 // Send a response to a declare request
 // Assumes controller has already isolated source
