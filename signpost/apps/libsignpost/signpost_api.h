@@ -73,65 +73,41 @@ int signpost_api_revoke_key(uint8_t module_number);
 typedef enum initialization_state {
     RequestIsolation = 0,
     Declare,
-    KeyExchange,
-    FinishExchange,
+    Verify,
     Done,
-    CheckKeys,
-    //RegisterWithKeys,
-    //ConfirmChallenge,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
    InitializationDeclare = 0,
-   InitializationKeyExchange,
-   InitializationGetMods,
-   //InitializationRegister,
+   InitializationeVerify,
    InitializationRevoke,
 } initialization_message_type_t;
 
 typedef enum module_address {
-    ModuleAddressController = 0x20,
-    ModuleAddressStorage = 0x21,
-    ModuleAddressRadio = 0x22,
+    ControlModuleAddress = 0x20,
+    StorageModuleAddress = 0x21,
+    RadioModuleAddress = 0x22,
 } module_address_t;
 
 // Initialize this module.
 // Must be called before any other signpost API methods.
 //
 // params:
-//  i2c_address  - The I2C address of this calling module
-//  api_handlers - Array of signpost APIs that this calling module implements
-//                 The final element of this array MUST be NULL.
-//                 This array MUST be static (pointer must be valid forever).
-//                 Modules that implement no APIs MUST pass SIGNPOST_INITIALIZATION_NO_APIS.
+//      -   module_name. A string that is less than 16 bytes.
 __attribute__((warn_unused_result))
-int signpost_initialization_module_init(
-        uint8_t i2c_address,
-        api_handler_t** api_handlers);
+int signpost_initialize(char* module_name);
 
-// A special initialization routine for the controller module only.
+// The control module initialization routine.
 __attribute__((warn_unused_result))
-int signpost_initialization_controller_module_init(api_handler_t** api_handlers);
+int signpost_initialize_control_module();
 
-// Request isolation with the controller
-// TODO add parameter for which modules to isolate
-int signpost_initialization_request_isolation(void);
+// The radio module initialization routine.
+__attribute__((warn_unused_result))
+int signpost_initialize_radio_module();
 
-// Initialize with another module
-// Will first arrange isolation between controller and other module,
-// then complete a key exchange with the module
-//
-// params:
-//  module_address: i2c address of module to initialize with
-int signpost_initialization_initialize_with_module(uint8_t module_address);
-
-// Send a exchange request to another module
-// Assumes controller has already isolated source and target
-//
-// params:
-//  destination_address - The I2C address of the module to exchange keys with
-//__attribute__((warn_unused_result))
-//int signpost_initialization_key_exchange_send(uint8_t destination_address);
+// The radio module initialization routine.
+__attribute__((warn_unused_result))
+int signpost_initialize_storage_module();
 
 // Send a response to a registration request if module key already stored
 //

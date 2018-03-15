@@ -20,44 +20,52 @@
 #endif
 
 #define SHA256_LEN 32
-#define ECDH_KEY_LENGTH 32
+#define KEY_LENGTH 32
+#define NAME_LENGTH 16
 #define NUM_MODULES 8
-#define MOD_STATE_MAGIC 0xDEADBEEF
 
-extern mbedtls_ctr_drbg_context ctr_drbg_context;
+typedef struct module_key_struct {
+    bool    valid;
+    uint8_t key[KEY_LENGTH];
+} module_key_t;
 
-typedef struct module_struct {
-    uint32_t                magic;
-    uint8_t                 self_mod_num;
-    uint8_t                 i2c_address;
-    uint8_t                 i2c_address_mods[NUM_MODULES];
-    uint16_t                nonces[NUM_MODULES];
-    bool                    haskey[NUM_MODULES];
-    uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
+typedef struct module_state_struct {
+    uint8_t                 address;
+    char                    name[NAME_LENGTH];
+    module_key_t            control_module;
+    module_key_t            radio_module;
+    module_key_t            storage_module;
 } module_state_t;
 
+static module_state_t module_state;
 
-
-struct module_api_struct {
-    api_handler_t**         api_handlers;
-    int8_t                  api_type_to_module_address[HighestApiType+1];
-} module_api = {0};
-
-static module_state_t module_info;
-
-// Translate module address to pairwise key
+//Helper functions that can be used by the Signpost Controller
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
-    for (size_t i = 0; i < NUM_MODULES; i++) {
-        if (addr == module_info.i2c_address_mods[i] && module_info.haskey[i]) {
-            uint8_t* key = module_info.keys[i];
-            port_printf("key: %p: 0x%02x%02x%02x...%02x\n", key,
-                    key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
-            return key;
-        }
+
+    switch(addr){
+    case ControlModuleAddress:
+        if(module_state.control_module.valid)
+            return module_state.control_module.key;
+        else
+            return NULL
+    break;
+    case RadioModuleAddress:
+        if(module_state.radio_module.valid)
+            return module_state.radio_module.key;
+        else
+            return NULL
+    break;
+    case StorageModuleAddress:
+        if(module_state.storage_module.valid)
+            return module_state.storage_module.key;
+        else
+            return NULL
+    break;
+    default:
+        return NULL;
+    break;
     }
 
-    SIGNBUS_DEBUG("key: NULL\n");
-    return NULL;
 }
 
 int signpost_api_addr_to_mod_num(uint8_t addr){
@@ -217,38 +225,19 @@ static void signpost_api_recv_callback(int len_or_rc) {
 static initialization_state_t init_state;
 
 // waiting variables
-//static bool register_module_complete;
 static bool request_isolation_complete;
-//static bool revoke_complete;
 static bool declare_controller_complete;
-//static bool key_send_complete;
 
 // state of isolation
 static bool is_isolated = 0;
 
 // module address currently initializing with
 // first initialization is with controller
-static uint8_t mod_addr_init = ModuleAddressController;
-
-// mbedtls stuff
-#define ECDH_BUF_LEN 72
-static mbedtls_ecdh_context ecdh;
-static size_t  ecdh_param_len;
-static uint8_t ecdh_buf[ECDH_BUF_LEN];
+static uint8_t mod_addr_init = ControlModuleAddress;
 
 /**************************************/
 /* Initialization Callbacks           */
 /**************************************/
-
-//static void signpost_initialization_register_callback(int len_or_rc) {
-//    // Flip waiting variable, change state if well-formed message
-//    register_module_complete = true;
-//    if (len_or_rc < PORT_SUCCESS) return;
-//    if (incoming_api_type != InitializationApiType || incoming_message_type !=
-//            InitializationRegister) return;
-//
-//    init_state = ConfirmChallenge;
-//}
 
 static void signpost_initialization_declare_callback(int len_or_rc) {
     // Flip waiting variable, change state if well-formed message
@@ -259,15 +248,6 @@ static void signpost_initialization_declare_callback(int len_or_rc) {
 
     init_state = Done;
 }
-
-//static void signpost_initialization_key_exchange_callback(int len_or_rc) {
-//    key_send_complete= true;
-//    if (len_or_rc < PORT_SUCCESS) return;
-//    if (incoming_api_type != InitializationApiType || incoming_message_type !=
-//            InitializationKeyExchange) return;
-//
-//    init_state = FinishExchange;
-//}
 
 static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
     is_isolated = 1;
@@ -288,35 +268,6 @@ static void signpost_initialization_lost_isolation_callback(int unused __attribu
 /* Initialization Helper Functions    */
 /**************************************/
 
-// TODO should change to using appids
-//static int signpost_initialization_register_with_key(uint8_t address) {
-//    int rc;
-//    int modnum;
-//
-//    if ((modnum = signpost_api_addr_to_mod_num(address)) < 0) {
-//      return PORT_EINVAL;
-//    }
-//
-//    // set callback for handling response from controller/modules
-//    if (incoming_active_callback != NULL) {
-//        return PORT_EBUSY;
-//    }
-//
-//    incoming_active_callback = signpost_initialization_register_callback;
-//
-//    // get random nonce for challenge
-//    uint16_t nonce;
-//    rc = port_rng_sync((uint8_t*) &nonce, sizeof(nonce), sizeof(nonce));
-//    if (rc == PORT_FAIL) return rc;
-//
-//    if (signpost_api_send(ModuleAddressController, CommandFrame,
-//          InitializationApiType, InitializationRegister, sizeof(nonce),
-//          (uint8_t*) &nonce) >= PORT_SUCCESS) {
-//        return PORT_SUCCESS;
-//    }
-//
-//    return PORT_FAIL;
-//}
 
 int signpost_initialization_request_isolation(void) {
     int rc;
@@ -330,6 +281,29 @@ int signpost_initialization_request_isolation(void) {
     return PORT_SUCCESS;
 }
 
+static int signpost_initialization_verify_controller(void) {
+    // set callback for handling response from controller/modules
+    if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_verify_callback) {
+        return PORT_EBUSY;
+    }
+
+    incoming_active_callback = signpost_initialization_verify_callback;
+
+    uint8_t send_buf[KEY_LENGTH*2];
+    memcopy(send_buf,module_state.radio_module.key,KEY_LENGTH)
+    memcopy(send_buf+KEY_LENGTH,module_state.storage_module.key,KEY_LENGTH)
+
+    //Send a declare message with the module name
+    if (signpost_api_send(ControlModuleAddress, CommandFrame,
+          InitializationApiType, InitializationVerify,
+          send_buf, KEY_LENGTH*2)) >= PORT_SUCCESS) {
+        return PORT_SUCCESS;
+    }
+
+    return PORT_FAIL;
+
+}
+
 static int signpost_initialization_declare_controller(void) {
     // set callback for handling response from controller/modules
     if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_declare_callback) {
@@ -338,95 +312,21 @@ static int signpost_initialization_declare_controller(void) {
 
     incoming_active_callback = signpost_initialization_declare_callback;
 
-    // XXX also report APIs supported
-    // XXX dynamic i2c address allocation
-    if (signpost_api_send(ModuleAddressController, CommandFrame,
-          InitializationApiType, InitializationDeclare, 0,
-          NULL) >= PORT_SUCCESS) {
+    //Send a declare message with the module name
+    if (signpost_api_send(ControlModuleAddress, CommandFrame,
+          InitializationApiType, InitializationDeclare,
+          (uint8_t*)module_state.name, strnlen(module_state.name,NAME_LENGTH)) >= PORT_SUCCESS) {
         return PORT_SUCCESS;
     }
 
     return PORT_FAIL;
 }
 
-//static int signpost_initialization_key_exchange_finish(void) {
-//    // read params from contacted module
-//    if (mbedtls_ecdh_read_public(&ecdh, incoming_message,
-//                incoming_message_length) < 0) {
-//        //port_printf("failed to read public parameters\n");
-//        return PORT_FAIL;
-//    }
-//
-//    uint8_t  module_number = signpost_api_addr_to_mod_num(incoming_source_address);
-//    if (module_number == 0xff) return PORT_FAIL;
-//    uint8_t* key = module_info.keys[module_number];
-//    size_t keylen;
-//    // generate key
-//    if(mbedtls_ecdh_calc_secret(&ecdh, &keylen, key, ECDH_KEY_LENGTH,
-//                mbedtls_ctr_drbg_random, &ctr_drbg_context) < 0) {
-//        //port_printf("failed to calculate secret\n");
-//        return PORT_FAIL;
-//    }
-//    module_info.haskey[signpost_api_addr_to_mod_num(incoming_source_address)] =
-//        true;
-//
-//    SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
-//            key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
-//
-//    port_printf("INIT: Initialization with module %d complete\n", signpost_api_addr_to_mod_num(incoming_source_address));
-//    return 0;
-//}
-//
-//static int signpost_initialization_key_exchange_send(uint8_t destination_address) {
-//    int rc;
-//    uint8_t module_number = signpost_api_addr_to_mod_num(destination_address);
-//    port_printf("INIT: Granted I2C isolation and started initialization with module %d\n", module_number);
-//
-//    // set callback for handling response from controller/modules
-//    if (incoming_active_callback != NULL) {
-//        return PORT_EBUSY;
-//    }
-//    incoming_active_callback = signpost_initialization_key_exchange_callback;
-//
-//    // clear previous state
-//    module_info.haskey[module_number] = false;
-//    memset(module_info.keys[module_number], 0, ECDH_KEY_LENGTH);
-//
-//    // Prepare for ECDH key exchange
-//    mbedtls_ecdh_init(&ecdh);
-//    rc = mbedtls_ecp_group_load(&ecdh.grp,MBEDTLS_ECP_DP_SECP256R1);
-//    if (rc < 0) return rc;
-//    rc = mbedtls_ecdh_make_params(&ecdh, &ecdh_param_len, ecdh_buf,
-//            ECDH_BUF_LEN, mbedtls_ctr_drbg_random, &ctr_drbg_context);
-//    if (rc < 0) return rc;
-//
-//    // Now have a private channel with the controller
-//    // Key exchange with module, send ecdh params
-//    if (signpost_api_send(destination_address, CommandFrame, InitializationApiType,
-//            InitializationKeyExchange, ecdh_param_len, ecdh_buf) > 0) {
-//      return PORT_SUCCESS;
-//    }
-//    else return PORT_FAIL;
-//}
 
-//int signpost_initialization_register_respond(uint8_t source_address) {
-//    uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
-//    if (!module_info.haskey[module_number]) {
-//        printf("INIT: Do not have key for module %d, dropping registration request\n", module_number);
-//        return PORT_EINVAL;
-//    }
-//
-//    uint16_t nonce = *((uint16_t*) incoming_message);
-//    SIGNBUS_DEBUG("nonce: 0x%x\n", nonce);
-//
-//
-//    printf("INIT: Registered module %d at address 0x%x with existing key\n", module_number, source_address);
-//
-//    return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationRegister, sizeof(uint16_t), (uint8_t*) &nonce);
-//}
+int signpost_initialization_declare_respond(uint8_t module_number) {
+    //Choose an I2C Address
 
-int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number) {
-    //int ret = PORT_SUCCESS;
+    //Generate keys for the three necessary module pairs
 
     //XXX choose address to respond to module
     if (module_info.i2c_address_mods[module_number] != source_address) {
@@ -435,106 +335,10 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t modu
       port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
     }
 
-    // Just ack, TODO eventually will send new address
     return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
 }
 
-int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len) {
-    int ret = PORT_SUCCESS;
-    uint8_t module_number = signpost_api_addr_to_mod_num(source_address);
-
-    port_printf("INIT: Performing key exchange with module %d\n", module_number);
-
-    // init ecdh struct for key exchange
-    mbedtls_ecdh_free(&ecdh);
-    mbedtls_ecdh_init(&ecdh);
-    ret = mbedtls_ecp_group_load(&ecdh.grp, MBEDTLS_ECP_DP_SECP256R1);
-    if(ret < PORT_SUCCESS) return ret;
-
-    // read params from contacting module
-    ret = mbedtls_ecdh_read_params(&ecdh, (const uint8_t **) &ecdh_params, ecdh_params+len);
-    if(ret < PORT_SUCCESS) return ret;
-
-    // make params
-    ret = mbedtls_ecdh_make_public(&ecdh, &ecdh_param_len, ecdh_buf, ECDH_BUF_LEN, mbedtls_ctr_drbg_random, &ctr_drbg_context);
-    if(ret < PORT_SUCCESS) return ret;
-
-    if (module_number == 0xff) return PORT_FAIL;
-    uint8_t* key = module_info.keys[module_number];
-    size_t keylen;
-    // calculate shared secret
-    ret = mbedtls_ecdh_calc_secret(&ecdh, &keylen, key, ECDH_KEY_LENGTH, mbedtls_ctr_drbg_random, &ctr_drbg_context);
-    if(ret < PORT_SUCCESS) return ret;
-    SIGNBUS_DEBUG("key: %p: 0x%02x%02x%02x...%02x\n", key,
-            key[0], key[1], key[2], key[ECDH_KEY_LENGTH-1]);
-    ret = signpost_api_send(source_address,
-            ResponseFrame, InitializationApiType, InitializationKeyExchange,
-            ecdh_param_len, ecdh_buf);
-
-    module_info.haskey[module_number] = true;
-
-    //port_signpost_save_state(&module_info);
-    return ret;
-}
-
-//static void signpost_initialization_module_api_callback(uint8_t source_address,
-//    signbus_frame_type_t frame_type, signbus_api_type_t api_type,
-//    uint8_t message_type, __attribute__ ((unused)) size_t message_length,
-//    uint8_t* message) {
-//
-//    if (api_type != InitializationApiType) {
-//      signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
-//      return;
-//    }
-//    int rc;
-//    uint8_t module_num = signpost_api_addr_to_mod_num(source_address);
-//    switch (frame_type) {
-//        case NotificationFrame:
-//            // XXX unexpected, drop
-//            break;
-//        case CommandFrame:
-//            switch (message_type) {
-//                case InitializationRevoke:
-//                    // revoke key for contacting module
-//                    signpost_api_revoke_key(module_num);
-//
-//                    // if the contacting module is the controller, reinitialize
-//                    // with the controller. Uphold invariant that module always
-//                    // registered with controller
-//                    if (module_num == 0x03 && source_address == ModuleAddressController) {
-//                      signpost_initialization_initialize_with_module(ModuleAddressController);
-//                    }
-//                    break;
-//                case InitializationDeclare: {
-//                    signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_ENOSUPPORT, true, true, 1);
-//                    break;
-//                }
-//                case InitializationKeyExchange:
-//                    // Prepare and reply ECDH key exchange
-//                    rc = signpost_initialization_key_exchange_respond(source_address,
-//                            message, message_length);
-//                    if (rc < 0) {
-//                      printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
-//                          __LINE__, source_address);
-//                    }
-//                    break;
-//                //exchange module
-//                //get mods
-//                default:
-//                   break;
-//            }
-//        case ResponseFrame:
-//            // XXX unexpected, drop
-//            break;
-//        case ErrorFrame:
-//            // XXX unexpected, drop
-//            break;
-//        default:
-//            break;
-//    }
-//}
-
-static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** api_handlers) {
+static int signpost_initialize_common(uint8_t i2c_address) {
     SIGNBUS_DEBUG("i2c %02x handlers %p\n", i2c_address, api_handlers);
 
     int rc;
@@ -545,37 +349,26 @@ static int signpost_initialization_common(uint8_t i2c_address, api_handler_t** a
     if (rc < 0) return rc;
     // See comment in protocol_layer.h
     signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
-    // Clear keys
-    for (int i=0; i < NUM_MODULES; i++) {
-        module_info.haskey[i] = false;
-        memset(module_info.keys[i], 0, ECDH_KEY_LENGTH);
-        module_info.i2c_address_mods[i] = 0xff;
-    }
 
-    // Save module configuration
-    module_info.i2c_address = i2c_address;
-    module_api.api_handlers = api_handlers;
+    signpost_api_start_new_async_recv();
 
-    // Populate the well-known API types with fixed addresses
-    module_api.api_type_to_module_address[InitializationApiType] = ModuleAddressController;
-    module_api.api_type_to_module_address[WatchdogApiType] = ModuleAddressController;
-    module_api.api_type_to_module_address[StorageApiType] = ModuleAddressStorage;
-    module_api.api_type_to_module_address[NetworkingApiType] = -1; /* not supported */
-    module_api.api_type_to_module_address[ProcessingApiType] = -1; /* not supported */
-    module_api.api_type_to_module_address[EnergyApiType] = ModuleAddressController;
-    module_api.api_type_to_module_address[TimeLocationApiType] = ModuleAddressController;
+    // Initialize the hardware
+    port_signpost_mod_out_set();
+    port_signpost_debug_led_off();
 
-    module_info.i2c_address_mods[3] = ModuleAddressController;
-    module_info.i2c_address_mods[4] = ModuleAddressStorage;
+    // setup interrupts for changes in isolated state
+    rc = port_signpost_mod_in_enable_interrupt_rising(signpost_initialization_lost_isolation_callback);
+    if (rc != PORT_SUCCESS) return rc;
 
-    module_info.magic = MOD_STATE_MAGIC;
+    rc = port_signpost_mod_in_enable_interrupt_falling(signpost_initialization_isolation_callback);
+    if (rc != PORT_SUCCESS) return rc;
 
     return PORT_SUCCESS;
 }
 
 int signpost_initialization_controller_module_init(api_handler_t** api_handlers) {
     //module_state_t check_state;
-    int rc = signpost_initialization_common(ModuleAddressController, api_handlers);
+    int rc = signpost_initialization_common(ControlModuleAddress, api_handlers);
     if (rc < 0) return rc;
 
     //port_signpost_load_state(&check_state);
@@ -591,50 +384,11 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     return PORT_SUCCESS;
 }
 
-static int signpost_initialization_initialize_loop(void) {
+static int signpost_initialize_loop(void) {
     int rc;
-    //module_state_t check_state;
-    //bool keys_exist;
 
     while(1) {
         switch(init_state) {
-          //case CheckKeys:
-          //  // Load state
-          //  port_signpost_load_state(&check_state);
-          //  printf("magic: 0x%lx\n", check_state.magic);
-          //  keys_exist = check_state.magic == MOD_STATE_MAGIC;
-          //  if (keys_exist) {
-          //    // TODO Load keys and fill out module_info struct
-          //    init_state = Done;//RegisterWithKeys;
-          //    memcpy(&module_info, &check_state, sizeof(module_state_t));
-          //  }
-          //  else {
-          //    init_state = RequestIsolation;
-          //  }
-          //  break;
-          //case RegisterWithKeys:
-          //  for(int i = 0; i < NUM_MODULES; i++) {
-          //    if (module_info.haskey[i]) {
-          //      register_module_complete = false;
-          //      printf("INIT: Attempting to register with module %d\n", i);
-          //      signpost_initialization_register_with_key(module_info.i2c_address_mods[i]);
-
-          //      rc = port_signpost_wait_for_with_timeout(&register_module_complete, 100);
-          //      if (rc == PORT_FAIL) {
-          //        printf("INIT: Timed out waiting for registering with module %d, continuing\n", i);
-          //        continue;
-          //      };
-          //      // check to see that the return message is the nonce+1, if not,
-          //      // set the haskey to false
-          //      if (*((uint16_t *) incoming_message) != module_info.nonces[i] + 1) {
-          //        module_info.haskey[i] = false;
-          //      }
-          //    }
-          //  }
-          //  // if we do not have a key with the controller
-          //  if (!module_info.haskey[3]) init_state = RequestIsolation;
-          //  else init_state = Done;
-          //  break;
           case RequestIsolation:
             request_isolation_complete = false;
             rc = signpost_initialization_request_isolation();
@@ -669,54 +423,14 @@ static int signpost_initialization_initialize_loop(void) {
               break;
             }
 
-            rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
+            rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 2000);
             if (rc == PORT_FAIL) {
               port_printf("INIT: Timed out waiting for controller declare response\n");
               init_state = RequestIsolation;
             };
             break;
-          //case KeyExchange: {
-          //  // controller responded with own module number - lets save it
-          //  module_info.self_mod_num = (uint8_t) incoming_message[0];
-          //  // do the same if requested
-          //  uint8_t other_mod_num = (uint8_t) incoming_message[1];
-          //  if (other_mod_num < NUM_MODULES) {
-          //    // check if already have addr registered that it matches, if not,
-          //    // invalidate old record
-          //    uint8_t registered_mod_num = signpost_api_addr_to_mod_num(mod_addr_init);
-          //    if (registered_mod_num != other_mod_num) {
-          //      module_info.i2c_address_mods[registered_mod_num] = 0xff;
-          //      module_info.i2c_address_mods[other_mod_num] = mod_addr_init;
-          //    }
-          //  }
-
-          //  // Send key exchange request
-          //  key_send_complete = false;
-          //  rc = signpost_initialization_key_exchange_send(mod_addr_init);
-          //  if (rc != PORT_SUCCESS) {
-          //    // if key exchange send failed for some reason, restart from the
-          //    // beginning
-          //    init_state = RequestIsolation;
-          //  }
-
-          //  rc = port_signpost_wait_for_with_timeout(&key_send_complete, 5000);
-          //  if (rc == PORT_FAIL) {
-          //    port_printf("INIT: Timed out waiting for controller key exchange response\n");
-          //    init_state = RequestIsolation;
-          //  };
-          //  break;
-          //}
-          //case FinishExchange:
-          //  rc = signpost_initialization_key_exchange_finish();
-          //  if (rc == PORT_SUCCESS) {
-          //    init_state = Done;
-          //  } else {
-          //    // if key exchange failed for some reason, restart from the
-          //    // beginning
-          //    init_state = RequestIsolation;
-          //  }
-
-          //  break;
+          case Verify:
+            break;
           case Done:
             // Save module state
             //port_signpost_save_state(&module_info);
@@ -734,39 +448,48 @@ static int signpost_initialization_initialize_loop(void) {
 
 }
 
-int signpost_initialization_module_init(uint8_t i2c_address, api_handler_t** api_handlers) {
+int signpost_initialize(char* module_name) {
     int rc;
-    //size_t i = 0;
 
-    //// get number of api_handlers and insert initialization handler
-    //while(api_handlers+(i++) != NULL) {}
-    //printf("passed in handlers: %d\n", i);
-    //api_handler_t** updated_api_handlers = (api_handler_t**) malloc(i*sizeof(api_handler_t*));
-    //printf("updated_api_handlers: %p\n", updated_api_handlers);
-    //static api_handler_t initialization_handler  = {InitializationApiType, signpost_initialization_module_api_callback};
-    //updated_api_handlers[0] = &initialization_handler;
-    //memcpy(updated_api_handlers+1, api_handlers, i-1);
+    //attempt to load the module state from memory
+    rc = port_signpost_load_state((uint8_t*)module_state, sizeof(module_state_t));
+    if(rc != PORT_SUCCESS) return rc;
 
-    rc = signpost_initialization_common(i2c_address, api_handlers);
-    if (rc < PORT_SUCCESS) return rc;
+    //Check if the loaded memory matches the initialized name
+    if(!strncmp(module_state.name, module_name, NAME_LENGTH)) {
 
-    // Begin listening for replies
-    signpost_api_start_new_async_recv();
+        //check if we think all of they keys are valid
+        if(module_state.control_module.valid &&
+                module_state.radio_module.valid &&
+                module_state.storage_module.valid) {
 
-    // Initialize Mod Out/In GPIO
-    // both are active low
-    port_signpost_mod_out_set();
-    port_signpost_debug_led_off();
+            //great it matches, check with the controller to see if its valid
+            rc = signpost_initialize_common(module_state.address);
+            if(rc != PORT_SUCCESS) return rc;
 
-    // setup interrupts for changes in isolated state
-    rc = port_signpost_mod_in_enable_interrupt_rising(signpost_initialization_lost_isolation_callback);
-    if (rc != PORT_SUCCESS) return rc;
+            //Go into the Verify Initialization State to check settings
+            init_state = VerifyInitialization;
 
-    rc = port_signpost_mod_in_enable_interrupt_falling(signpost_initialization_isolation_callback);
-    if (rc != PORT_SUCCESS) return rc;
+            return signpost_initialize_loop();
+        }
+    }
 
+    //it does not match - start the initialization process from scratch
+    rc = signpost_initialize_common(0x00);
+    if(rc != PORT_SUCCESS) return rc;
+
+    //set the state struct valid bits to zero
+    module_state.control_module.valid = false;
+    module_state.radio_module.valid = false;
+    module_state.storage_module.valid = false;
+
+    //copy the module name into the state structure
+    strcpy(module_state.name,module_name,strnlen(module_name,NAME_LENGTH));
+
+    //Request Isolation to start the initialization Process
     init_state = RequestIsolation;
-    return signpost_initialization_initialize_loop();
+
+    return signpost_initialize_loop();
 }
 
 int signpost_initialization_initialize_with_module(uint8_t module_address) {
@@ -874,7 +597,7 @@ int signpost_storage_scan (Storage_Record_t* record_list, size_t* list_len) {
     incoming_active_callback = signpost_storage_scan_callback;
 
     // send message
-    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+    int err = signpost_api_send(StorageModuleAddress, CommandFrame,
             StorageApiType, StorageScanMessage, sizeof(*list_len), (uint8_t*) list_len);
 
     if (err < PORT_SUCCESS) {
@@ -911,7 +634,7 @@ int signpost_storage_write (uint8_t* data, size_t len, Storage_Record_t* record_
     marshal[logname_len] = 0;
     memcpy(marshal+logname_len+1, data, len);
     // send message
-    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+    int err = signpost_api_send(StorageModuleAddress, CommandFrame,
             StorageApiType, StorageWriteMessage, len+logname_len+1, marshal);
 
     // free message buffer
@@ -963,7 +686,7 @@ int signpost_storage_read (uint8_t* data, size_t *len, Storage_Record_t * record
     memcpy(marshal+logname_len+1+offset_len+1, len, length_len);
 
     // send message
-    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+    int err = signpost_api_send(StorageModuleAddress, CommandFrame,
             StorageApiType, StorageReadMessage, marshal_len, marshal);
 
     // free message buffer
@@ -1000,7 +723,7 @@ int signpost_storage_delete (Storage_Record_t* record_pointer) {
     size_t logname_len = strnlen(record_pointer->logname, STORAGE_LOG_LEN);
 
     // send message
-    int err = signpost_api_send(ModuleAddressStorage, CommandFrame,
+    int err = signpost_api_send(StorageModuleAddress, CommandFrame,
             StorageApiType, StorageDeleteMessage, logname_len, (uint8_t*) record_pointer->logname); if (err < PORT_SUCCESS) {
         storage_ready = true;
         incoming_active_callback = NULL;
@@ -1065,7 +788,7 @@ int signpost_processing_init(const char* path) {
     processing_ready = false;
 
     int rc;
-    rc = signpost_api_send(ModuleAddressStorage,  CommandFrame,
+    rc = signpost_api_send(StorageModuleAddress,  CommandFrame,
              ProcessingApiType, ProcessingInitMessage, size+4, buf);
     if (rc < 0) return rc;
 
@@ -1096,7 +819,7 @@ int signpost_processing_oneway_send(uint8_t* buf, uint16_t len) {
     incoming_active_callback = signpost_processing_callback;
 
     int rc;
-    rc = signpost_api_send(ModuleAddressStorage,  CommandFrame,
+    rc = signpost_api_send(StorageModuleAddress,  CommandFrame,
              ProcessingApiType, ProcessingOneWayMessage, len+2, b);
     if (rc < 0) return rc;
 
@@ -1122,7 +845,7 @@ int signpost_processing_twoway_send(uint8_t* buf, uint16_t len) {
     incoming_active_callback = signpost_processing_callback;
 
     int rc;
-    rc = signpost_api_send(ModuleAddressStorage,  CommandFrame,
+    rc = signpost_api_send(StorageModuleAddress,  CommandFrame,
              ProcessingApiType, ProcessingTwoWayMessage, len+4, b);
     if (rc < 0) return rc;
 
@@ -1197,7 +920,7 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
 
     incoming_active_callback = signpost_networking_callback;
     networking_ready = false;
-    int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
+    int rc = signpost_api_send(RadioModuleAddress, CommandFrame, NetworkingApiType,
                         NetworkingSendMessage, len, buf);
 
     free(buf);
@@ -1312,7 +1035,7 @@ int signpost_energy_query_async(
     energy_cb = cb;
 
     int rc;
-    rc = signpost_api_send(ModuleAddressController,
+    rc = signpost_api_send(ControlModuleAddress,
             CommandFrame, EnergyApiType, EnergyQueryMessage,
             0, NULL);
 
@@ -1330,7 +1053,7 @@ int signpost_energy_query_async(
 }
 
 int signpost_energy_duty_cycle(uint32_t time_ms) {
-    return signpost_api_send(ModuleAddressController,
+    return signpost_api_send(ControlModuleAddress,
             NotificationFrame, EnergyApiType, EnergyDutyCycleMessage,
             sizeof(uint32_t), (uint8_t*)&time_ms);
 }
@@ -1349,7 +1072,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     memcpy(report_buf+1,report->reports,reports_size);
 
     int rc;
-    rc = signpost_api_send(ModuleAddressController,
+    rc = signpost_api_send(ControlModuleAddress,
             CommandFrame, EnergyApiType, EnergyReportModuleConsumptionMessage,
             report_buf_size, report_buf);
     free(report_buf);
@@ -1375,7 +1098,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
 int signpost_energy_reset(void) {
 
     int rc;
-    rc = signpost_api_send(ModuleAddressController,
+    rc = signpost_api_send(ControlModuleAddress,
             CommandFrame, EnergyApiType, EnergyResetMessage,
             0, NULL);
     if (rc < 0) return rc;
@@ -1442,7 +1165,7 @@ static int signpost_timelocation_sync(signpost_timelocation_message_type_e messa
     incoming_active_callback = timelocation_callback;
 
     // Call down to send the message
-    int rc = signpost_api_send(ModuleAddressController,
+    int rc = signpost_api_send(ControlModuleAddress,
             CommandFrame, TimeLocationApiType, message_type,
             0, NULL);
     if (rc < 0) return rc;
@@ -1530,7 +1253,7 @@ static void signpost_watchdog_cb(__attribute__ ((unused)) int result) {
 int signpost_watchdog_start(void) {
     watchdog_reply = false;
 
-    int rc = signpost_api_send(ModuleAddressController, CommandFrame, WatchdogApiType,
+    int rc = signpost_api_send(ControlModuleAddress, CommandFrame, WatchdogApiType,
             WatchdogStartMessage, 0, NULL);
     if(rc < 0) {
         return rc;
@@ -1546,7 +1269,7 @@ int signpost_watchdog_start(void) {
 int signpost_watchdog_tickle(void) {
     watchdog_reply = false;
 
-    int rc = signpost_api_send(ModuleAddressController, CommandFrame, WatchdogApiType,
+    int rc = signpost_api_send(ControlModuleAddress, CommandFrame, WatchdogApiType,
             WatchdogTickleMessage, 0, NULL);
     if(rc < 0) {
         return rc;
