@@ -20,6 +20,7 @@ static Serial DBG(SERIAL_TX, SERIAL_RX, 115200);
 static I2CSlave* I2Creader = NULL;
 static uint8_t address;
 static Mutex slaveMutex;
+static FlashIAP flash;
 
 //All implementations must implement a port_print_buf for signbus layer printing
 char port_print_buf[80];
@@ -252,18 +253,51 @@ int port_printf(const char *fmt, ...) {
 }
 
 /* port_signpost_save_state
- * Save a struct to a nonvolatile storage
+ * save memory to nonvolatile storage
  *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
  * */
 int port_signpost_save_state(uint8_t* state, uint16_t state_len) {
-    return PORT_FAIL;
+    int ret = flash.init();
+    if(ret != 0) {
+        return PORT_FAIL;
+    }
+
+    uint32_t start = flash.get_flash_start();
+    uint32_t size = flash.get_flash_size();
+    uint32_t write_start = start+size - PORT_SAVE_MAX_LEN;
+
+    ret = flash.erase(write_start, state_len);
+    if(ret != 0) {
+        return PORT_FAIL;
+    }
+    ret = flash.program((void*)state,write_start,state_len);
+    if(ret != 0) {
+        return PORT_FAIL;
+    }
+
+    return PORT_SUCCESS;
 }
 
 /* port_signpost_load_state
- * Load a struct from nonvolatile storage
- *  returns PORT_SUCCESS on success, SB_PORT_FAIL on failure.
+ * Load memory from nonvolatile storage
+ *  returns PORT_SUCCESS on success, PORT_FAIL on failure.
  * */
 int port_signpost_load_state(uint8_t* state, uint16_t state_len) {
-    return PORT_FAIL;
+    int ret = flash.init();
+    if(ret != 0) {
+        return PORT_FAIL;
+    }
+
+    uint32_t start = flash.get_flash_start();
+    uint32_t size = flash.get_flash_size();
+    uint32_t write_start = start+size - PORT_SAVE_MAX_LEN;
+
+    ret = flash.read((void*)state,write_start,state_len);
+    if(ret != 0) {
+        return PORT_FAIL;
+    }
+
+    return PORT_SUCCESS;
+
 }
 
