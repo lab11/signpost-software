@@ -20,7 +20,12 @@
 #endif
 
 #define NAME_LENGTH 16
-#define NUM_MODULES 8
+#define NUM_MODULES 5
+
+struct module_api_struct {
+    api_handler_t**         api_handlers;
+} module_api = {0};
+
 
 typedef struct module_info_struct {
     uint8_t         address;
@@ -31,64 +36,55 @@ typedef struct module_info_struct {
 } module_info_t;
 
 typedef struct module_state_struct {
-    uint8_t                 address;
-    char                    name[NAME_LENGTH];
-    module_info_t           control_module;
-    module_info_t           radio_module;
-    module_info_t           storage_module;
-    module_info_t           modules[NUM_MODULES-3];
+    uint8_t         address;
+    char            name[NAME_LENGTH];
+    bool            valid;
+    uint8_t         key[KEY_LENGTH];
 } module_state_t;
 
+typedef struct system_state_struct {
+    bool            valid;
+    uint8_t         system_key[KEY_LENGTH];
+    module_info_t   modules[NUM_MODULES];
+} system_state_t;
+
 static module_state_t module_state;
+static system_state_t system_state;
 
 //Helper functions that can be used by the Signpost Controller
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
 
-    switch(addr) {
-    case ControlModuleAddress:
-        if(module_state.control_module.valid)
-            return module_state.control_module.key;
-        else
+    if(addr == ControlModuleAddress || addr == RadioModuleAddress || addr == StorageModuleAddress) {
+        if(module_state.valid) {
+            return module_state.key;
+        } else {
             return NULL;
-    break;
-    case RadioModuleAddress:
-        if(module_state.radio_module.valid)
-            return module_state.radio_module.key;
-        else
-            return NULL;
-    break;
-    case StorageModuleAddress:
-        if(module_state.storage_module.valid)
-            return module_state.storage_module.key;
-        else
-            return NULL;
-    break;
-    default:
-        for(uint8_t i = 0; i < NUM_MODULES-3; i++) {
-            if(addr == module_state.modules[i].address && module_state.modules[i].valid) {
-                return module_state.modules[i].key;
+        }
+    } else{
+        for(uint8_t i = 0; i < NUM_MODULES; i++) {
+            if(addr == system_state.modules[i].address && system_state.modules[i].valid) {
+                return system_state.modules[i].key;
             }
         }
         return NULL;
-    break;
     }
 }
 
 int signpost_api_addr_to_mod_num(uint8_t addr){
     switch(addr) {
     case ControlModuleAddress:
-        return module_state.control_module.module_number;
+        return 3;
     break;
     case RadioModuleAddress:
-        return module_state.radio_module.module_number;
+        return 0;
     break;
     case StorageModuleAddress:
-        return module_state.storage_module.module_number;
+        return 3;
     break;
     default:
-        for(uint8_t i = 0; i < NUM_MODULES-3; i++) {
-            if(addr == module_state.modules[i].address) {
-                return module_state.modules[i].module_number;
+        for(uint8_t i = 0; i < NUM_MODULES; i++) {
+            if(addr == system_state.modules[i].address) {
+                return system_state.modules[i].module_number;
             }
         }
     break;
@@ -249,31 +245,15 @@ static uint8_t mod_addr_init = ControlModuleAddress;
 /**************************************/
 /* Initialization Callbacks           */
 /**************************************/
-static void signpost_initialization_verify_callback(int len_or_rc) {
-    // Flip waiting variable, change state if well-formed message
-    verify_complete = true;
-    if (len_or_rc < PORT_SUCCESS) return;
-    if (incoming_api_type != InitializationApiType || incoming_message_type !=
-            InitializationVerify) return;
-
-    init_state = Done;
-}
-
-static void signpost_initialization_declare_callback(int len_or_rc) {
+static void signpost_initialization_declare_callback(int len_or_rc __attribute__ ((unused))) {
     // Flip waiting variable, change state if well-formed message
     declare_complete = true;
-    if (len_or_rc < PORT_SUCCESS) return;
-    if (incoming_api_type != InitializationApiType || incoming_message_type !=
-            InitializationDeclare) return;
-
-    init_state = Verify;
 }
 
 static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
     is_isolated = 1;
-    if (init_state != RequestIsolation) return;
+
     // update state and flip waiting variable
-    init_state = Declare;
     request_isolation_complete = true;
 }
 
@@ -299,29 +279,6 @@ static int signpost_initialization_request_isolation(void) {
     if (rc != PORT_SUCCESS) return rc;
 
     return PORT_SUCCESS;
-}
-
-static int signpost_initialization_verify(void) {
-    // set callback for handling response from controller/modules
-    if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_verify_callback) {
-        return PORT_EBUSY;
-    }
-
-    incoming_active_callback = signpost_initialization_verify_callback;
-
-    uint8_t send_buf[KEY_LENGTH*2];
-    memcpy(send_buf,module_state.radio_module.key,KEY_LENGTH);
-    memcpy(send_buf+KEY_LENGTH,module_state.storage_module.key,KEY_LENGTH);
-
-    //Send a declare message with the module name
-    if (signpost_api_send(ControlModuleAddress, CommandFrame,
-          InitializationApiType, InitializationVerify,
-          KEY_LENGTH*2,send_buf) >= PORT_SUCCESS) {
-        return PORT_SUCCESS;
-    }
-
-    return PORT_FAIL;
-
 }
 
 static int signpost_initialization_declare(void) {
@@ -359,8 +316,6 @@ int signpost_initialization_declare_respond(uint8_t module_number) {
 }
 
 static int signpost_initialize_common(uint8_t i2c_address) {
-    SIGNBUS_DEBUG("i2c %02x handlers %p\n", i2c_address, api_handlers);
-
     int rc;
 
     // Initialize the lower layers
@@ -404,6 +359,75 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     return PORT_SUCCESS;
 }
 
+static int signpost_system_initialize_loop(void) {
+    int rc;
+
+    while(1) {
+        switch(init_state) {
+          case RequestIsolation:
+            request_isolation_complete = false;
+            rc = signpost_initialization_request_isolation();
+            if (rc != PORT_SUCCESS) {
+              break;
+            }
+
+            port_printf("INIT: Requested I2C isolation with controller\n");
+            rc = port_signpost_wait_for_with_timeout(&request_isolation_complete, 5000);
+            if (rc == PORT_FAIL) {
+              port_printf("INIT: Timed out waiting for controller isolation\n");
+              port_signpost_mod_out_set();
+              port_signpost_delay_ms(3000);
+              init_state = RequestIsolation;
+            };
+
+            init_state = Declare;
+            break;
+          case Declare:
+            // check that mod_in is still low after delay
+            port_signpost_delay_ms(50);
+            if(!is_isolated && port_signpost_mod_in_read() != 0) {
+              init_state = RequestIsolation;
+              break;
+            }
+            port_printf("INIT: Granted I2C isolation and started initialization with Controller\n");
+
+            // Now declare self to controller
+            declare_complete = false;
+            rc = signpost_initialization_system_declare();
+            if (rc != PORT_SUCCESS) {
+              init_state = RequestIsolation;
+              break;
+            }
+
+            rc = port_signpost_wait_for_with_timeout(&declare_complete, 2000);
+            if (rc == PORT_FAIL) {
+              port_printf("INIT: Timed out waiting for controller declare response\n");
+              init_state = RequestIsolation;
+            };
+
+            //put the incoming message in a declare response struct
+            memcpy(&system_state,incoming_message,sizeof(system_state_t));
+
+            //break to the verify step
+            init_state = Done;
+            break;
+          case Done:
+            // Save module state
+            //port_signpost_save_state(&module_info);
+            // Completed Init
+            port_signpost_mod_out_set();
+            port_signpost_debug_led_off();
+            port_printf("INIT: Completed Initialization with Controller\n");
+            return PORT_SUCCESS;
+
+          default:
+            break;
+        }
+    }
+    return PORT_SUCCESS;
+}
+
+
 static int signpost_initialize_loop(void) {
     int rc;
 
@@ -425,6 +449,7 @@ static int signpost_initialize_loop(void) {
               init_state = RequestIsolation;
             };
 
+            init_state = Declare;
             break;
           case Declare:
             // check that mod_in is still low after delay
@@ -454,12 +479,8 @@ static int signpost_initialize_loop(void) {
             memcpy(&r,incoming_message,sizeof(declare_response_t));
 
             //set the keys received from the control module
-            memcpy(module_state.control_module.key,r.controlKey,KEY_LENGTH);
-            module_state.control_module.valid = 1;
-            memcpy(module_state.radio_module.key,r.radioKey,KEY_LENGTH);
-            module_state.radio_module.valid = 1;
-            memcpy(module_state.storage_module.key,r.storageKey,KEY_LENGTH);
-            module_state.storage_module.valid = 1;
+            memcpy(module_state.key,r.key,KEY_LENGTH);
+            module_state.valid = 1;
 
             module_state.address = r.address;
 
@@ -467,49 +488,7 @@ static int signpost_initialize_loop(void) {
             signpost_initialize_common(module_state.address);
 
             //break to the verify step
-            break;
-          case Verify:
-            // Now verify that all of the keys are correct
-            verify_complete = false;
-            rc = signpost_initialization_verify();
-            if (rc != PORT_SUCCESS) {
-              init_state = RequestIsolation;
-              break;
-            }
-
-            rc = port_signpost_wait_for_with_timeout(&verify_complete, 2000);
-            if (rc == PORT_FAIL) {
-              port_printf("INIT: Timed out waiting for controller verify response\n");
-
-              module_state.control_module.valid = 0;
-              module_state.radio_module.valid = 0;
-              module_state.storage_module.valid = 0;
-
-              module_state.address = 0x00;
-
-              //reset everything with the correct I2C address
-              signpost_initialize_common(0x00);
-
-              init_state = RequestIsolation;
-
-            };
-
-            //did the verification succeed?
-            if(((uint32_t)*incoming_message) != PORT_SUCCESS) {
-                port_printf("INIT: Verify Failed - requesting new initialization\n");
-                module_state.control_module.valid = 0;
-                module_state.radio_module.valid = 0;
-                module_state.storage_module.valid = 0;
-
-                module_state.address = 0x00;
-
-                //reset everything with the correct I2C address
-                signpost_initialize_common(0x00);
-
-                init_state = RequestIsolation;
-            }
-
-            //it did - break to the done step
+            init_state = Done;
             break;
           case Done:
             // Save module state
@@ -528,6 +507,43 @@ static int signpost_initialize_loop(void) {
 
 }
 
+
+
+int signpost_initialize_control_module(api_handler_t** api_handlers) {
+    int rc;
+
+    module_api.api_handlers = api_handlers;
+
+    // Initialize the lower layers
+    signbus_io_init(ControlModuleAddress);
+    rc = signpost_entropy_init();
+    if (rc < 0) return rc;
+    // See comment in protocol_layer.h
+    signbus_protocol_setup_async(incoming_protocol_buffer, INCOMING_MESSAGE_BUFFER_LENGTH);
+
+    signpost_api_start_new_async_recv();
+
+    return PORT_SUCCESS;
+}
+
+int signpost_initialize_radio_module(api_handler_t** api_handlers) {
+    module_api.api_handlers = api_handlers;
+
+    signpost_initialize_common(RadioModuleAddress);
+
+    return signpost_system_initialize_loop();
+}
+
+int signpost_initialize_storage_module(api_handler_t** api_handlers) {
+    module_api.api_handlers = api_handlers;
+
+    signpost_initialize_common(StorageModuleAddress);
+
+    return signpost_system_initialize_loop();
+}
+
+
+
 int signpost_initialize(char* module_name) {
     //attempt to load the module state from memory
     int rc = port_signpost_load_state((uint8_t*)&module_state, sizeof(module_state_t));
@@ -536,17 +552,15 @@ int signpost_initialize(char* module_name) {
     //Check if the loaded memory matches the initialized name
     if(!strncmp(module_state.name, module_name, NAME_LENGTH)) {
 
-        //check if we think all of they keys are valid
-        if(module_state.control_module.valid &&
-                module_state.radio_module.valid &&
-                module_state.storage_module.valid) {
+        //check if the key is valid
+        if(module_state.valid) {
 
             //great it matches, check with the controller to see if its valid
             rc = signpost_initialize_common(module_state.address);
             if(rc != PORT_SUCCESS) return rc;
 
             //Go into the Verify Initialization State to check settings
-            init_state = Verify;
+            init_state = Done;
 
             return signpost_initialize_loop();
         }
@@ -557,9 +571,7 @@ int signpost_initialize(char* module_name) {
     if(rc != PORT_SUCCESS) return rc;
 
     //set the state struct valid bits to zero
-    module_state.control_module.valid = false;
-    module_state.radio_module.valid = false;
-    module_state.storage_module.valid = false;
+    module_state.valid = false;
 
     //copy the module name into the state structure
     strncpy(module_state.name,module_name,strnlen(module_name,NAME_LENGTH));

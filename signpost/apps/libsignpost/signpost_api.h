@@ -64,13 +64,11 @@ uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
 typedef enum initialization_state {
     RequestIsolation = 0,
     Declare,
-    Verify,
     Done,
 } initialization_state_t;
 
 typedef enum initialization_message_type {
    InitializationDeclare = 0,
-   InitializationVerify,
    InitializationRevoke,
 } initialization_message_type_t;
 
@@ -82,9 +80,8 @@ typedef enum module_address {
 
 typedef struct delcare_response {
     uint8_t address;
-    uint8_t controlKey[KEY_LENGTH];
-    uint8_t radioKey[KEY_LENGTH];
-    uint8_t storageKey[KEY_LENGTH];
+    bool    valid;
+    uint8_t key[KEY_LENGTH];
 } declare_response_t;
 
 // Initialize this module.
@@ -97,15 +94,15 @@ int signpost_initialize(char* module_name);
 
 // The control module initialization routine.
 __attribute__((warn_unused_result))
-int signpost_initialize_control_module();
+int signpost_initialize_control_module(api_handler_t** api_handlers);
 
 // The radio module initialization routine.
 __attribute__((warn_unused_result))
-int signpost_initialize_radio_module();
+int signpost_initialize_radio_module(api_handler_t** api_handlers);
 
-// The radio module initialization routine.
+// The storage module initialization routine.
 __attribute__((warn_unused_result))
-int signpost_initialize_storage_module();
+int signpost_initialize_storage_module(api_handler_t** api_handlers);
 
 // Send a response to a registration request if module key already stored
 //
