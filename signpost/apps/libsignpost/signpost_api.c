@@ -193,6 +193,7 @@ static void signpost_api_recv_callback(int len_or_rc) {
         }
     }
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
+        //For generic API handlers call the handler specified by the module (radio, storage, etc)
         api_handler_t** handler = module_api.api_handlers;
         while (*handler != NULL) {
             if ((*handler)->api_type == incoming_api_type) {
@@ -203,6 +204,8 @@ static void signpost_api_recv_callback(int len_or_rc) {
             }
             handler++;
         }
+        //If we haven't specified an init
+        if(incoming_api_type
         if (handler == NULL) {
             port_printf("Warn: Unsolicited message for api %d. Dropping\n", incoming_api_type);
         }
@@ -264,6 +267,25 @@ static void signpost_initialization_lost_isolation_callback(int unused __attribu
       init_state = RequestIsolation;
 }
 
+//This callback handles key updates for the system modules that are received
+//out of band.
+void system_initialization_handler(uint8_t source_address,
+        signbus_frame_type_t frame_type, __attribute ((unused)) signbus_api_type_t api_type,
+        uint8_t message_type, size_t message_length, uint8_t* message) {
+
+    if(frame_type == CommandFrame) {
+        if(message_type == InitializationSystemDeclare) {
+            //This is a system state update message - update the state
+            memcpy(system_state,message,sizeof(system_state_t));
+
+            //respond with a success ack
+            int response = PORT_SUCCESS;
+            signpost_api_send(ControlModuleAddress,ResponseFrame,
+                    InitializationApiType,InitializationSystemDeclare,sizeof(int),&response);
+        }
+    }
+
+}
 /**************************************/
 /* Initialization Helper Functions    */
 /**************************************/
@@ -299,20 +321,33 @@ static int signpost_initialization_declare(void) {
     return PORT_FAIL;
 }
 
+static int signpost_initialization_system_declare(void) {
+    // set callback for handling response from controller/modules
+    if (incoming_active_callback != NULL && incoming_active_callback != signpost_initialization_declare_callback) {
+        return PORT_EBUSY;
+    }
 
-int signpost_initialization_declare_respond(uint8_t module_number) {
-    //Choose an I2C Address
+    incoming_active_callback = signpost_initialization_declare_callback;
 
-    //Generate keys for the three necessary module pairs
+    //Send a declare message with the module name
+    if (signpost_api_send(ControlModuleAddress, CommandFrame,
+          InitializationApiType, InitializationSystemDeclare,
+          0,NULL) >= PORT_SUCCESS) {
+        return PORT_SUCCESS;
+    }
 
-    //XXX choose address to respond to module
-    /*if (module_info.i2c_address_mods[module_number] != source_address) {
-      module_info.i2c_address_mods[module_number] = source_address;
-      module_info.haskey[module_number] = false;
-      port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
-    }*/
+    return PORT_FAIL;
+}
 
-    //return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
+int signpost_initialization_system_state_update(uint8_t address) {
+    //send the system state struct to the radio/storage master
+    return signpost_api_send(source_address, ResponseFrame, InitializationApiType,
+            InitializationSystemDeclare, sizeof(system_state_t), &system_state);
+}
+
+
+int signpost_initialization_declare_respond(module_state_t* state) {
+    return signpost_api_send(0x00, ResponseFrame, InitializationApiType, InitializationDeclare, sizeof(module_state_t), state);
 }
 
 static int signpost_initialize_common(uint8_t i2c_address) {
@@ -428,6 +463,7 @@ static int signpost_system_initialize_loop(void) {
 }
 
 
+
 static int signpost_initialize_loop(void) {
     int rc;
 
@@ -475,8 +511,7 @@ static int signpost_initialize_loop(void) {
             };
 
             //put the incoming message in a declare response struct
-            declare_response_t r;
-            memcpy(&r,incoming_message,sizeof(declare_response_t));
+            memcpy(&module_state,incoming_message,sizeof(module_state_t));
 
             //set the keys received from the control module
             memcpy(module_state.key,r.key,KEY_LENGTH);
@@ -508,7 +543,6 @@ static int signpost_initialize_loop(void) {
 }
 
 
-
 int signpost_initialize_control_module(api_handler_t** api_handlers) {
     int rc;
 
@@ -527,7 +561,30 @@ int signpost_initialize_control_module(api_handler_t** api_handlers) {
 }
 
 int signpost_initialize_radio_module(api_handler_t** api_handlers) {
-    module_api.api_handlers = api_handlers;
+    //find number of handlers
+    int i = 0;
+    for(;;i++){
+        if(api_handlers[i] == NULL)
+            break;
+    }
+
+    //this is how big the handlers array should be
+    i += 2;
+
+    handlers = malloc(api_handler_t*, i);
+    int j = 0;
+    for(; j < i-1; j++) {
+        memcpy(handlers[j],api_handlers[j],sizeof(api_handler_t));
+    }
+
+    //create an implicit init handler
+    api_handler_t init_handler = {InitializationApiType, system_initialization_callback};
+    memcpy(handlers[j],init_handler,sizeof(api_handler_t));
+    j++;
+    handlers[j] = NULL;
+
+    // set the api_handlers to this new handler array
+    module_api.api_handlers = handlers;
 
     signpost_initialize_common(RadioModuleAddress);
 
@@ -535,7 +592,31 @@ int signpost_initialize_radio_module(api_handler_t** api_handlers) {
 }
 
 int signpost_initialize_storage_module(api_handler_t** api_handlers) {
-    module_api.api_handlers = api_handlers;
+    //find number of handlers
+    int i = 0;
+    for(;;i++){
+        if(api_handlers[i] == NULL)
+            break;
+    }
+
+    //this is how big the handlers array should be
+    i += 2;
+
+    handlers = malloc(api_handler_t*, i);
+    int j = 0;
+    for(; j < i-1; j++) {
+        memcpy(handlers[j],api_handlers[j],sizeof(api_handler_t));
+    }
+
+    //create an implicit init handler
+    api_handler_t init_handler = {InitializationApiType, system_initialization_callback};
+    memcpy(handlers[j],init_handler,sizeof(api_handler_t));
+    j++;
+    handlers[j] = NULL;
+
+    // set the api_handlers to this new handler array
+    module_api.api_handlers = handlers;
+
 
     signpost_initialize_common(StorageModuleAddress);
 

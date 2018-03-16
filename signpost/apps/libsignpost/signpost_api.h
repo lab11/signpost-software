@@ -78,12 +78,6 @@ typedef enum module_address {
     RadioModuleAddress = 0x22,
 } module_address_t;
 
-typedef struct delcare_response {
-    uint8_t address;
-    bool    valid;
-    uint8_t key[KEY_LENGTH];
-} declare_response_t;
-
 // Initialize this module.
 // Must be called before any other signpost API methods.
 //
