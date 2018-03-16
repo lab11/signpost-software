@@ -70,6 +70,8 @@ int signpost_api_revoke_key(uint8_t module_number);
 #define SIGNPOST_INITIALIZATION_NO_APIS NULL
 #endif
 
+#define KEY_LENGTH 32
+
 typedef enum initialization_state {
     RequestIsolation = 0,
     Declare,
@@ -88,6 +90,13 @@ typedef enum module_address {
     StorageModuleAddress = 0x21,
     RadioModuleAddress = 0x22,
 } module_address_t;
+
+typedef struct delcare_response {
+    uint8_t address;
+    uint8_t controlKey[KEY_LENGTH];
+    uint8_t radioKey[KEY_LENGTH];
+    uint8_t storageKey[KEY_LENGTH];
+} declare_response_t;
 
 // Initialize this module.
 // Must be called before any other signpost API methods.
