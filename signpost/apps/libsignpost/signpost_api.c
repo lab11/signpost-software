@@ -19,21 +19,24 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation="
 #endif
 
-#define SHA256_LEN 32
 #define NAME_LENGTH 16
 #define NUM_MODULES 8
 
-typedef struct module_key_struct {
-    bool    valid;
-    uint8_t key[KEY_LENGTH];
-} module_key_t;
+typedef struct module_info_struct {
+    uint8_t         address;
+    uint8_t         module_number;
+    char            name[NAME_LENGTH];
+    bool            valid;
+    uint8_t         key[KEY_LENGTH];
+} module_info_t;
 
 typedef struct module_state_struct {
     uint8_t                 address;
     char                    name[NAME_LENGTH];
-    module_key_t            control_module;
-    module_key_t            radio_module;
-    module_key_t            storage_module;
+    module_info_t           control_module;
+    module_info_t           radio_module;
+    module_info_t           storage_module;
+    module_info_t           modules[NUM_MODULES-3];
 } module_state_t;
 
 static module_state_t module_state;
@@ -41,7 +44,7 @@ static module_state_t module_state;
 //Helper functions that can be used by the Signpost Controller
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
 
-    switch(addr){
+    switch(addr) {
     case ControlModuleAddress:
         if(module_state.control_module.valid)
             return module_state.control_module.key;
@@ -61,32 +64,42 @@ uint8_t* signpost_api_addr_to_key(uint8_t addr) {
             return NULL;
     break;
     default:
+        for(uint8_t i = 0; i < NUM_MODULES-3; i++) {
+            if(addr == module_state.modules[i].address && module_state.modules[i].valid) {
+                return module_state.modules[i].key;
+            }
+        }
         return NULL;
     break;
     }
-
 }
 
 int signpost_api_addr_to_mod_num(uint8_t addr){
-    for (size_t i = 0; i < NUM_MODULES; i++) {
-        if (addr == module_info.i2c_address_mods[i]) {
-            return i;
+    switch(addr) {
+    case ControlModuleAddress:
+        return module_state.control_module.module_number;
+    break;
+    case RadioModuleAddress:
+        return module_state.radio_module.module_number;
+    break;
+    case StorageModuleAddress:
+        return module_state.storage_module.module_number;
+    break;
+    default:
+        for(uint8_t i = 0; i < NUM_MODULES-3; i++) {
+            if(addr == module_state.modules[i].address) {
+                return module_state.modules[i].module_number;
+            }
         }
+    break;
     }
+
     port_printf("WARN: Do not have module registered to address 0x%x\n", addr);
     return PORT_FAIL;
 }
 
 uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
     return signpost_api_addr_to_mod_num(appid);
-}
-
-int signpost_api_revoke_key(uint8_t module_number) {
-    if (module_number >= NUM_MODULES) return PORT_EINVAL;
-    port_printf("WARN: Revoking key for module %d\n", module_number);
-    module_info.haskey[module_number] = false;
-    memset(module_info.keys[module_number], 0 , ECDH_KEY_LENGTH);
-    return PORT_SUCCESS;
 }
 
 int signpost_api_error_reply(uint8_t destination_address,
@@ -173,8 +186,6 @@ static void signpost_api_recv_callback(int len_or_rc) {
         if (len_or_rc == PORT_ECRYPT) {
             port_printf("Dropping message with HMAC/HASH failure\n");
             // Unable to decrypt this message, we revoke our useless key
-            //signpost_api_revoke_key(signpost_api_addr_to_mod_num(incoming_source_address));
-            // And send a revoke command to the sending module
             //signpost_api_send(incoming_source_address, CommandFrame, InitializationApiType, InitializationRevoke, sizeof(int), (uint8_t*)&len_or_rc);
 
             signpost_api_start_new_async_recv();
@@ -245,7 +256,7 @@ static void signpost_initialization_verify_callback(int len_or_rc) {
     if (incoming_api_type != InitializationApiType || incoming_message_type !=
             InitializationVerify) return;
 
-    init_state = done;
+    init_state = Done;
 }
 
 static void signpost_initialization_declare_callback(int len_or_rc) {
@@ -278,7 +289,7 @@ static void signpost_initialization_lost_isolation_callback(int unused __attribu
 /**************************************/
 
 
-int signpost_initialization_request_isolation(void) {
+static int signpost_initialization_request_isolation(void) {
     int rc;
     // Pull Mod_Out Low to signal controller
     // Wait on controller interrupt on MOD_IN
@@ -299,13 +310,13 @@ static int signpost_initialization_verify(void) {
     incoming_active_callback = signpost_initialization_verify_callback;
 
     uint8_t send_buf[KEY_LENGTH*2];
-    memcopy(send_buf,module_state.radio_module.key,KEY_LENGTH)
-    memcopy(send_buf+KEY_LENGTH,module_state.storage_module.key,KEY_LENGTH)
+    memcpy(send_buf,module_state.radio_module.key,KEY_LENGTH);
+    memcpy(send_buf+KEY_LENGTH,module_state.storage_module.key,KEY_LENGTH);
 
     //Send a declare message with the module name
     if (signpost_api_send(ControlModuleAddress, CommandFrame,
           InitializationApiType, InitializationVerify,
-          send_buf, KEY_LENGTH*2)) >= PORT_SUCCESS) {
+          KEY_LENGTH*2,send_buf) >= PORT_SUCCESS) {
         return PORT_SUCCESS;
     }
 
@@ -324,7 +335,7 @@ static int signpost_initialization_declare(void) {
     //Send a declare message with the module name
     if (signpost_api_send(ControlModuleAddress, CommandFrame,
           InitializationApiType, InitializationDeclare,
-          (uint8_t*)module_state.name, strnlen(module_state.name,NAME_LENGTH)) >= PORT_SUCCESS) {
+          strnlen(module_state.name,NAME_LENGTH),(uint8_t*)(module_state.name)) >= PORT_SUCCESS) {
         return PORT_SUCCESS;
     }
 
@@ -338,13 +349,13 @@ int signpost_initialization_declare_respond(uint8_t module_number) {
     //Generate keys for the three necessary module pairs
 
     //XXX choose address to respond to module
-    if (module_info.i2c_address_mods[module_number] != source_address) {
+    /*if (module_info.i2c_address_mods[module_number] != source_address) {
       module_info.i2c_address_mods[module_number] = source_address;
       module_info.haskey[module_number] = false;
       port_printf("INIT: Registered address 0x%x as module %d\n", source_address, module_number);
-    }
+    }*/
 
-    return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
+    //return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &module_number);
 }
 
 static int signpost_initialize_common(uint8_t i2c_address) {
@@ -440,7 +451,7 @@ static int signpost_initialize_loop(void) {
 
             //put the incoming message in a declare response struct
             declare_response_t r;
-            memcpy(r,incoming_message,sizeof(declare_response_t));
+            memcpy(&r,incoming_message,sizeof(declare_response_t));
 
             //set the keys received from the control module
             memcpy(module_state.control_module.key,r.controlKey,KEY_LENGTH);
@@ -518,10 +529,8 @@ static int signpost_initialize_loop(void) {
 }
 
 int signpost_initialize(char* module_name) {
-    int rc;
-
     //attempt to load the module state from memory
-    rc = port_signpost_load_state((uint8_t*)module_state, sizeof(module_state_t));
+    int rc = port_signpost_load_state((uint8_t*)&module_state, sizeof(module_state_t));
     if(rc != PORT_SUCCESS) return rc;
 
     //Check if the loaded memory matches the initialized name
@@ -537,7 +546,7 @@ int signpost_initialize(char* module_name) {
             if(rc != PORT_SUCCESS) return rc;
 
             //Go into the Verify Initialization State to check settings
-            init_state = VerifyInitialization;
+            init_state = Verify;
 
             return signpost_initialize_loop();
         }
@@ -553,7 +562,7 @@ int signpost_initialize(char* module_name) {
     module_state.storage_module.valid = false;
 
     //copy the module name into the state structure
-    strcpy(module_state.name,module_name,strnlen(module_name,NAME_LENGTH));
+    strncpy(module_state.name,module_name,strnlen(module_name,NAME_LENGTH));
 
     //Request Isolation to start the initialization Process
     init_state = RequestIsolation;
