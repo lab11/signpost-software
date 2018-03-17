@@ -69,12 +69,12 @@ impl<'a, U: UARTAdvanced> Console<'a, U> {
     }
 
     /// Internal helper function for setting up a new send transaction
-    fn send_new(&self, app_id: AppId, app: &mut App, callback: Callback) -> ReturnCode {
+    fn send_new(&self, app_id: AppId, app: &mut App, callback: Option<Callback>) -> ReturnCode {
         match app.write_buffer.take() {
             Some(slice) => {
                 app.write_len = slice.len();
                 app.write_remaining = app.write_len;
-                app.write_callback = Some(callback);
+                app.write_callback = callback;
                 self.send(app_id, app, slice);
                 ReturnCode::SUCCESS
             }
@@ -134,13 +134,13 @@ impl<'a, U: UARTAdvanced> Console<'a, U> {
 }
 
 impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
-    fn allow(&self, appid: AppId, allow_num: usize, slice: AppSlice<Shared, u8>) -> ReturnCode {
+    fn allow(&self, appid: AppId, allow_num: usize, slice: Option<AppSlice<Shared, u8>>) -> ReturnCode {
         match allow_num {
             // Allow a read buffer
             0 => {
                 self.apps
                     .enter(appid, |app, _| {
-                        app.read_buffer = Some(slice);
+                        app.read_buffer = slice;
                         app.read_idx = 0;
                         ReturnCode::SUCCESS
                     })
@@ -154,7 +154,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
             1 => {
                 self.apps
                     .enter(appid, |app, _| {
-                        app.write_buffer = Some(slice);
+                        app.write_buffer = slice;
                         ReturnCode::SUCCESS
                     })
                     .unwrap_or_else(|err| match err {
@@ -167,15 +167,15 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
         }
     }
 
-    fn subscribe(&self, subscribe_num: usize, callback: Callback) -> ReturnCode {
+    fn subscribe(&self, subscribe_num: usize, callback: Option<Callback>, app_id: AppId) -> ReturnCode {
         match subscribe_num {
             0 /* read line */ => {
                 // read line is not implemented for console at this time
                 ReturnCode::ENOSUPPORT
             },
             1 /* putstr/write_done */ => {
-                self.apps.enter(callback.app_id(), |app, _| {
-                    self.send_new(callback.app_id(), app, callback)
+                self.apps.enter(app_id, |app, _| {
+                    self.send_new(app_id, app, callback)
                 }).unwrap_or_else(|err| {
                     match err {
                         Error::OutOfMemory => ReturnCode::ENOMEM,
@@ -185,8 +185,8 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
                 })
             },
             2 /* read automatic */ => {
-                self.apps.enter(callback.app_id(), |app, _| {
-                    app.read_callback = Some(callback);
+                self.apps.enter(app_id, |app, _| {
+                    app.read_callback = callback;
 
                     // only both receiving if we've got somewhere to put it
                     app.read_buffer = app.read_buffer.take().map(|app_buf| {
@@ -216,7 +216,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
         }
     }
 
-    fn command(&self, cmd_num: usize, arg1: usize, _: AppId) -> ReturnCode {
+    fn command(&self, cmd_num: usize, arg1: usize, _: usize, _: AppId) -> ReturnCode {
         match cmd_num {
             0 /* check if present */ => ReturnCode::SUCCESS,
             1 /* putc */ => {

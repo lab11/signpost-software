@@ -93,9 +93,9 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     /// ### `allow_num`
     ///
     /// - `0`: Buffer that is 16 bytes long and will contain reset config information.
-    fn allow(&self, _appid: AppId, _allow_num: usize, slice: AppSlice<Shared, u8>) -> ReturnCode {
-        if slice.len() == 16 {
-            self.config.replace(slice);
+    fn allow(&self, _appid: AppId, _allow_num: usize, slice: Option<AppSlice<Shared, u8>>) -> ReturnCode {
+        if slice.unwrap().len() == 16 {
+            self.config.replace(slice.unwrap());
             ReturnCode::SUCCESS
         } else {
             ReturnCode::EINVAL
@@ -108,7 +108,7 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     ///
     /// - `0`: Return SUCCESS if this driver is included on the platform.
     /// - `1`: Do it.
-    fn command(&self, command_num: usize, _arg1: usize, _appid: AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, _arg1: usize, _: usize, _appid: AppId) -> ReturnCode {
 
         match command_num {
             0 => /* This driver exists. */ ReturnCode::SUCCESS,

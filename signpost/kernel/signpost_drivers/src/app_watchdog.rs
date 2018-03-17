@@ -109,7 +109,7 @@ impl<'a, A: time::Alarm + 'a> time::Client for Timeout<'a, A> {
 }
 
 impl<'a, A: time::Alarm + 'a> Driver for AppWatchdog<'a, A> {
-    fn command(&self, command_num: usize, data: usize, _: AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, data: usize, _: usize, _: AppId) -> ReturnCode {
         match command_num {
             // Tickle application timer
             0 => {
