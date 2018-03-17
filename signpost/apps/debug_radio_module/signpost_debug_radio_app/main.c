@@ -129,7 +129,7 @@ int main (void) {
   static api_handler_t* handlers[] = {&networking_handler, NULL};
   delay_ms(1000);
   do {
-    rc = signpost_initialization_module_init(ModuleAddressRadio, handlers);
+    rc = signpost_initialization_module_init("radio",ModuleAddressRadio, handlers);
     if (rc < 0) {
       printf(" - %d: Error initializing the bus (code %d). Sleeping 5s.\n", __LINE__, rc);
       delay_ms(5000);

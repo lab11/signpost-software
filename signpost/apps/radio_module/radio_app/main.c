@@ -430,7 +430,7 @@ int main (void) {
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
     static api_handler_t* handlers[] = {&networking_handler,NULL};
     do {
-        rc = signpost_initialization_module_init(ModuleAddressRadio,handlers);
+        rc = signpost_initialization_module_init("radio",ModuleAddressRadio,handlers);
         if (rc<0) {
             delay_ms(5000);
         }

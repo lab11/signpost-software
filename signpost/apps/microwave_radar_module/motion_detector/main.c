@@ -97,7 +97,7 @@ int main (void) {
 
     int rc;
     do {
-        rc = signpost_initialization_module_init(0x34, NULL);
+        rc = signpost_init("lab11/radar");
         if (rc < 0) {
             printf(" - Error initializing bus (code %d). Sleeping for 5s\n",rc);
             delay_ms(5000);

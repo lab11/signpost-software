@@ -20,7 +20,7 @@ int main(void) {
     //signpost initialization
     int rc;
     do {
-        rc = signpost_initialization_module_init(SIGNBUS_TEST_RECEIVER_I2C_ADDRESS, SIGNPOST_INITIALIZATION_NO_APIS);
+        rc = signpost_init("rfexplorer_test");
         if (rc < 0) {
             printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
             port_signpost_delay_ms(5000);

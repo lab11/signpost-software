@@ -106,13 +106,14 @@ static void initialization_api_callback(uint8_t source_address,
                         return;
                     }
 
-                    //uint8_t mod_num_to_isolate = signpost_api_addr_to_mod_num((uint8_t) message[0]);
+                    uint8_t new_address;
+                    if(source_address == 0x00) {
+                        new_address = 0x10 + mod_isolated_out;
+                    } else {
+                        new_address = source_address;
+                    }
 
-                    //if (mod_num_to_isolate != 3) {
-                    //  controller_module_enable_i2c(mod_num_to_isolate);
-                    //}
-
-                    rc = signpost_initialization_declare_respond(source_address, req_mod_num);
+                    rc = signpost_initialization_declare_respond(source_address, new_address, req_mod_num, (char*)message);
 
                     if (rc < 0) {
                       printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",

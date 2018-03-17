@@ -10,17 +10,13 @@
 
 #include "signpost_api.h"
 
-static const uint8_t random_i2c_address = 0x40;
-
 int main (void) {
   printf("\n\n[Test] API: Energy\n");
 
   int rc;
 
   do {
-    rc = signpost_initialization_module_init(
-        random_i2c_address,
-        SIGNPOST_INITIALIZATION_NO_APIS);
+    rc = signpost_init("energy_test");
     if (rc < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", rc);
       delay_ms(5000);

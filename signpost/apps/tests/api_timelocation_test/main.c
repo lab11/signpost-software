@@ -10,14 +10,10 @@
 
 #include "signpost_api.h"
 
-static const uint8_t random_i2c_address = 0x51;
-
 int main (void) {
   printf("\n\n[Test] API: Time & Location\n");
 
-  int rc = signpost_initialization_module_init(
-      random_i2c_address,
-      SIGNPOST_INITIALIZATION_NO_APIS);
+  int rc = signpost_init("time_test");
   if (rc < TOCK_SUCCESS) {
     printf("Signpost initialization errored: %d\n", rc);
   }

@@ -120,7 +120,7 @@ int main (void) {
   // initialize module as a part of the signpost bus
   int rc;
   do {
-    rc = signpost_initialization_module_init(AMBIENT_MODULE_I2C_ADDRESS, NULL);
+    rc = signpost_init("lab11/ambient");
     if (rc < 0) {
       printf(" - Error initializing bus (code %d). Sleeping for 5s\n", rc);
       delay_ms(5000);

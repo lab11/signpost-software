@@ -10,8 +10,6 @@
 
 #include "signpost_api.h"
 
-static const uint8_t i2c_address = 0x50;
-
 #define DATA_SIZE 600
 static uint8_t data[DATA_SIZE] = {0};
 
@@ -20,9 +18,7 @@ int main (void) {
   printf("[Test] API: Storage\n");
 
   do {
-    err = signpost_initialization_module_init(
-        i2c_address,
-        SIGNPOST_INITIALIZATION_NO_APIS);
+    err = signpost_init("storage_test");
     if (err < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", err);
       delay_ms(5000);

@@ -95,6 +95,10 @@ typedef enum module_address {
     ModuleAddressRadio = 0x22,
 } module_address_t;
 
+//Basic initialization for most sensor modules
+__attribute__((warn_unused_result))
+int signpost_init(const char* module_name);
+
 // Initialize this module.
 // Must be called before any other signpost API methods.
 //
@@ -105,9 +109,7 @@ typedef enum module_address {
 //                 This array MUST be static (pointer must be valid forever).
 //                 Modules that implement no APIs MUST pass SIGNPOST_INITIALIZATION_NO_APIS.
 __attribute__((warn_unused_result))
-int signpost_initialization_module_init(
-        uint8_t i2c_address,
-        api_handler_t** api_handlers);
+int signpost_initialization_module_init(const char* module_name, uint8_t i2c_address, api_handler_t** api_handlers);
 
 // A special initialization routine for the controller module only.
 __attribute__((warn_unused_result))
@@ -149,7 +151,7 @@ int signpost_initialization_register_respond(uint8_t source_address);
 //  source_address  - The I2C address of the module that sent a declare request
 //  module_number   - The module slot that is currently isolated
 __attribute__((warn_unused_result))
-int signpost_initialization_declare_respond(uint8_t source_address, uint8_t module_number);
+int signpost_initialization_declare_respond(uint8_t source_address, uint8_t new_address, uint8_t module_number, char* name);
 
 // Send a response to a key exchange request
 // Assumes controller has already isolated source and target

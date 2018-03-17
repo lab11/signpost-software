@@ -13,8 +13,6 @@
 
 #include "signpost_api.h"
 
-static const uint8_t i2c_address = 0x33;
-
 #define MSGEQ7_RESET_PIN   6
 #define MSGEQ7_STROBE_PIN  5
 #define MSGEQ7_ADC_CHANNEL 0
@@ -29,9 +27,7 @@ int main (void) {
   printf("[TEST] Audio ADC\n");
 
   // initialize the signpost bus
-  err = signpost_initialization_module_init(
-    i2c_address,
-    SIGNPOST_INITIALIZATION_NO_APIS);
+  err = signpost_init("lab11/audio");
   if (err < TOCK_SUCCESS) {
     printf("Signbus initialization failed\n");
     return TOCK_FAIL;

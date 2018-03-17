@@ -29,7 +29,7 @@ int main(void) {
 
     int rc;
     do {
-        rc = signpost_initialization_module_init(MODULE_ID, SIGNPOST_INITIALIZATION_NO_APIS);
+        rc = signpost_initialization_module_init("blast", MODULE_ID, SIGNPOST_INITIALIZATION_NO_APIS);
         if (rc < 0) {
             printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
             delay_ms(5000);

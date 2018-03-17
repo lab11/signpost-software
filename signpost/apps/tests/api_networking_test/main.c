@@ -21,7 +21,7 @@ int main (void) {
   //
   // Initializations for the rest of the signpost
   do {
-    rc = signpost_initialization_module_init(0x29, NULL);
+    rc = signpost_init("network_test");
     if (rc < 0) {
       printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
       delay_ms(5000);
