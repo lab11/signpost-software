@@ -4,6 +4,9 @@ use kernel::common::take_cell::TakeCell;
 use kernel::hil::uart::{self, UARTAdvanced, Client};
 use kernel::process::Error;
 
+//Syscall driver number
+pub const DRIVER_NUM: usize = 0x10080006;
+
 pub struct App {
     read_callback: Option<Callback>,
     write_callback: Option<Callback>,

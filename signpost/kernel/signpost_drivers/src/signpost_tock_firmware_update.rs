@@ -10,6 +10,9 @@ use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 #[derive(Clone,Copy,Debug,PartialEq)]
 enum State {}
 
+pub const DRIVER_NUM: usize = 120;
+pub const DRIVER_NUM2: usize = 121;
+
 pub struct SignpostTockFirmwareUpdate<'a, F: hil::flash::Flash + 'static> {
     /// The module providing a `Flash` interface.
     driver: &'a F,

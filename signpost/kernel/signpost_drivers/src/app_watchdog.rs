@@ -7,7 +7,7 @@ use kernel::returncode::ReturnCode;
 use kernel::hil::time;
 use kernel::hil::time::Frequency;
 
-
+pub const DRIVER_NUM: usize = 108;
 
 pub enum TimeoutMode {
     App,

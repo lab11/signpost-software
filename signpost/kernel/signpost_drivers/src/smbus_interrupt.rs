@@ -8,6 +8,9 @@ use kernel::returncode::ReturnCode;
 
 pub static mut BUFFER: [u8; 8] = [0; 8];
 
+//Syscall Driver Number
+pub const DRIVER_NUM: usize = 0x10020006;
+
 #[derive(Clone,Copy,PartialEq)]
 enum State {
     Idle,
