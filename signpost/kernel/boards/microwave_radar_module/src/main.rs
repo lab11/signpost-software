@@ -65,19 +65,19 @@ impl Platform for MicrowaveRadarModule {
 
         match driver_num {
             capsules::console::DRIVER_NUM => f(Some(self.console)),
-            1 => f(Some(self.gpio)),
-            3 => f(Some(self.alarm)),
-            7 => f(Some(self.adc)),
-            8 => f(Some(self.led)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
+            capsules::adc::DRIVER_NUM => f(Some(self.adc)),
+            capsules::led::DRIVER_NUM => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            30 => f(Some(self.app_flash)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            108 => f(Some(self.app_watchdog)),
-            120 => f(Some(self.stfu)),
-            121 => f(Some(self.stfu_holding)),
+            signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu)),
 
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }

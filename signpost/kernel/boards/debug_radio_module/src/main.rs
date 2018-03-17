@@ -59,16 +59,16 @@ impl Platform for DebugRadioModule {
 
         match driver_num {
             capsules::console::DRIVER_NUM => f(Some(self.gps_console)),
-            1 => f(Some(self.gpio)),
-            3 => f(Some(self.timer)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            30 => f(Some(self.app_flash)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            108 => f(Some(self.app_watchdog)),
-            109 => f(Some(self.gps_console)),
+            signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
+            signpost_drivers::gps_console::DRIVER_NUM => f(Some(self.gps_console)),
 
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }

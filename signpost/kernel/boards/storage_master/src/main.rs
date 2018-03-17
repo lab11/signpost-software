@@ -65,17 +65,17 @@ impl Platform for SignpostStorageMaster {
 
         match driver_num {
             capsules::console::DRIVER_NUM => f(Some(self.console)),
-            1 => f(Some(self.gpio)),
-            3 => f(Some(self.timer)),
-            8 => f(Some(self.led)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
+            capsules::led::DRIVER_NUM => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            15 => f(Some(self.sdcard)),
-            30 => f(Some(self.app_flash)),
-            120 => f(Some(self.stfu)),
-            121 => f(Some(self.stfu_holding)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::sdcard::DRIVER_NUM => f(Some(self.sdcard)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu)),
 
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }

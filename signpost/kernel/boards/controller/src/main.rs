@@ -71,33 +71,34 @@ impl Platform for SignpostController {
     fn with_driver<F, R>(&self, driver_num: usize, f: F) -> R
         where F: FnOnce(Option<&kernel::Driver>) -> R
     {
-
+        
+        const cc0: usize = capsules::pca9544a::DRIVER_NUM + 0x0000;
+        const cc1: usize = capsules::pca9544a::DRIVER_NUM + 0x1000;
+        const cc2: usize = capsules::pca9544a::DRIVER_NUM + 0x2000;
         match driver_num {
             capsules::console::DRIVER_NUM => f(Some(self.console)),
-            1 => f(Some(self.gpio)),
-            3 => f(Some(self.timer)),
-            8 => f(Some(self.led)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
+            capsules::led::DRIVER_NUM => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            18 => f(Some(self.coulomb_counter_generic)),
-            20 => f(Some(self.gpio_async)),
-            27 => f(Some(self.nonvolatile_storage)),
-            30 => f(Some(self.app_flash)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::ltc294x::DRIVER_NUM => f(Some(self.coulomb_counter_generic)),
+            capsules::gpio_async::DRIVER_NUM => f(Some(self.gpio_async)),
+            capsules::nonvolatile_storage_driver::DRIVER_NUM => f(Some(self.nonvolatile_storage)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            1001 => f(Some(self.coulomb_counter_i2c_mux_0)),
-            1002 => f(Some(self.coulomb_counter_i2c_mux_1)),
-            1003 => f(Some(self.coulomb_counter_i2c_mux_2)),
-            110 => f(Some(self.battery_monitor)),
-            104 => f(Some(self.smbus_interrupt)),
-            108 => f(Some(self.app_watchdog)),
-            109 => f(Some(self.gps_console)),
+            cc0 => f(Some(self.coulomb_counter_i2c_mux_0)),
+            cc1 => f(Some(self.coulomb_counter_i2c_mux_1)),
+            cc2 => f(Some(self.coulomb_counter_i2c_mux_2)),
+            capsules::max17205::DRIVER_NUM => f(Some(self.battery_monitor)),
+            signpost_drivers::smbus_interrupt::DRIVER_NUM => f(Some(self.smbus_interrupt)),
+            signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
+            signpost_drivers::gps_console::DRIVER_NUM => f(Some(self.gps_console)),
 
-            120 => f(Some(self.stfu)),
-            121 => f(Some(self.stfu_holding)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu_holding)),
 
-            203 => f(Some(self.bonus_timer)),
-
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }
