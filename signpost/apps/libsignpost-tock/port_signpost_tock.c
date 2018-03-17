@@ -149,7 +149,9 @@ int port_signpost_mod_in_enable_interrupt_falling(port_signpost_callback cb) {
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
     if (rc < 0) return PORT_FAIL;
-    rc = gpio_enable_interrupt(MOD_IN, PullUp, FallingEdge);
+    rc = gpio_enable_input(MOD_IN, PullUp);
+    if (rc < 0) return PORT_FAIL;
+    rc = gpio_enable_interrupt(MOD_IN, FallingEdge);
     if (rc < 0) return PORT_FAIL;
     return PORT_SUCCESS;
 }
@@ -161,7 +163,9 @@ int port_signpost_mod_in_enable_interrupt_rising(port_signpost_callback cb) {
     global_gpio_interrupt_cb = cb;
     rc = gpio_interrupt_callback(port_signpost_gpio_interrupt_callback, NULL);
     if (rc < 0) return PORT_FAIL;
-    rc = gpio_enable_interrupt(MOD_IN, PullUp, RisingEdge);
+    rc = gpio_enable_input(MOD_IN, PullUp);
+    if (rc < 0) return PORT_FAIL;
+    rc = gpio_enable_interrupt(MOD_IN, RisingEdge);
     if (rc < 0) return PORT_FAIL;
     return PORT_SUCCESS;
 }
