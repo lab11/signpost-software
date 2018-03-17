@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-#define DRIVER_NUM_STFU 120
-#define DRIVER_NUM_STFU_HOLDING 121
+#define DRIVER_NUM_STFU 0x10050004
+#define DRIVER_NUM_STFU_HOLDING 0x10050005
 
 int signpost_tock_firmware_update_go(uint32_t source,
                                      uint32_t destination,

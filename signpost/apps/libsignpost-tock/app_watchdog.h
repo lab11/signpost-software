@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define DRIVER_NUM_APPWATCHDOG 108
+#define DRIVER_NUM_APPWATCHDOG 0x10000007
 
 int app_watchdog_start(void);
 int app_watchdog_stop(void);

@@ -2,9 +2,9 @@
 #include "tock.h"
 #include "i2c_selector.h"
 
-#define DRIVER_NUM_I2C_SELECTOR_0 1001
-#define DRIVER_NUM_I2C_SELECTOR_1 1002
-#define DRIVER_NUM_I2C_SELECTOR_2 1003
+#define DRIVER_NUM_I2C_SELECTOR_0 0x00080002
+#define DRIVER_NUM_I2C_SELECTOR_1 0x00081002
+#define DRIVER_NUM_I2C_SELECTOR_2 0x00082002
 
 struct i2c_selector_data {
   bool fired;
