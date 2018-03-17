@@ -94,8 +94,9 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     ///
     /// - `0`: Buffer that is 16 bytes long and will contain reset config information.
     fn allow(&self, _appid: AppId, _allow_num: usize, slice: Option<AppSlice<Shared, u8>>) -> ReturnCode {
-        if slice.unwrap().len() == 16 {
-            self.config.replace(slice.unwrap());
+        let s = slice.unwrap();
+        if s.len() == 16 {
+            self.config.replace(s);
             ReturnCode::SUCCESS
         } else {
             ReturnCode::EINVAL
