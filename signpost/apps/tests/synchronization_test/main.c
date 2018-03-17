@@ -81,8 +81,10 @@ int main (void) {
   printf("Setting up interrupts\n");
 
   //setup a callback for pps
-  gpio_enable_interrupt(2, PullNone, RisingEdge);
-  gpio_enable_interrupt(1, PullNone, FallingEdge);
+  gpio_enable_input(2, PullNone);
+  gpio_enable_interrupt(2, RisingEdge);
+  gpio_enable_input(1, PullNone);
+  gpio_enable_interrupt(1, FallingEdge);
   gpio_interrupt_callback(pps_callback, NULL);
 
   printf("Starting Timer\n");
