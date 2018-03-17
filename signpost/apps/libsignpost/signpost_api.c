@@ -448,8 +448,11 @@ static int signpost_initialization_initialize_loop(void) {
             //reinitialize with the new address
             uint8_t new_address = *incoming_message;
             if(module_info.i2c_address != new_address){
+                module_info.i2c_address = new_address;
                 signpost_initialization_common(new_address);
             }
+
+            port_printf("INIT: Set I2C address to 0x%x\n", new_address);
 
             }
             break;
