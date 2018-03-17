@@ -1,7 +1,7 @@
 #![crate_name = "radio_module"]
 #![no_std]
 #![no_main]
-#![feature(asm,compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
+#![feature(asm,compiler_builtins_lib,const_fn,lang_items)]
 
 extern crate capsules;
 extern crate compiler_builtins;
@@ -17,7 +17,6 @@ use capsules::console::{self, Console};
 use signpost_drivers::sara_u260;
 use signpost_drivers::xdot;
 use capsules::nrf51822_serialization::{self, Nrf51822Serialization};
-use capsules::timer::TimerDriver;
 use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
 use kernel::hil;
 use kernel::hil::Controller;
@@ -52,7 +51,7 @@ struct RadioModule {
     three_g_console: &'static signpost_drivers::sara_u260::Console<'static, usart::USART>,
     gpio: &'static capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
-    timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
+    timer: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     nrf51822: &'static Nrf51822Serialization<'static, usart::USART>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
@@ -70,7 +69,7 @@ impl Platform for RadioModule {
     {
 
         match driver_num {
-            0 => f(Some(self.console)),
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
             1 => f(Some(self.gpio)),
             3 => f(Some(self.timer)),
             5 => f(Some(self.nrf51822)),
@@ -167,7 +166,7 @@ pub unsafe fn reset_handler() {
         Console::new(&usart::USART1,
                      115200,
                      &mut console::WRITE_BUF,
-                     kernel::Container::create()));
+                     kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART1, console);
 
     //
@@ -179,7 +178,7 @@ pub unsafe fn reset_handler() {
                     115200,
                     &mut xdot::WRITE_BUF,
                     &mut xdot::READ_BUF,
-                    kernel::Container::create()));
+                    kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART2, lora_console);
 
     //
@@ -191,7 +190,7 @@ pub unsafe fn reset_handler() {
                     115200,
                     &mut sara_u260::WRITE_BUF,
                     &mut sara_u260::READ_BUF,
-                    kernel::Container::create()));
+                    kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART0, three_g_console);
 
 
@@ -217,14 +216,14 @@ pub unsafe fn reset_handler() {
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
         VirtualMuxAlarm::new(mux_alarm));
     let timer = static_init!(
-        TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        TimerDriver::new(virtual_alarm1, kernel::Container::create()));
+        capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
+        capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create()));
     virtual_alarm1.set_client(timer);
 
     // Setup RNG
     let rng = static_init!(
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
-            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
+            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Grant::create()));
     sam4l::trng::TRNG.set_client(rng);
 
     //
@@ -350,7 +349,7 @@ pub unsafe fn reset_handler() {
     let app_flash = static_init!(
         capsules::app_flash_driver::AppFlash<'static>,
         capsules::app_flash_driver::AppFlash::new(app_holding_nv_to_page,
-            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+            kernel::Grant::create(), &mut APP_FLASH_BUFFER));
     hil::nonvolatile_storage::NonvolatileStorage::set_client(app_holding_nv_to_page, app_flash);
 
     //
@@ -373,7 +372,7 @@ pub unsafe fn reset_handler() {
     let stfu_holding = static_init!(
         capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
         capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
-            stfu_holding_nv_to_page, kernel::Container::create(),
+            stfu_holding_nv_to_page, kernel::Grant::create(),
             0x60000, // Start address for userspace accessible region
             0x20000, // Length of userspace accessible region
             0,       // Start address of kernel accessible region
