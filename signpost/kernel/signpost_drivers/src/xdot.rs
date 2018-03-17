@@ -1,5 +1,5 @@
 use core::cell::Cell;
-use kernel::{AppId, AppSlice, Container, Callback, Shared, Driver, ReturnCode};
+use kernel::{AppId, AppSlice, Callback, Grant, Shared, Driver, ReturnCode};
 use kernel::common::take_cell::TakeCell;
 use kernel::hil::uart::{self, UARTAdvanced, Client};
 use kernel::process::Error;
@@ -35,7 +35,7 @@ pub static mut READ_BUF: [u8; 1024] = [0; 1024];
 
 pub struct Console<'a, U: UARTAdvanced + 'a> {
     uart: &'a U,
-    apps: Container<App>,
+    apps: Grant<App>,
     in_progress: Cell<Option<AppId>>,
     tx_buffer: TakeCell<'static, [u8]>,
     rx_buffer: TakeCell<'static, [u8]>,
@@ -47,7 +47,7 @@ impl<'a, U: UARTAdvanced> Console<'a, U> {
                baud_rate: u32,
                tx_buffer: &'static mut [u8],
                rx_buffer: &'static mut [u8],
-               container: Container<App>)
+               container: Grant<App>)
                -> Console<'a, U> {
         Console {
             uart: uart,
