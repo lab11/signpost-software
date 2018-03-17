@@ -108,12 +108,15 @@ static void initialization_api_callback(uint8_t source_address,
 
                     uint8_t new_address;
                     if(source_address == 0x00) {
-                        new_address = 0x10 + mod_isolated_out;
+                        new_address = 0x10 + req_mod_num;
                     } else {
                         new_address = source_address;
                     }
 
-                    rc = signpost_initialization_declare_respond(source_address, new_address, req_mod_num, (char*)message);
+                    char name[17] = {0};
+                    strncpy(name,(char*)message,message_length);
+
+                    rc = signpost_initialization_declare_respond(source_address, new_address, req_mod_num, name);
 
                     if (rc < 0) {
                       printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
@@ -121,17 +124,6 @@ static void initialization_api_callback(uint8_t source_address,
                     }
                     break;
                 }
-                case InitializationKeyExchange:
-                    // Prepare and reply ECDH key exchange
-                    rc = signpost_initialization_key_exchange_respond(source_address,
-                            message, message_length);
-                    if (rc < 0) {
-                      printf(" - %d: Error responding to key exchange at address 0x%02x. Dropping.\n",
-                          __LINE__, source_address);
-                    }
-                    break;
-                //exchange module
-                //get mods
                 default:
                    break;
             }
@@ -564,6 +556,8 @@ int signpost_controller_init (void) {
     printf("Configuring FRAM\n");
     fm25cl_set_read_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
     fm25cl_set_write_buffer((uint8_t*) &fram, sizeof(controller_fram_t));
+
+    printf("Done with FRAM\n");
 
     //initialize energy from FRAM
     signpost_controller_initialize_energy();

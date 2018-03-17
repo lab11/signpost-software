@@ -165,17 +165,12 @@ static void signpost_api_recv_callback(int len_or_rc) {
     if (len_or_rc < 0) {
         if (len_or_rc == PORT_ECRYPT) {
             port_printf("Dropping message with HMAC/HASH failure\n");
-            // Unable to decrypt this message, we revoke our useless key
-            //signpost_api_revoke_key(signpost_api_addr_to_mod_num(incoming_source_address));
-            // And send a revoke command to the sending module
-            //signpost_api_send(incoming_source_address, CommandFrame, InitializationApiType, InitializationRevoke, sizeof(int), (uint8_t*)&len_or_rc);
-
             signpost_api_start_new_async_recv();
             return;
         } else {
             port_printf("%s:%d It's all fubar?\n", __FILE__, __LINE__);
-            // XXX trip watchdog reset or s/t?
-            //volatile int crash = *(int*)0;
+            signpost_api_start_new_async_recv();
+            return;
         }
     }
     if ( (incoming_frame_type == NotificationFrame) || (incoming_frame_type == CommandFrame) ) {
@@ -303,8 +298,9 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t new_
       module_info.i2c_address_mods[module_number] = new_address;
       strncpy(module_info.names[module_number],name,strnlen(name,NAME_LEN));
       module_info.haskey[module_number] = false;
-      port_printf("INIT: Registered address 0x%x at slot %d with name %s\n", source_address, module_number, name);
     }
+
+    port_printf("INIT: Registered address 0x%x at slot %d with name %s\n", new_address, module_number, name);
 
     //send i2c address
     return signpost_api_send(source_address, ResponseFrame, InitializationApiType, InitializationDeclare, 1, &new_address);
@@ -383,12 +379,6 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     module_info.i2c_address = ModuleAddressController;
     module_api.api_handlers = api_handlers;
 
-    //port_signpost_load_state(&check_state);
-    //printf("magic: 0x%lx\n", check_state.magic);
-    //if (check_state.magic == MOD_STATE_MAGIC) {
-    //  memcpy(&module_info, &check_state, sizeof(module_state_t));
-    //}
-
     // Begin listening for replies
     signpost_api_start_new_async_recv();
 
@@ -433,15 +423,21 @@ static int signpost_initialization_initialize_loop(void) {
 
             // Now declare self to controller
             declare_controller_complete = false;
+            port_signpost_delay_ms(500);
             rc = signpost_initialization_declare_controller();
             if (rc != PORT_SUCCESS) {
-              init_state = RequestIsolation;
-              break;
+                port_printf("INIT: Declaration Failed - Requesting Isolation\n");
+                port_signpost_mod_out_set();
+                port_signpost_delay_ms(3000);
+                init_state = RequestIsolation;
+                break;
             }
 
             rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
             if (rc == PORT_FAIL) {
               port_printf("INIT: Timed out waiting for controller declare response\n");
+              port_signpost_mod_out_set();
+              port_signpost_delay_ms(3000);
               init_state = RequestIsolation;
             };
 
