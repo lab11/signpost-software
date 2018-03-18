@@ -27,7 +27,7 @@ typedef struct save_state {
     uint8_t     buf[PORT_SAVE_MAX_LEN];
 } save_state_t;
 
-APP_STATE_DECLARE(save_state_t, port_tock_module_state);
+//APP_STATE_DECLARE(save_state_t, port_tock_module_state);
 
 static bool master_write_yield_flag = false;
 static int  master_write_len_or_rc = 0;
@@ -225,13 +225,13 @@ int port_printf(const char *fmt, ...) {
 }
 
 int port_signpost_save_state(uint8_t* state, uint16_t state_len) {
-  memcpy(&port_tock_module_state, state, state_len);
-  if (app_state_save_sync() != TOCK_SUCCESS) return PORT_FAIL;
+/*  memcpy(&port_tock_module_state, state, state_len);
+  if (app_state_save_sync() != TOCK_SUCCESS) return PORT_FAIL;*/
   return PORT_SUCCESS;
 }
 
 int port_signpost_load_state(uint8_t* state, uint16_t state_len) {
-  if (app_state_load_sync() != TOCK_SUCCESS) return PORT_FAIL;
-  memcpy(state, &port_tock_module_state, state_len);
+/*  if (app_state_load_sync() != TOCK_SUCCESS) return PORT_FAIL;
+  memcpy(state, &port_tock_module_state, state_len);*/
   return PORT_SUCCESS;
 }
