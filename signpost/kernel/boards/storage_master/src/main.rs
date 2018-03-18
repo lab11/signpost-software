@@ -73,7 +73,7 @@ impl Platform for SignpostStorageMaster {
             capsules::sdcard::DRIVER_NUM => f(Some(self.sdcard)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
             signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
-            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu_holding)),
 
             kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)

@@ -82,7 +82,7 @@ impl Platform for RadioModule {
             signpost_drivers::xdot::DRIVER_NUM => f(Some(self.lora_console)),
             signpost_drivers::sara_u260::DRIVER_NUM => f(Some(self.three_g_console)),
             signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
-            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu_holding)),
 
             kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)

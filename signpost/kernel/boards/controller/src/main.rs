@@ -48,7 +48,6 @@ struct SignpostController {
     gpio: &'static capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
     timer: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
-    bonus_timer: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     smbus_interrupt: &'static signpost_drivers::smbus_interrupt::SMBUSIntDriver<'static>,
     gpio_async: &'static capsules::gpio_async::GPIOAsync<'static, capsules::mcp23008::MCP23008<'static>>,
     coulomb_counter_i2c_mux_0: &'static capsules::pca9544a::PCA9544A<'static>,
@@ -72,9 +71,9 @@ impl Platform for SignpostController {
         where F: FnOnce(Option<&kernel::Driver>) -> R
     {
         
-        const cc0: usize = capsules::pca9544a::DRIVER_NUM + 0x0000;
-        const cc1: usize = capsules::pca9544a::DRIVER_NUM + 0x1000;
-        const cc2: usize = capsules::pca9544a::DRIVER_NUM + 0x2000;
+        const CC0: usize = capsules::pca9544a::DRIVER_NUM + 0x0000;
+        const CC1: usize = capsules::pca9544a::DRIVER_NUM + 0x1000;
+        const CC2: usize = capsules::pca9544a::DRIVER_NUM + 0x2000;
         match driver_num {
             capsules::console::DRIVER_NUM => f(Some(self.console)),
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
@@ -87,9 +86,9 @@ impl Platform for SignpostController {
             capsules::nonvolatile_storage_driver::DRIVER_NUM => f(Some(self.nonvolatile_storage)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            cc0 => f(Some(self.coulomb_counter_i2c_mux_0)),
-            cc1 => f(Some(self.coulomb_counter_i2c_mux_1)),
-            cc2 => f(Some(self.coulomb_counter_i2c_mux_2)),
+            CC0 => f(Some(self.coulomb_counter_i2c_mux_0)),
+            CC1 => f(Some(self.coulomb_counter_i2c_mux_1)),
+            CC2 => f(Some(self.coulomb_counter_i2c_mux_2)),
             capsules::max17205::DRIVER_NUM => f(Some(self.battery_monitor)),
             signpost_drivers::smbus_interrupt::DRIVER_NUM => f(Some(self.smbus_interrupt)),
             signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
@@ -228,15 +227,6 @@ pub unsafe fn reset_handler() {
         capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
         capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create()));
     virtual_alarm1.set_client(timer);
-
-
-    let virtual_alarm2 = static_init!(
-        VirtualMuxAlarm<'static, sam4l::ast::Ast>,
-        VirtualMuxAlarm::new(mux_alarm));
-    let bonus_timer = static_init!(
-        capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        capsules::alarm::AlarmDriver::new(virtual_alarm2, kernel::Grant::create()));
-    virtual_alarm2.set_client(bonus_timer);
 
     // Setup RNG
     let rng = static_init!(
@@ -640,7 +630,6 @@ pub unsafe fn reset_handler() {
         gpio: gpio,
         led: led,
         timer: timer,
-        bonus_timer: bonus_timer,
         gpio_async: gpio_async,
         coulomb_counter_i2c_mux_0: pca9544a_0,
         coulomb_counter_i2c_mux_1: pca9544a_1,
