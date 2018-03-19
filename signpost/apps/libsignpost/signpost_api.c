@@ -43,7 +43,7 @@ struct module_api_struct {
     api_handler_t**         api_handlers;
 } module_api = {0};
 
-static module_state_t module_info;
+static module_state_t module_info = {0};
 
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
@@ -947,35 +947,82 @@ int signpost_processing_reply(uint8_t src_addr, uint8_t message_type, uint8_t* r
 
 static bool networking_ready;
 static bool networking_result;
+static signpost_networking_subscribe_cb* networking_subscribe_cb = NULL;
+
+static void internal_subscribe_callback(uint8_t source_address,
+        signbus_frame_type_t frame_type, __attribute ((unused)) signbus_api_type_t api_type,
+        uint8_t message_type, size_t message_length, uint8_t* message) {
+
+    //If there is no callback just drop the message
+    if(networking_subscribe_cb == NULL) {
+        return;
+    } else {
+        if(api_type == NetworkingApiType &&
+                frame_type == NotificationFrame &&
+                message_type == NetworkingSubscribeMessage) {
+            //extract the topic and the data
+            //make the topic string static for easier processing
+            static char topic[29];
+            uint8_t tlen = message[0];
+            if(tlen > 28 || message_length < tlen+2) {
+                //invalid topic
+                return;
+            }
+            memcpy(topic, message+1, tlen);
+
+            uint8_t dlen = message[tlen+1];
+            if(message_length < tlen+dlen+2) {
+                return;
+            }
+            uint8_t* data = message+tlen+2;
+
+            //call the provided callback
+            networking_subscribe_cb(topic, data, dlen);
+        } else {
+            return;
+        }
+    }
+}
+
 static void signpost_networking_callback(int result) {
     networking_ready = true;
     networking_result = result;
 }
 
-int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len) {
+int signpost_networking_publish(const char* topic, uint8_t* data, uint8_t data_len) {
     uint8_t slen;
-    if(strlen(topic) > 29) {
-        slen = 29;
+    if(strnlen(topic, 14) > 14) {
+        slen = 14;
     } else {
-        slen = strlen(topic);
+        slen = strnlen(topic, 14);
     }
 
-    uint32_t len = slen + data_len + 2;
+    uint8_t nlen = strnlen(module_state.self_name);
+    uint8_t slash = 0;
+    if(topic[0] != '/' && module_state.self_name[nlen-1] != '/') {
+        slash = 1;
+    }
+
+    uint32_t len = nlen + slash + slen + data_len + 2;
     uint8_t* buf = malloc(len);
     if(!buf) {
         return PORT_ENOMEM;
     }
 
-    buf[0] = slen;
+    buf[0] = slen + nlen + slash;
     memcpy(buf+1, topic, slen);
-    buf[slen+1] = data_len;
-    memcpy(buf+1+slen+1, data, data_len);
+    if(slash) {
+        buf[slen+1] = '/';
+    }
+    memcpy(buf+1+slen+slash, module_state.self_name, nlen);
+    buf[slen+nlen+slash+1] = data_len;
+    memcpy(buf+1+slen+1+nlen+slash, data, data_len);
 
 
     incoming_active_callback = signpost_networking_callback;
     networking_ready = false;
     int rc = signpost_api_send(ModuleAddressRadio, CommandFrame, NetworkingApiType,
-                        NetworkingSendMessage, len, buf);
+                        NetworkingPublishMessage, len, buf);
 
     free(buf);
     if(rc < PORT_SUCCESS) {
@@ -994,6 +1041,14 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
     } else {
         return PORT_FAIL;
     }
+}
+
+int signpost_networking_subscribe(signpost_networking_subscribe_cb* cb) {
+    //store the callback in our callback field
+    networking_subscribe_cb = cb;
+
+    //register our internal callback with the app recv handler
+
 }
 
 void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code) {

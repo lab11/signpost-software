@@ -255,7 +255,8 @@ int signpost_storage_delete_reply (uint8_t destination_address, Storage_Record_t
 /* NETWORKING API                                                         */
 /**************************************************************************/
 enum networking_message_type {
-    NetworkingSendMessage = 0,
+    NetworkingPublishMessage = 0,
+    NetworkingSubscribeMessage,
 };
 
 __attribute__((warn_unused_result))
