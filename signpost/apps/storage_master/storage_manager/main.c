@@ -201,6 +201,9 @@ int main (void) {
   // turn off Red Led
   led_off(DEBUG_RED_LED);
 
+  //This delay seems to keep the bus from getting messed up?
+  delay_ms(5000);
+
   // Install hooks for the signpost APIs we implement
   static api_handler_t storage_handler = {StorageApiType, storage_api_callback};
   static api_handler_t* handlers[] = {&storage_handler, NULL};

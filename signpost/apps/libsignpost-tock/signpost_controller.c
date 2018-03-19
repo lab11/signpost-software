@@ -541,6 +541,11 @@ void signpost_controller_hardware_watchdog_tickle (void) {
 }
 
 int signpost_controller_init (void) {
+    // Setup backplane by enabling the modules
+    controller_init_module_switches();
+    controller_all_modules_disable_power();
+    controller_all_modules_disable_i2c();
+
     // setup app watchdog
     app_watchdog_set_kernel_timeout(180000);
     app_watchdog_start();
@@ -583,28 +588,26 @@ int signpost_controller_init (void) {
       }
     } while (rc < 0);
 
-    // Setup backplane by enabling the modules
-    controller_init_module_switches();
-    controller_all_modules_disable_power();
-    controller_all_modules_disable_i2c();
     delay_ms(500);
-    controller_all_modules_enable_power();
-    controller_all_modules_enable_i2c();
-    controller_all_modules_disable_usb();
+
+    //Make sure everything is initialized to the proper state
     controller_gpio_enable_all_MODINs();
     controller_gpio_enable_all_MODOUTs(PullUp);
     controller_gpio_set_all();
-    delay_ms(500);
-
-    //make sure that we give modules a chance to initialize
+    controller_all_modules_enable_i2c();
+    controller_all_modules_disable_usb();
     memset(last_mod_out_state, 1, NUM_MOD_IO);
+
+    //Now enable all the modules
+    controller_all_modules_enable_power();
 
     //setup timer callbacks to service the various signpost components
     static tock_timer_t energy_update_timer;
     timer_every(600000, update_energy_policy_cb, NULL, &energy_update_timer);
 
+    //enable the init check tiemr
     static tock_timer_t check_init_timer;
-    timer_every(1000, check_module_init_cb, NULL, &check_init_timer);
+    timer_every(300, check_module_init_cb, NULL, &check_init_timer);
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);

@@ -108,17 +108,6 @@ void signpost_api_error_reply_repeating(uint8_t destination_address,
    } while ( (tries > 0) && (rc < 0) );
 }
 
-int signpost_api_send(uint8_t destination_address,
-                      signbus_frame_type_t frame_type,
-                      signbus_api_type_t api_type,
-                      uint8_t message_type,
-                      size_t message_length,
-                      uint8_t* message) {
-
-    return signbus_app_send(destination_address, signpost_api_addr_to_key, frame_type, api_type,
-                            message_type, message_length, message);
-}
-
 /**************************************************************************/
 /* INCOMING MESSAGE / ASYNCHRONOUS DISPATCH                               */
 /**************************************************************************/
@@ -144,8 +133,6 @@ static uint8_t               incoming_protocol_buffer[INCOMING_MESSAGE_BUFFER_LE
 
 static signbus_app_callback_t* incoming_active_callback = NULL;
 
-
-
 // Forward decl
 static void signpost_api_recv_callback(int len_or_rc);
 
@@ -160,6 +147,24 @@ static void signpost_api_start_new_async_recv(void) {
         port_printf("*** NO MORE MESSAGES WILL BE RECEIVED ***\n");
     }
 }
+
+int signpost_api_send(uint8_t destination_address,
+                      signbus_frame_type_t frame_type,
+                      signbus_api_type_t api_type,
+                      uint8_t message_type,
+                      size_t message_length,
+                      uint8_t* message) {
+
+    int rc = signbus_app_send(destination_address, signpost_api_addr_to_key, frame_type, api_type,
+                            message_type, message_length, message);
+
+    //start recieving after sending!!
+    signpost_api_start_new_async_recv();
+
+    return rc;
+}
+
+
 
 static void signpost_api_recv_callback(int len_or_rc) {
     if (len_or_rc < 0) {
@@ -434,11 +439,12 @@ static int signpost_initialization_initialize_loop(void) {
             }
 
             rc = port_signpost_wait_for_with_timeout(&declare_controller_complete, 100);
-            if (rc == PORT_FAIL) {
+            if (rc != PORT_SUCCESS) {
               port_printf("INIT: Timed out waiting for controller declare response\n");
               port_signpost_mod_out_set();
               port_signpost_delay_ms(3000);
               init_state = RequestIsolation;
+              break;
             };
 
             //reinitialize with the new address
