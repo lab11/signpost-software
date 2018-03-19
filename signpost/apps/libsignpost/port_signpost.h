@@ -35,6 +35,7 @@ for each platform*/
 #define PORT_ENOACK       -13
 #define PORT_EI2C_WRITE   -100
 #define PORT_ECRYPT       -101
+#define PORT_ENOSAT       -102
 
 //These are the callback definitions
 #ifdef __cplusplus

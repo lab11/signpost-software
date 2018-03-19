@@ -1234,7 +1234,7 @@ static int signpost_timelocation_sync(signpost_timelocation_message_type_e messa
     return timelocation_query_result;
 }
 
-int signpost_timelocation_get_time(signpost_timelocation_time_t* time) {
+int signpost_timelocation_get_time(time_t* time) {
     // Check the argument, because why not.
     if (time == NULL) {
         return PORT_EINVAL;
@@ -1250,9 +1250,31 @@ int signpost_timelocation_get_time(signpost_timelocation_time_t* time) {
         return PORT_FAIL;
     }
 
-    memcpy(time, incoming_message, incoming_message_length);
+    //put the incoming message into a temporary struct
+    signpost_timelocation_time_t temp;
+    memcpy(&temp, incoming_message, incoming_message_length);
 
-    return rc;
+    //convert that struct into a tm struct
+    struct tm current_time;
+    current_time.tm_year = temp.year - 1900;
+    current_time.tm_mon = temp.month - 1;
+    current_time.tm_mday = temp.day;
+    current_time.tm_hour = temp.hours;
+    current_time.tm_min = temp.minutes;
+    current_time.tm_sec = temp.seconds;
+    current_time.tm_isdst = 0;
+
+    //convert it into a time_t object
+    time_t utime = mktime(&current_time);
+
+    //place it back in the starting array
+    memcpy(time,&utime,sizeof(time_t));
+
+    if(temp.satellite_count < 3) {
+        return PORT_ENOSAT;
+    } else {
+        return PORT_SUCCESS;
+    }
 }
 
 int signpost_timelocation_get_location(signpost_timelocation_location_t* location) {

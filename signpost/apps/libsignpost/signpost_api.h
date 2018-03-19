@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <time.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include "signbus_app_layer.h"
@@ -443,7 +444,7 @@ typedef struct __attribute__((packed)) {
 // params:
 //  time     - signpost_timelocation_time_t struct to fill
 __attribute__((warn_unused_result))
-int signpost_timelocation_get_time(signpost_timelocation_time_t* time);
+int signpost_timelocation_get_time(time_t* time);
 
 // Get location from controller
 //
