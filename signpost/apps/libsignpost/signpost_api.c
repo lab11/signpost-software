@@ -1217,10 +1217,18 @@ static int signpost_timelocation_sync(signpost_timelocation_message_type_e messa
     int rc = signpost_api_send(ModuleAddressController,
             CommandFrame, TimeLocationApiType, message_type,
             0, NULL);
-    if (rc < 0) return rc;
+
+    if (rc < 0)  {
+        incoming_active_callback = NULL;
+        return rc;
+    }
 
     // Wait for a response message to come back
-    port_signpost_wait_for(&timelocation_query_answered);
+    rc = port_signpost_wait_for_with_timeout(&timelocation_query_answered, 1000);
+    if (rc < 0)  {
+        incoming_active_callback = NULL;
+        return rc;
+    }
 
     // Check the response message type
     if (incoming_message_type != message_type) {
