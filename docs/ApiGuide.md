@@ -18,12 +18,9 @@ at the top of your application.
 1. [Initialization](#initialization)
 2. [Storage](#storage)
 3. [Networking](#networking)
-4. [Simple Networking](#simple-networking)
-5. [Posting to GDP](#posting-to-gdp)
+4. [Time](#time)
+5. [Location](#location)
 6. [Energy](#energy)
-7. [Time](#time)
-8. [Location](#location)
-9. [Processing](#processing)
 
 ## Initialization
 
@@ -53,7 +50,32 @@ Currently being updated
 
 ## Time
 
-Currently being updated.
+The time API returns current time. It returns GPS time (which is notably off
+from UTC by ~9 seconds at time of writing) as specified by the "time.h"
+library in unix time.
+
+To use the time API declare a time structure and call the time API functions:
+
+```c
+#include <time.h>
+
+//int signpost_timelocation_get_time(time_t* time);
+
+time_t utime;
+int result_code = signpost_timelocation_get_time(&utime);
+if(result_code == PORT_ENOSAT) {
+    //time invalid due to lack of satellites
+}
+```
+
+Users may want to use the time API along with the PPS line to synchronize
+their applications with other signposts or the cloud. If the PPS line
+pulses between issuing and receiving the API call,
+then it cannot easily be determined if the returned time is for the
+time before or after this pulse. If synchronization is important, applications
+should issue the time API call right after a PPS pulse and ensure
+that it returns before the next pulse. The next pulse will then
+occur on the returned time + 1s.
 
 ## Location
 
