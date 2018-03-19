@@ -224,13 +224,15 @@ int port_printf(const char *fmt, ...) {
     return rc;
 }
 
-int port_signpost_save_state(uint8_t* state, uint16_t state_len) {
+int port_signpost_save_state(__attribute__((unused)) uint8_t* state,
+                            __attribute__((unused)) uint16_t state_len) {
 /*  memcpy(&port_tock_module_state, state, state_len);
   if (app_state_save_sync() != TOCK_SUCCESS) return PORT_FAIL;*/
   return PORT_SUCCESS;
 }
 
-int port_signpost_load_state(uint8_t* state, uint16_t state_len) {
+int port_signpost_load_state(__attribute__((unused)) uint8_t* state,
+                            __attribute__((unused)) uint16_t state_len) {
 /*  if (app_state_load_sync() != TOCK_SUCCESS) return PORT_FAIL;
   memcpy(state, &port_tock_module_state, state_len);*/
   return PORT_SUCCESS;
