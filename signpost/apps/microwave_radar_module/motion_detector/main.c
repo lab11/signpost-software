@@ -47,7 +47,7 @@ static void timer_callback (
 
     if(count == 20) {
         printf("About to send data to radio\n");
-        int rc = signpost_networking_send("lab11/radar",send_buf,5+count*4);
+        int rc = signpost_networking_publish("motion",send_buf,5+count*4);
         printf("Sent data with return code %d\n\n\n",rc);
 
         if(rc >= 0) {

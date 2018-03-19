@@ -167,7 +167,7 @@ static void timer_callback (
         count = 0;
 
         printf("About to send data to radio\n");
-        rc = signpost_networking_send("lab11/audio",send_buf2,75);
+        rc = signpost_networking_publish("spectrum",send_buf2,75);
         printf("Sent data with return code %d\n\n\n",rc);
 
         if(rc >= 0 && still_sampling == true) {

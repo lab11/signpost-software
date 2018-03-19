@@ -11,6 +11,10 @@
 
 #include "signpost_api.h"
 
+static void downlink_cb(__attribute__ ((unused)) char* topic, uint8_t* data, uint8_t data_len) {
+    printf("Received Downlink: %.*s\n",data_len, (char*)data);
+}
+
 int main (void) {
   printf("[Networking Test] ** Main App **\n");
 
@@ -30,11 +34,15 @@ int main (void) {
 
   printf("Initialized\n");
 
+  //subscribe to the networking subscribe function
+  signpost_networking_subscribe(downlink_cb);
+
   const char* message = "Hello World!\n";
   while(1) {
-      delay_ms(1000);
+      delay_ms(5000);
       printf("About to send\n");
-      int result = signpost_networking_send("networking_test", (uint8_t*)message, strlen(message));
+      //publishing to network_test/echo generate a downlink message for testing to the same topic
+      int result = signpost_networking_publish("echo", (uint8_t*)message, strlen(message));
       if(result == 0) {
           printf("Send Succeeded!\n");
       } else {

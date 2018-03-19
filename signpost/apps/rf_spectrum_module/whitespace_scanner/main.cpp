@@ -23,22 +23,19 @@ static int8_t bin_std[80] = {0};
 static int8_t bin_mean[80] = {0};
 
 static void send_packets(void) {
-    static uint8_t send_buf[81];
+    static uint8_t send_buf[80];
     int ret;
 
-    send_buf[0] = 0x01;
-    memcpy(send_buf+1,bin_max,80);
-    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    memcpy(send_buf,bin_max,80);
+    ret = signpost_networking_publish("ws_max",send_buf,81);
     if(ret < 0 ) printf("Sending max error!\n");
 
-    send_buf[0] = 0x02;
-    memcpy(send_buf+1,bin_mean,80);
-    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    memcpy(send_buf,bin_mean,80);
+    ret = signpost_networking_publish("ws_mean",send_buf,81);
     if(ret < 0 ) printf("Sending mean error!\n");
 
-    send_buf[0] = 0x03;
-    memcpy(send_buf+1,bin_std,80);
-    ret = signpost_networking_send("lab11/spectrum",send_buf,81);
+    memcpy(send_buf,bin_std,80);
+    ret = signpost_networking_publish("ws_std",send_buf,81);
     if(ret < 0 ) printf("Sending std error!\n");
 }
 

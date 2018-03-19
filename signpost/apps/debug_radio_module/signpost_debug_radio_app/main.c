@@ -40,7 +40,7 @@ static void rx_callback (
             __attribute__ ((unused)) void* userdata) {
 
     waiting_for_response = 0;
-    signpost_networking_send_reply(src, 0, 1);
+    signpost_networking_publish_reply(src, 1);
 }
 
 static void watchdog_timer_cb (

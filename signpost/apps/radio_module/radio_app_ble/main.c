@@ -178,9 +178,9 @@ static void networking_api_callback(uint8_t source_address,
 
     if (frame_type == NotificationFrame || frame_type == CommandFrame) {
         //printf("Got message!\n");
-        if(message_type == NetworkingSendMessage) {
+        if(message_type == NetworkingPublishMessage) {
             int rc = add_buffer_to_queue(source_address, message, message_length);
-            signpost_networking_send_reply(source_address, NetworkingSendMessage, rc);
+            signpost_networking_publish_reply(source_address, rc);
         }
     }
 }

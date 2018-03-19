@@ -109,7 +109,7 @@ static void post_to_radio (void) {
 
   //send radio the data
   printf("--Sending data--\n");
-  int response = signpost_networking_send("lab11/ambient", message_buf, 10);
+  int response = signpost_networking_publish("tphl", message_buf, 10);
   if (response < TOCK_SUCCESS) {
     printf("Error posting: %d\n", response);
     post_to_radio_successful = false;
