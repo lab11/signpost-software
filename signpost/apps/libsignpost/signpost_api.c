@@ -434,6 +434,7 @@ static int signpost_initialization_initialize_loop(void) {
                 port_printf("INIT: Declaration Failed - Requesting Isolation\n");
                 port_signpost_mod_out_set();
                 port_signpost_delay_ms(3000);
+                incoming_active_callback = NULL;
                 init_state = RequestIsolation;
                 break;
             }
@@ -443,6 +444,7 @@ static int signpost_initialization_initialize_loop(void) {
               port_printf("INIT: Timed out waiting for controller declare response\n");
               port_signpost_mod_out_set();
               port_signpost_delay_ms(3000);
+              incoming_active_callback = NULL;
               init_state = RequestIsolation;
               break;
             };
@@ -974,11 +976,13 @@ int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len)
 
     free(buf);
     if(rc < PORT_SUCCESS) {
+        incoming_active_callback = NULL;
         return rc;
     }
 
     rc = port_signpost_wait_for_with_timeout(&networking_ready, 3000);
     if(rc < PORT_SUCCESS) {
+        incoming_active_callback = NULL;
         return rc;
     }
 
@@ -1042,7 +1046,10 @@ int signpost_energy_query(signpost_energy_information_t* energy) {
     }
 
     int ret = port_signpost_wait_for_with_timeout(&energy_query_ready, 10000);
-    if(ret < 0) return PORT_FAIL;
+    if(ret < 0) {
+        incoming_active_callback = NULL;
+        return PORT_FAIL;
+    }
 
     return energy_query_result;
 }
@@ -1073,11 +1080,10 @@ int signpost_energy_query_async(
         signbus_app_callback_t cb
         ) {
     if (incoming_active_callback != NULL) {
-        // XXX: Consider multiplexing based on API
-        return -PORT_EBUSY;
+        return PORT_EBUSY;
     }
     if (energy_cb != NULL) {
-        return -PORT_EBUSY;
+        return PORT_EBUSY;
     }
     incoming_active_callback = energy_query_async_callback;
     energy_cb_data = energy;
@@ -1131,6 +1137,7 @@ int signpost_energy_report(signpost_energy_report_t* report) {
     energy_report_received = false;
     rc = port_signpost_wait_for_with_timeout(&energy_report_received,10000);
     if(rc < 0) {
+        incoming_active_callback = NULL;
         return PORT_FAIL;
     }
 
@@ -1155,7 +1162,10 @@ int signpost_energy_reset(void) {
     incoming_active_callback = signpost_energy_reset_callback;
     energy_reset_received = false;
     rc = port_signpost_wait_for_with_timeout(&energy_reset_received,10000);
-    if(rc < 0) return PORT_FAIL;
+    if(rc < 0) {
+        incoming_active_callback = NULL;
+        return PORT_FAIL;
+    }
 
     // There is an integer in the incoming message that should be
     // sent back as the return code.
