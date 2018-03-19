@@ -1273,7 +1273,7 @@ int signpost_timelocation_get_time(time_t* time) {
     if(temp.satellite_count < 3) {
         return PORT_ENOSAT;
     } else {
-        return PORT_SUCCESS;
+        return temp.satellite_count;
     }
 }
 

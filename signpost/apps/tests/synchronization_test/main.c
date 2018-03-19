@@ -13,7 +13,7 @@
 
 #include "signpost_api.h"
 
-static signpost_timelocation_time_t time;
+static struct tm* current_time;
 static uint8_t new_time = 0;
 static uint8_t flash_led = false;
 
@@ -57,11 +57,11 @@ static void pps_callback (int pin_num,
         got_int = 1;
         float seconds;
         if(new_time) {
-            seconds = time.seconds + (pin_time - last_pps_time)/16000.0;
+            seconds = current_time->tm_sec + (pin_time - last_pps_time)/16000.0;
         } else {
-            seconds = 1 + time.seconds + (pin_time - last_pps_time)/16000.0;
+            seconds = 1 + current_time->tm_sec + (pin_time - last_pps_time)/16000.0;
         }
-        printf("Interrupt occurred at %d:%lu\n",time.minutes,(uint32_t)(seconds*1000000));
+        printf("Interrupt occurred at %d:%lu\n",current_time->tm_min,(uint32_t)(seconds*1000000));
     }
 }
 
@@ -96,11 +96,13 @@ int main (void) {
 
   while (true) {
     if(new_time == 0) {
-        rc = signpost_timelocation_get_time(&time);
-        printf("Got new time %d:%d\n",time.minutes,time.seconds);
+        time_t utime;
+        rc = signpost_timelocation_get_time(&utime);
+        current_time = gmtime(&utime);
+        printf("Got new time %d:%d\n",current_time->tm_min,current_time->tm_sec);
         if(rc >= 0) {
             new_time = 1;
-            if((time.seconds % 10) == 0) {
+            if((current_time->tm_sec % 10) == 0) {
                 flash_led = true;
             }
         }

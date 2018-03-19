@@ -23,8 +23,7 @@ uint8_t send_buf[50];
 
 #define LED_PIN 0
 
-static uint32_t utime;
-struct tm current_time;
+static time_t utime;
 
 static void timer_callback (
         int callback_type __attribute__ ((unused)),
@@ -58,25 +57,16 @@ static void timer_callback (
         count = 0;
 
         //okay now try to get the time from the controller
-        signpost_timelocation_time_t stime;
-        rc = signpost_timelocation_get_time(&stime);
-        printf("Got time with %d satellites\n",stime.satellite_count);
-        if(rc < 0 || stime.satellite_count < 2) {
-            printf("Failed to get time - assuming 10 seconds\n");
+        rc = signpost_timelocation_get_time(&utime);
+        if(rc < 0) {
+            printf("Failed to get time - assuming 20 seconds\n");
             utime += 20;
             send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
             send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
             send_buf[4] = (uint8_t)((utime & 0xff));
         } else {
-            current_time.tm_year = stime.year - 1900;
-            current_time.tm_mon = stime.month - 1;
-            current_time.tm_mday = stime.day;
-            current_time.tm_hour = stime.hours;
-            current_time.tm_min = stime.minutes;
-            current_time.tm_sec = stime.seconds;
-            current_time.tm_isdst = 0;
-            utime = mktime(&current_time);
+            printf("Got time with %d satellites\n",rc);
             send_buf[1] = (uint8_t)((utime & 0xff000000) >> 24);
             send_buf[2] = (uint8_t)((utime & 0xff0000) >> 16);
             send_buf[3] = (uint8_t)((utime & 0xff00) >> 8);
