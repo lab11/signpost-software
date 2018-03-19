@@ -1,4 +1,11 @@
-[root]
+[[package]]
+name = "capsules"
+version = "0.1.0"
+dependencies = [
+ "kernel 0.1.0",
+]
+
+[[package]]
 name = "controller"
 version = "0.1.0"
 dependencies = [
@@ -8,13 +15,6 @@ dependencies = [
  "sam4l 0.1.0",
  "signpost_drivers 0.1.0",
  "signpost_hil 0.1.0",
-]
-
-[[package]]
-name = "capsules"
-version = "0.1.0"
-dependencies = [
- "kernel 0.1.0",
 ]
 
 [[package]]

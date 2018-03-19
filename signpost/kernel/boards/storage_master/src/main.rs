@@ -1,7 +1,7 @@
 #![crate_name = "storage_master"]
 #![no_std]
 #![no_main]
-#![feature(asm,compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
+#![feature(asm,compiler_builtins_lib,const_fn,lang_items)]
 
 extern crate capsules;
 extern crate compiler_builtins;
@@ -14,7 +14,6 @@ extern crate signpost_drivers;
 extern crate signpost_hil;
 
 use capsules::console::{self, Console};
-use capsules::timer::TimerDriver;
 use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
 use kernel::hil;
 use kernel::hil::Controller;
@@ -48,7 +47,7 @@ struct SignpostStorageMaster {
     console: &'static Console<'static, usart::USART>,
     gpio: &'static capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
-    timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
+    timer: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
     sdcard: &'static capsules::sdcard::SDCardDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     rng: &'static capsules::rng::SimpleRng<'static, sam4l::trng::Trng<'static>>,
@@ -65,18 +64,18 @@ impl Platform for SignpostStorageMaster {
     {
 
         match driver_num {
-            0 => f(Some(self.console)),
-            1 => f(Some(self.gpio)),
-            3 => f(Some(self.timer)),
-            8 => f(Some(self.led)),
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
+            capsules::led::DRIVER_NUM => f(Some(self.led)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            15 => f(Some(self.sdcard)),
-            30 => f(Some(self.app_flash)),
-            120 => f(Some(self.stfu)),
-            121 => f(Some(self.stfu_holding)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::sdcard::DRIVER_NUM => f(Some(self.sdcard)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu_holding)),
 
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }
@@ -207,7 +206,7 @@ pub unsafe fn reset_handler() {
         Console::new(&usart::USART3,
                      115200,
                      &mut console::WRITE_BUF,
-                     kernel::Container::create()));
+                     kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART3, console);
 
     //
@@ -224,14 +223,14 @@ pub unsafe fn reset_handler() {
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
         VirtualMuxAlarm::new(mux_alarm));
     let timer = static_init!(
-        TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        TimerDriver::new(virtual_alarm1, kernel::Container::create()));
+        capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
+        capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create()));
     virtual_alarm1.set_client(timer);
 
     // Setup RNG
     let rng = static_init!(
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
-            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
+            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Grant::create()));
     sam4l::trng::TRNG.set_client(rng);
 
     //
@@ -341,7 +340,7 @@ pub unsafe fn reset_handler() {
     let app_flash = static_init!(
         capsules::app_flash_driver::AppFlash<'static>,
         capsules::app_flash_driver::AppFlash::new(app_holding_nv_to_page,
-            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+            kernel::Grant::create(), &mut APP_FLASH_BUFFER));
     hil::nonvolatile_storage::NonvolatileStorage::set_client(app_holding_nv_to_page, app_flash);
 
     //
@@ -364,7 +363,7 @@ pub unsafe fn reset_handler() {
     let stfu_holding = static_init!(
         capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
         capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
-            stfu_holding_nv_to_page, kernel::Container::create(),
+            stfu_holding_nv_to_page, kernel::Grant::create(),
             0x60000, // Start address for userspace accessible region
             0x20000, // Length of userspace accessible region
             0,       // Start address of kernel accessible region

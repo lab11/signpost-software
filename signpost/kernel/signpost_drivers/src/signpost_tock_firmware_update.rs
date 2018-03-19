@@ -10,6 +10,9 @@ use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 #[derive(Clone,Copy,Debug,PartialEq)]
 enum State {}
 
+pub const DRIVER_NUM: usize = 0x10050004;
+pub const DRIVER_NUM2: usize = 0x10050005;
+
 pub struct SignpostTockFirmwareUpdate<'a, F: hil::flash::Flash + 'static> {
     /// The module providing a `Flash` interface.
     driver: &'a F,
@@ -93,9 +96,10 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     /// ### `allow_num`
     ///
     /// - `0`: Buffer that is 16 bytes long and will contain reset config information.
-    fn allow(&self, _appid: AppId, _allow_num: usize, slice: AppSlice<Shared, u8>) -> ReturnCode {
-        if slice.len() == 16 {
-            self.config.replace(slice);
+    fn allow(&self, _appid: AppId, _allow_num: usize, slice: Option<AppSlice<Shared, u8>>) -> ReturnCode {
+        let s = slice.unwrap();
+        if s.len() == 16 {
+            self.config.replace(s);
             ReturnCode::SUCCESS
         } else {
             ReturnCode::EINVAL
@@ -108,7 +112,7 @@ impl<'a, F: hil::flash::Flash + 'a> Driver for SignpostTockFirmwareUpdate<'a, F>
     ///
     /// - `0`: Return SUCCESS if this driver is included on the platform.
     /// - `1`: Do it.
-    fn command(&self, command_num: usize, _arg1: usize, _appid: AppId) -> ReturnCode {
+    fn command(&self, command_num: usize, _arg1: usize, _: usize, _appid: AppId) -> ReturnCode {
 
         match command_num {
             0 => /* This driver exists. */ ReturnCode::SUCCESS,

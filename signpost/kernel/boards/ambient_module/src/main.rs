@@ -1,7 +1,7 @@
 #![crate_name = "ambient_module"]
 #![no_std]
 #![no_main]
-#![feature(asm,compiler_builtins_lib,const_fn,drop_types_in_const,lang_items)]
+#![feature(asm,compiler_builtins_lib,const_fn,lang_items)]
 
 extern crate capsules;
 extern crate compiler_builtins;
@@ -14,7 +14,6 @@ extern crate signpost_drivers;
 extern crate signpost_hil;
 
 use capsules::console::{self, Console};
-use capsules::timer::TimerDriver;
 use capsules::virtual_alarm::{MuxAlarm, VirtualMuxAlarm};
 use kernel::hil;
 use kernel::hil::Controller;
@@ -47,13 +46,12 @@ struct AmbientModule {
     console: &'static Console<'static, usart::USART>,
     gpio: &'static capsules::gpio::GPIO<'static, sam4l::gpio::GPIOPin>,
     led: &'static capsules::led::LED<'static, sam4l::gpio::GPIOPin>,
-    timer: &'static TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
+    alarm: &'static capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     i2c_master_slave: &'static capsules::i2c_master_slave_driver::I2CMasterSlaveDriver<'static>,
-    // lps331ap: &'static signpost_drivers::lps331ap::LPS331AP<'static>,
     lps25hb: &'static capsules::lps25hb::LPS25HB<'static>,
-    si7021: &'static capsules::si7021::SI7021<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
-    isl29035: &'static capsules::isl29035::Isl29035<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
-    tsl2561: &'static capsules::tsl2561::TSL2561<'static>,
+    ambient_light: &'static capsules::ambient_light::AmbientLight<'static>,
+    temp: &'static capsules::temperature::TemperatureSensor<'static>,
+    humidity: &'static capsules::humidity::HumiditySensor<'static>,
     app_watchdog: &'static signpost_drivers::app_watchdog::AppWatchdog<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast<'static>>>,
     stfu: &'static signpost_drivers::signpost_tock_firmware_update::SignpostTockFirmwareUpdate<'static,
         capsules::virtual_flash::FlashUser<'static, sam4l::flashcalw::FLASHCALW>>,
@@ -68,27 +66,27 @@ impl Platform for AmbientModule {
         where F: FnOnce(Option<&kernel::Driver>) -> R
     {
         match driver_num {
-            0 => f(Some(self.console)),
-            1 => f(Some(self.gpio)),
+            capsules::console::DRIVER_NUM => f(Some(self.console)),
+            capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
 
-            3 => f(Some(self.timer)),
+            capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
 
-            6 => f(Some(self.isl29035)),
+            capsules::ambient_light::DRIVER_NUM => f(Some(self.ambient_light)),
+            capsules::temperature::DRIVER_NUM => f(Some(self.temp)),
+            capsules::humidity::DRIVER_NUM => f(Some(self.humidity)),
 
-            8 => f(Some(self.led)),
+            capsules::led::DRIVER_NUM => f(Some(self.led)),
 
-            10 => f(Some(self.si7021)),
-            12 => f(Some(self.tsl2561)),
             13 => f(Some(self.i2c_master_slave)),
-            14 => f(Some(self.rng)),
-            22 => f(Some(self.lps25hb)),
-            30 => f(Some(self.app_flash)),
+            capsules::rng::DRIVER_NUM => f(Some(self.rng)),
+            capsules::lps25hb::DRIVER_NUM => f(Some(self.lps25hb)),
+            capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 
-            108 => f(Some(self.app_watchdog)),
-            120 => f(Some(self.stfu)),
-            121 => f(Some(self.stfu_holding)),
+            signpost_drivers::app_watchdog::DRIVER_NUM => f(Some(self.app_watchdog)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM => f(Some(self.stfu)),
+            signpost_drivers::signpost_tock_firmware_update::DRIVER_NUM2 => f(Some(self.stfu_holding)),
 
-            0xff => f(Some(&self.ipc)),
+            kernel::ipc::DRIVER_NUM => f(Some(&self.ipc)),
             _ => f(None)
         }
     }
@@ -156,7 +154,7 @@ pub unsafe fn reset_handler() {
         Console::new(&usart::USART0,
                      115200,
                      &mut console::WRITE_BUF,
-                     kernel::Container::create()));
+                     kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART0, console);
 
     //
@@ -172,15 +170,15 @@ pub unsafe fn reset_handler() {
     let virtual_alarm1 = static_init!(
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
         VirtualMuxAlarm::new(mux_alarm));
-    let timer = static_init!(
-        TimerDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
-        TimerDriver::new(virtual_alarm1, kernel::Container::create()));
-    virtual_alarm1.set_client(timer);
+    let alarm = static_init!(
+        capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
+        capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create()));
+    virtual_alarm1.set_client(alarm);
 
     // Setup RNG
     let rng = static_init!(
             capsules::rng::SimpleRng<'static, sam4l::trng::Trng>,
-            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Container::create()));
+            capsules::rng::SimpleRng::new(&sam4l::trng::TRNG, kernel::Grant::create()));
     sam4l::trng::TRNG.set_client(rng);
 
     //
@@ -225,17 +223,19 @@ pub unsafe fn reset_handler() {
     si7021_i2c.set_client(si7021);
     si7021_virtual_alarm.set_client(si7021);
 
-    // // LPS331AP Pressure Sensor
-    // let lps331ap_i2c = static_init!(
-    //     capsules::virtual_i2c::I2CDevice,
-    //     capsules::virtual_i2c::I2CDevice::new(i2c_mux_sensors, 0x5C));
-    // let lps331ap = static_init!(
-    //     signpost_drivers::lps331ap::LPS331AP<'static>,
-    //     signpost_drivers::lps331ap::LPS331AP::new(lps331ap_i2c,
-    //         &sam4l::gpio::PA[14],
-    //         &mut signpost_drivers::lps331ap::BUFFER));
-    // lps331ap_i2c.set_client(lps331ap);
-    // sam4l::gpio::PA[14].set_client(lps331ap);
+    let temp = static_init!(
+        capsules::temperature::TemperatureSensor<'static>,
+        capsules::temperature::TemperatureSensor::new(si7021, kernel::Grant::create()),
+        96 / 8
+    );
+    kernel::hil::sensors::TemperatureDriver::set_client(si7021, temp);
+
+    let humidity = static_init!(
+        capsules::humidity::HumiditySensor<'static>,
+        capsules::humidity::HumiditySensor::new(si7021, kernel::Grant::create()),
+        96 / 8
+    );
+    kernel::hil::sensors::HumidityDriver::set_client(si7021, humidity);
 
     // LPS25HB Pressure Sensor
     let lps25hb_i2c = static_init!(
@@ -249,18 +249,6 @@ pub unsafe fn reset_handler() {
     lps25hb_i2c.set_client(lps25hb);
     sam4l::gpio::PA[10].set_client(lps25hb);
 
-    // TSL2561 Light Sensor
-    let tsl2561_i2c = static_init!(
-        capsules::virtual_i2c::I2CDevice,
-        capsules::virtual_i2c::I2CDevice::new(i2c_mux_sensors, 0x29));
-    let tsl2561 = static_init!(
-        capsules::tsl2561::TSL2561<'static>,
-        capsules::tsl2561::TSL2561::new(tsl2561_i2c,
-            &sam4l::gpio::PA[16],
-            &mut capsules::tsl2561::BUFFER));
-    tsl2561_i2c.set_client(tsl2561);
-    sam4l::gpio::PA[16].set_client(tsl2561);
-
     // Configure the ISL29035, device address 0x44
     let isl29035_i2c = static_init!(
         capsules::virtual_i2c::I2CDevice,
@@ -273,6 +261,12 @@ pub unsafe fn reset_handler() {
         capsules::isl29035::Isl29035::new(isl29035_i2c, isl29035_virtual_alarm, &mut capsules::isl29035::BUF));
     isl29035_i2c.set_client(isl29035);
     isl29035_virtual_alarm.set_client(isl29035);
+
+    let ambient_light = static_init!(
+        capsules::ambient_light::AmbientLight<'static>,
+        capsules::ambient_light::AmbientLight::new(isl29035, kernel::Grant::create())
+    );
+    hil::sensors::AmbientLight::set_client(isl29035, ambient_light);
 
     //
     // LEDs
@@ -369,7 +363,7 @@ pub unsafe fn reset_handler() {
     let app_flash = static_init!(
         capsules::app_flash_driver::AppFlash<'static>,
         capsules::app_flash_driver::AppFlash::new(app_holding_nv_to_page,
-            kernel::Container::create(), &mut APP_FLASH_BUFFER));
+            kernel::Grant::create(), &mut APP_FLASH_BUFFER));
     hil::nonvolatile_storage::NonvolatileStorage::set_client(app_holding_nv_to_page, app_flash);
 
     //
@@ -392,7 +386,7 @@ pub unsafe fn reset_handler() {
     let stfu_holding = static_init!(
         capsules::nonvolatile_storage_driver::NonvolatileStorage<'static>,
         capsules::nonvolatile_storage_driver::NonvolatileStorage::new(
-            stfu_holding_nv_to_page, kernel::Container::create(),
+            stfu_holding_nv_to_page, kernel::Grant::create(),
             0x60000, // Start address for userspace accessible region
             0x20000, // Length of userspace accessible region
             0,       // Start address of kernel accessible region
@@ -423,12 +417,12 @@ pub unsafe fn reset_handler() {
         console: console,
         gpio: gpio,
         led: led,
-        timer: timer,
+        alarm: alarm,
         i2c_master_slave: i2c_master_slave,
         lps25hb: lps25hb,
-        si7021: si7021,
-        isl29035: isl29035,
-        tsl2561: tsl2561,
+        temp: temp,
+        humidity: humidity,
+        ambient_light: ambient_light,
         app_watchdog: app_watchdog,
         rng: rng,
         app_flash: app_flash,
