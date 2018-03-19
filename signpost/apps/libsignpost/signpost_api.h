@@ -259,10 +259,16 @@ enum networking_message_type {
     NetworkingSubscribeMessage,
 };
 
-__attribute__((warn_unused_result))
-int signpost_networking_send(const char* topic, uint8_t* data, uint8_t data_len);
+typedef void (*signpost_networking_subscribe_cb_t)(char* topic, uint8_t* data, uint8_t data_len);
 
-void signpost_networking_send_reply(uint8_t src_addr, uint8_t type, int return_code);
+//used by other modules
+__attribute__((warn_unused_result))
+int signpost_networking_publish(const char* topic, uint8_t* data, uint8_t data_len);
+int signpost_networking_subscribe(signpost_networking_subscribe_cb_t cb);
+
+//Used by the radio module
+int signpost_networking_publish_reply(uint8_t src_addr, int return_code);
+int signpost_networking_subscribe_send(uint8_t dest_addr, char* topic, uint8_t* data, uint8_t data_len);
 
 /**************************************************************************/
 /* PROCESSING API                                                         */
