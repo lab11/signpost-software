@@ -178,6 +178,7 @@ static void timer_callback (
 
     if(currently_sending) return;
     static uint8_t send_counter = 0;
+    static uint8_t receive_counter = 0;
 
     if(queue_head != queue_tail) {
 

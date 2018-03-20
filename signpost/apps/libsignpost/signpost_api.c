@@ -480,7 +480,7 @@ static int signpost_initialization_initialize_loop(void) {
 
 }
 
-int signpost_init(const char* module_name) {
+int signpost_init(const char* org_name, const char* module_name) {
     int rc;
 
     //setup APIS
@@ -492,8 +492,21 @@ int signpost_init(const char* module_name) {
     module_info.i2c_address = 0x00;
     module_api.api_handlers = api_handlers;
 
+
     //copy the name into the info struct
-    strncpy(module_info.self_name,module_name,NAME_LEN);
+    uint8_t org_name_len = strnlen(org_name,NAME_LEN);
+    if(org_name_len <= 0) {
+        return PORT_EINVAL;
+    }
+
+    uint8_t module_name_len = strnlen(module_name,NAME_LEN);
+    if(module_name_len <= 0) {
+        return PORT_EINVAL;
+    }
+
+    strncpy(module_info.self_name,org_name,org_name_len);
+    module_info.self_name[org_name_len] = '/';
+    strncpy(module_info.self_name + org_name_len + 1,module_name,module_name_len);
 
     // Begin listening for replies
     signpost_api_start_new_async_recv();

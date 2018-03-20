@@ -98,7 +98,7 @@ typedef enum module_address {
 
 //Basic initialization for most sensor modules
 __attribute__((warn_unused_result))
-int signpost_init(const char* module_name);
+int signpost_init(const char* org_name, const char* module_name);
 
 // Initialize this module.
 // Must be called before any other signpost API methods.
