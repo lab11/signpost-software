@@ -384,8 +384,9 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     module_info.i2c_address = ModuleAddressController;
     module_api.api_handlers = api_handlers;
 
-    //add the controller name
-    strncpy(module_info.self_name,"lab11/control",NAME_LEN);
+    //set the controller module name
+    const char* name = "signpost/control";
+    strncpy(module_info.self_name,name,NAME_LEN);
 
     // Begin listening for replies
     signpost_api_start_new_async_recv();
@@ -527,7 +528,7 @@ int signpost_init(const char* org_name, const char* module_name) {
     return signpost_initialization_initialize_loop();
 }
 
-int signpost_initialization_module_init(const char* module_name, uint8_t i2c_address, api_handler_t** api_handlers) {
+int signpost_initialization_module_init(const char* org_name, const char* module_name, uint8_t i2c_address, api_handler_t** api_handlers) {
     int rc;
 
     rc = signpost_initialization_common(i2c_address);
@@ -538,7 +539,20 @@ int signpost_initialization_module_init(const char* module_name, uint8_t i2c_add
     module_api.api_handlers = api_handlers;
 
     //copy the name into the info struct
-    strncpy(module_info.self_name,module_name,NAME_LEN);
+    uint8_t org_name_len = strnlen(org_name,NAME_LEN);
+    if(org_name_len <= 0) {
+        return PORT_EINVAL;
+    }
+
+    uint8_t module_name_len = strnlen(module_name,NAME_LEN);
+    if(module_name_len <= 0) {
+        return PORT_EINVAL;
+    }
+
+    //copy the name into the info struct
+    strncpy(module_info.self_name,org_name,org_name_len);
+    module_info.self_name[org_name_len] = '/';
+    strncpy(module_info.self_name + org_name_len + 1,module_name,module_name_len);
 
     // Begin listening for replies
     signpost_api_start_new_async_recv();

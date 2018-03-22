@@ -598,7 +598,7 @@ int main (void) {
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
     static api_handler_t* handlers[] = {&networking_handler,NULL};
     do {
-        rc = signpost_initialization_module_init("radio",ModuleAddressRadio,handlers);
+        rc = signpost_initialization_module_init("signpost","radio",ModuleAddressRadio,handlers);
         if (rc<0) {
             delay_ms(5000);
         }
@@ -617,14 +617,14 @@ int main (void) {
     delay_ms(1000);
     rc = sara_u260_init();
 
-    status_send_buf[0] = strlen("lab11/radio-status");
+    status_send_buf[0] = strlen("signpost/radio/status");
     printf("%02x\n", status_send_buf[0]);
-    memcpy(status_send_buf+1,"lab11/radio-status",strlen("lab11/radio-status"));
+    memcpy(status_send_buf+1,"signpost/radio/status",strlen("signpost/radio/status"));
     for(int k = 0; k < status_send_buf[0] + 1; k++) {
       printf("%02x", status_send_buf[k]);
     }
     printf("\n");
-    status_length_offset = 1 + strlen("lab11/radio-status");
+    status_length_offset = 1 + strlen("signpost/radio/status");
     status_data_offset = status_length_offset+1;
     status_send_buf[status_data_offset] = 0x02;
     status_data_offset++;

@@ -45,7 +45,7 @@ int main(void) {
     //signpost initialization
     int rc;
     do {
-        rc = signpost_init("lab11/spectrum");
+        rc = signpost_init("lab11","spectrum");
         if (rc < 0) {
             printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
             port_signpost_delay_ms(5000);

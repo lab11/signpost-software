@@ -18,7 +18,7 @@ int main(void) {
     // signpost, negotiate keys, and learn what other services are available on
     // this signpost:
     do {
-        rc = signpost_init("template");
+        rc = signpost_init("test","template");
         if (rc < 0) {
             printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
             delay_ms(5000);

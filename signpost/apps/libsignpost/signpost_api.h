@@ -110,7 +110,7 @@ int signpost_init(const char* org_name, const char* module_name);
 //                 This array MUST be static (pointer must be valid forever).
 //                 Modules that implement no APIs MUST pass SIGNPOST_INITIALIZATION_NO_APIS.
 __attribute__((warn_unused_result))
-int signpost_initialization_module_init(const char* module_name, uint8_t i2c_address, api_handler_t** api_handlers);
+int signpost_initialization_module_init(const char* org_name, const char* module_name, uint8_t i2c_address, api_handler_t** api_handlers);
 
 // A special initialization routine for the controller module only.
 __attribute__((warn_unused_result))

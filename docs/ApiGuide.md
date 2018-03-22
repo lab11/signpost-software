@@ -25,15 +25,15 @@ at the top of your application.
 ## Initialization
 
 Initialization registers a signpost module with the controller and sets up
-shared symmetric keys with other modules. Modules initialize with a name 
-(16 characters or less), and this name is used to identify
+shared symmetric keys with other modules. Modules initialize with an organization
+name and a module name, and these names are used to identify
 the module throughout the signpost ecosystem. This is the first Signpost API 
-function every module must call.
+function every module must call. Both names must be 8 characters or less.
 
 The prototype of the initialization function is:
 
 ```c
-int signpost_init(char* module_name);
+int signpost_init(char* org_name, char* module_name);
 ```
 
 There also exists a more complex initialization function used to provide

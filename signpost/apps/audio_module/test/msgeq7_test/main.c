@@ -27,7 +27,7 @@ int main (void) {
   printf("[TEST] Audio ADC\n");
 
   // initialize the signpost bus
-  err = signpost_init("lab11/audio");
+  err = signpost_init("lab11","audio");
   if (err < TOCK_SUCCESS) {
     printf("Signbus initialization failed\n");
     return TOCK_FAIL;

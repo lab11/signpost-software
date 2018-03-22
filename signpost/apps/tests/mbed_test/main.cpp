@@ -9,7 +9,7 @@ int main(void) {
 
     int rc;
     do {
-        rc = signpost_init("mbed_test");
+        rc = signpost_init("test","mbed");
         if (rc < 0) {
             printf(" - Error initializing module (code: %d). Sleeping 5s.\n", rc);
             port_signpost_delay_ms(5000);

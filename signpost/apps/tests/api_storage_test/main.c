@@ -18,7 +18,7 @@ int main (void) {
   printf("[Test] API: Storage\n");
 
   do {
-    err = signpost_init("storage_test");
+    err = signpost_init("test","storage");
     if (err < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", err);
       delay_ms(5000);

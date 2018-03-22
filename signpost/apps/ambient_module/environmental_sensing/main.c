@@ -124,7 +124,7 @@ int main (void) {
   // initialize module as a part of the signpost bus
   int rc;
   do {
-    rc = signpost_init("lab11/ambient");
+    rc = signpost_init("lab11","ambient");
     if (rc < 0) {
       printf(" - Error initializing bus (code %d). Sleeping for 5s\n", rc);
       delay_ms(5000);

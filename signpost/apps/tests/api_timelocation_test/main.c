@@ -13,7 +13,7 @@
 int main (void) {
   printf("\n\n[Test] API: Time & Location\n");
 
-  int rc = signpost_init("time_test");
+  int rc = signpost_init("test","time");
   if (rc < TOCK_SUCCESS) {
     printf("Signpost initialization errored: %d\n", rc);
   }

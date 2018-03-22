@@ -16,7 +16,7 @@ int main (void) {
   int rc;
 
   do {
-    rc = signpost_init("energy_test");
+    rc = signpost_init("test","energy");
     if (rc < 0) {
       printf(" - Error initializing module (code %d). Sleeping 5s.\n", rc);
       delay_ms(5000);

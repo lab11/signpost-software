@@ -70,7 +70,7 @@ int main (void) {
 
 
     //initialize signpost API
-  int rc = signpost_init("Synchtest");
+  int rc = signpost_init("test","synch");
   if (rc < TOCK_SUCCESS) {
     printf("Signpost initialization errored: %d\n", rc);
   }

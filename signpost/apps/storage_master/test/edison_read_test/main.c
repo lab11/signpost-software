@@ -355,7 +355,7 @@ int main (void) {
   static api_handler_t processing_handler = {ProcessingApiType, processing_api_callback};
   static api_handler_t* handlers[] = {&storage_handler, &processing_handler, NULL};
   do {
-    rc = signpost_initialization_module_init("storage",ModuleAddressStorage, handlers);
+    rc = signpost_initialization_module_init("signpost","storage",ModuleAddressStorage, handlers);
     if (rc < 0) {
       printf(" - Error initializing bus access (code: %d). Sleeping 5s.\n", rc);
       delay_ms(5000);

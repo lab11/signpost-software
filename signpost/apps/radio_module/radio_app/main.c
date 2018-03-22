@@ -178,7 +178,6 @@ static void timer_callback (
 
     if(currently_sending) return;
     static uint8_t send_counter = 0;
-    static uint8_t receive_counter = 0;
 
     if(queue_head != queue_tail) {
 
@@ -283,6 +282,18 @@ static void timer_callback (
                 printf("Xdot send succeeded!\n");
                 sn++;
                 increment_queue_pointer(&queue_head);
+
+                //See if the XDOT got any data in the response
+                uint8_t rbuf[128];
+                int status = xdot_receive(rbuf, 128);
+                if(status > 0) {
+                    printf("Xdot received %d bytes of data\n",status);
+
+                } else if(status == 0) {
+                    printf("Xdot received no data!\n");
+                } else {
+                    printf("Xdot receive failed!\n");
+                }
             }
 
             xdot_sleep();
@@ -431,7 +442,7 @@ int main (void) {
     static api_handler_t networking_handler = {NetworkingApiType, networking_api_callback};
     static api_handler_t* handlers[] = {&networking_handler,NULL};
     do {
-        rc = signpost_initialization_module_init("radio",ModuleAddressRadio,handlers);
+        rc = signpost_initialization_module_init("signpost","radio",ModuleAddressRadio,handlers);
         if (rc<0) {
             delay_ms(5000);
         }
@@ -449,9 +460,9 @@ int main (void) {
     delay_ms(1000);
     rc = sara_u260_init();
 
-    status_send_buf[0] = strlen("lab11/radio-status");
-    memcpy(status_send_buf+1,"lab11/radio-status",strlen("lab11/radio-status"));
-    status_length_offset = 1 + strlen("lab11/radio-status");
+    status_send_buf[0] = strlen("signpost/radio/status");
+    memcpy(status_send_buf+1,"signpost/radio/status",strlen("signpost/radio/status"));
+    status_length_offset = 1 + strlen("signpost/radio/status");
     status_data_offset = status_length_offset+1;
     status_send_buf[status_data_offset] = 0x01;
     status_data_offset++;

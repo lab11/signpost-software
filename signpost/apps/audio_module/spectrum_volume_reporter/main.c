@@ -200,7 +200,7 @@ int main (void) {
     //initialize the signpost API
     int rc;
     do {
-        rc = signpost_init("lab11/audio");
+        rc = signpost_init("lab11","audio");
         if (rc < 0) {
             printf(" - Error initializing bus (code %d). Sleeping for 5s\n",rc);
             delay_ms(5000);
