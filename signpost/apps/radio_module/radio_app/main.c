@@ -26,7 +26,7 @@
 #define POST_ADDRESS "ec2-35-166-179-172.us-west-2.compute.amazonaws.com"
 
 //definitions for the i2c
-#define BUFFER_SIZE 100
+#define BUFFER_SIZE 128
 #define ADDRESS_SIZE 6
 #define NUMBER_OF_MODULES 8
 #define CELL_POST_SIZE 2000
@@ -34,6 +34,7 @@
 //array of the data we're going to send on the radios
 //make a queue of 30 deep
 #define QUEUE_SIZE 30
+#define DOWNLINK_QUEUE_SIZE 10
 uint8_t data_queue[QUEUE_SIZE][BUFFER_SIZE];
 uint8_t data_length[QUEUE_SIZE];
 uint8_t data_address[QUEUE_SIZE];
@@ -58,6 +59,9 @@ static uint8_t address[ADDRESS_SIZE] = { COMPILE_TIME_ADDRESS };
 #define LORA_JOINED 0
 #define LORA_ERROR -1
 int lora_state = LORA_ERROR;
+
+//extern module state
+extern module_state_t module_info;
 
 static void increment_queue_pointer(uint8_t* p) {
     if(*p == (QUEUE_SIZE -1)) {
@@ -88,6 +92,51 @@ static void count_module_packet(uint8_t module_address) {
             break;
         }
     }
+}
+
+static int lookup_module_num(char* mod_name) {
+    for(uint8_t i = 0; i < NUM_MODULES; i++) {
+        if(!strncmp(module_info.names[i],mod_name,NAME_LEN)) {
+            return i;
+        }
+    }
+    return TOCK_FAIL;
+}
+
+static int8_t send_downlink_message(uint8_t* buffer, uint8_t len) {
+    //extract the module name
+    uint8_t slen = buffer[0];
+    uint8_t dlen = buffer[slen+1];
+    if(slen+ dlen + 2 > len) {
+        return TOCK_FAIL;
+    }
+
+    char mod_name[NAME_LEN] = {0};
+    char topic[NAME_LEN] = {0};
+    uint8_t* find1 = memchr(buffer+1,'/',slen);
+    uint8_t* find2 = memchr(find1,'/',slen-(find1-(buffer+1)));
+    memcpy(mod_name,buffer+1,find2-(buffer+1));
+    memcpy(topic,find2,slen-(find2-(buffer+1)));
+    printf("Parsed downlink mod name to be: %s\n", mod_name);
+    printf("Parsed downlink topic to be: %s\n", topic);
+
+    //Do we know the module name?
+    int ret = lookup_module_num(mod_name);
+    if(ret == TOCK_FAIL) {
+        //ask the controller for the info
+        ret = signpost_initialization_get_module_state();
+        if(ret == TOCK_FAIL) {
+            return TOCK_FAIL;
+        }
+
+        ret = lookup_module_num(mod_name);
+        if(ret == TOCK_FAIL) {
+            return TOCK_FAIL;
+        }
+    }
+
+    //okay we have the destination - dispatch the message
+    return signpost_networking_subscribe_send(ret, topic, &buffer[slen+2], dlen);
 }
 
 static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
@@ -285,10 +334,10 @@ static void timer_callback (
 
                 //See if the XDOT got any data in the response
                 uint8_t rbuf[128];
-                int status = xdot_receive(rbuf, 128);
+                status = xdot_receive(rbuf, 128);
                 if(status > 0) {
                     printf("Xdot received %d bytes of data\n",status);
-
+                    send_downlink_message(rbuf, status);
                 } else if(status == 0) {
                     printf("Xdot received no data!\n");
                 } else {

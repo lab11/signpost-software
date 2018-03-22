@@ -124,6 +124,10 @@ static void initialization_api_callback(uint8_t source_address,
                     }
                     break;
                 }
+                case InitializationGetState: {
+                    signpost_initialization_get_module_state_reply(source_address);
+                    break;
+                }
                 default:
                    break;
             }

@@ -19,31 +19,16 @@
 #pragma GCC diagnostic ignored "-Wformat-truncation="
 #endif
 
-#define NAME_LEN 16
 #define ECDH_KEY_LENGTH 32
-#define NUM_MODULES 8
 #define MOD_STATE_MAGIC 0xDEADBEEF
 
 extern mbedtls_ctr_drbg_context ctr_drbg_context;
-
-typedef struct module_struct {
-    uint32_t                magic;
-    uint8_t                 self_mod_num;
-    uint8_t                 i2c_address;
-    char                    self_name[NAME_LEN];
-    char                    names[NUM_MODULES][NAME_LEN];
-    uint8_t                 i2c_address_mods[NUM_MODULES];
-    uint16_t                nonces[NUM_MODULES];
-    bool                    haskey[NUM_MODULES];
-    uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
-} module_state_t;
-
 
 struct module_api_struct {
     api_handler_t**         api_handlers;
 } module_api = {0};
 
-static module_state_t module_info = {0};
+module_state_t module_info = {0};
 
 // Translate module address to pairwise key
 uint8_t* signpost_api_addr_to_key(uint8_t addr) {
@@ -222,6 +207,8 @@ static bool request_isolation_complete;
 //static bool revoke_complete;
 static bool declare_controller_complete;
 //static bool key_send_complete;
+//
+static bool get_state_complete;
 
 // state of isolation
 static bool is_isolated = 0;
@@ -247,6 +234,10 @@ static void signpost_initialization_declare_callback(int len_or_rc) {
             InitializationDeclare) return;
 
     init_state = Done;
+}
+
+static void signpost_initialization_get_state_callback(__attribute__ ((unused)) int len_or_rc) {
+    get_state_complete = true;
 }
 
 static void signpost_initialization_isolation_callback(int unused __attribute__ ((unused))) {
@@ -347,6 +338,35 @@ int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t
 
     //port_signpost_save_state(&module_info);
     return ret;
+}
+
+int signpost_initialization_get_module_state(void) {
+    incoming_active_callback = signpost_initialization_get_state_callback;
+    get_state_complete = false;
+
+    int ret = signpost_api_send(ModuleAddressController,
+            CommandFrame, InitializationApiType, InitializationGetState,
+            0, NULL);
+
+    ret = port_signpost_wait_for_with_timeout(&get_state_complete, 2000);
+    if(ret < PORT_SUCCESS) {
+        return PORT_FAIL;
+    }
+
+    //copy the state
+    uint8_t addr = module_info.i2c_address;
+    char name[NAME_LEN] = {0};
+    strncpy(name,module_info.self_name,NAME_LEN);
+    memcpy(&module_info,incoming_message,sizeof(module_state_t));
+    module_info.i2c_address = addr;
+    strncpy(module_info.self_name,name,NAME_LEN);
+
+    return PORT_SUCCESS;
+}
+
+int signpost_initialization_get_module_state_reply(uint8_t address) {
+    return signpost_api_send(address, ResponseFrame, InitializationApiType, InitializationGetState,
+            sizeof(module_state_t),(uint8_t*)&module_info);
 }
 
 static int signpost_initialization_common(uint8_t i2c_address) {

@@ -71,6 +71,21 @@ int signpost_api_revoke_key(uint8_t module_number);
 #define SIGNPOST_INITIALIZATION_NO_APIS NULL
 #endif
 
+#define NUM_MODULES 8
+#define NAME_LEN 16
+
+typedef struct module_struct {
+    uint32_t                magic;
+    uint8_t                 self_mod_num;
+    uint8_t                 i2c_address;
+    char                    self_name[NAME_LEN];
+    char                    names[NUM_MODULES][NAME_LEN];
+    uint8_t                 i2c_address_mods[NUM_MODULES];
+    uint16_t                nonces[NUM_MODULES];
+    bool                    haskey[NUM_MODULES];
+    uint8_t                 keys[NUM_MODULES][ECDH_KEY_LENGTH];
+} module_state_t;
+
 typedef enum initialization_state {
     RequestIsolation = 0,
     Declare,
@@ -88,6 +103,7 @@ typedef enum initialization_message_type {
    InitializationGetMods,
    //InitializationRegister,
    InitializationRevoke,
+   InitializationGetState,
 } initialization_message_type_t;
 
 typedef enum module_address {
@@ -163,6 +179,13 @@ int signpost_initialization_declare_respond(uint8_t source_address, uint8_t new_
 //  len             - The length of data in ecdh_params
 __attribute__((warn_unused_result))
 int signpost_initialization_key_exchange_respond(uint8_t source_address, uint8_t* ecdh_params, size_t len);
+
+// Get a digest of modules from the controller
+//
+// params:
+__attribute__((warn_unused_result))
+int signpost_initialization_get_module_state(void);
+int signpost_initialization_get_module_state_reply(uint8_t address);
 
 /**************************************************************************/
 /* STORAGE API                                                            */
