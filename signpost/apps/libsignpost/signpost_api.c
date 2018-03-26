@@ -466,6 +466,7 @@ static int signpost_initialization_initialize_loop(void) {
             // Completed Init
             port_signpost_mod_out_set();
             port_signpost_debug_led_off();
+            port_signpost_mod_in_disable_interrupt();
             port_printf("INIT: Completed Initialization with Controller\n");
             return PORT_SUCCESS;
 
