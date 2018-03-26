@@ -74,7 +74,7 @@ impl Platform for RadioModule {
             capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
             capsules::nrf51822_serialization::DRIVER_NUM => f(Some(self.nrf51822)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
-            13 => f(Some(self.i2c_master_slave)),
+            capsules::i2c_master_slave_driver::DRIVER_NUM => f(Some(self.i2c_master_slave)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 

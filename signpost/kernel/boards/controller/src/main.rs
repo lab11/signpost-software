@@ -79,7 +79,7 @@ impl Platform for SignpostController {
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
-            13 => f(Some(self.i2c_master_slave)),
+            capsules::i2c_master_slave_driver::DRIVER_NUM => f(Some(self.i2c_master_slave)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules::ltc294x::DRIVER_NUM => f(Some(self.coulomb_counter_generic)),
             capsules::gpio_async::DRIVER_NUM => f(Some(self.gpio_async)),

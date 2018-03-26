@@ -69,7 +69,7 @@ impl Platform for MicrowaveRadarModule {
             capsules::alarm::DRIVER_NUM => f(Some(self.alarm)),
             capsules::adc::DRIVER_NUM => f(Some(self.adc)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
-            13 => f(Some(self.i2c_master_slave)),
+            capsules::i2c_master_slave_driver::DRIVER_NUM => f(Some(self.i2c_master_slave)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
 

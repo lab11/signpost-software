@@ -68,7 +68,7 @@ impl Platform for SignpostStorageMaster {
             capsules::gpio::DRIVER_NUM => f(Some(self.gpio)),
             capsules::alarm::DRIVER_NUM => f(Some(self.timer)),
             capsules::led::DRIVER_NUM => f(Some(self.led)),
-            13 => f(Some(self.i2c_master_slave)),
+            capsules::i2c_master_slave_driver::DRIVER_NUM => f(Some(self.i2c_master_slave)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules::sdcard::DRIVER_NUM => f(Some(self.sdcard)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),

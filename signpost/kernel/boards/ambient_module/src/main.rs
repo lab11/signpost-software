@@ -77,7 +77,7 @@ impl Platform for AmbientModule {
 
             capsules::led::DRIVER_NUM => f(Some(self.led)),
 
-            13 => f(Some(self.i2c_master_slave)),
+            capsules::i2c_master_slave_driver::DRIVER_NUM => f(Some(self.i2c_master_slave)),
             capsules::rng::DRIVER_NUM => f(Some(self.rng)),
             capsules::lps25hb::DRIVER_NUM => f(Some(self.lps25hb)),
             capsules::app_flash_driver::DRIVER_NUM => f(Some(self.app_flash)),
