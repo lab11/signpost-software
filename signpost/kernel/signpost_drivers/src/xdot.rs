@@ -320,7 +320,7 @@ impl<'a, U: UARTAdvanced> Client for Console<'a, U> {
                 // call application handler
                 app.read_callback.as_mut().map(|cb| {
                     let buf = rb.as_mut();
-                    cb.schedule(max_idx, (buf.as_ptr() as usize), 0);
+                    cb.schedule(max_idx, buf.as_ptr() as usize, 0);
                 });
 
                 rb
