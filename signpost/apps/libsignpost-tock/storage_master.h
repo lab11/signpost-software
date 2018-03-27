@@ -13,7 +13,7 @@ extern "C" {
 #define LINUX_ENABLE_POWER PA06
 #define SD_ENABLE PA21
 enum GPIO_Pin_enum {
-    PA05=0,
+    PA05=2,
     PA06,
     PA21,
 };
