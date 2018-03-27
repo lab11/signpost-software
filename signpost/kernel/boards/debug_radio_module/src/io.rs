@@ -1,6 +1,7 @@
 use core::fmt::*;
 use kernel::hil::uart::{self, UART};
-use kernel::process;
+use kernel::debug;
+use cortexm4;
 use sam4l;
 
 pub struct Writer {
@@ -40,22 +41,13 @@ impl Write for Writer {
 pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u32) -> ! {
 
     let writer = &mut WRITER;
-    let _ = writer.write_fmt(format_args!("#pKernel panic at {}:{}:\r\n\t\"", file, line));
-    let _ = write(writer, args);
-    let _ = writer.write_str("\"\r\n");
+    debug::panic_begin();
+    debug::panic_banner(writer, args, file, line);
+    
+    debug::flush(writer);
+    debug::panic_process_info(writer);
 
-    // Print fault status once
-    let procs = &mut process::PROCS;
-    if procs.len() > 0 {
-        procs[0].as_mut().map(|process| { process.fault_str(writer); });
-    }
-
-    // print data about each process
-    let _ = writer.write_fmt(format_args!("\r\n---| App Status |---\r\n"));
-    let procs = &mut process::PROCS;
-    for idx in 0..procs.len() {
-        procs[idx].as_mut().map(|process| { process.statistics_str(writer); });
-    }
+    cortexm4::scb::reset();
 
     // blink the panic signal
     let led = &sam4l::gpio::PA[4];
@@ -74,22 +66,4 @@ pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u3
             led.set();
         }
     }
-}
-
-
-#[macro_export]
-macro_rules! print {
-        ($($arg:tt)*) => (
-            {
-                use core::fmt::write;
-                let writer = unsafe { &mut $crate::io::WRITER };
-                let _ = write(writer, format_args!($($arg)*));
-            }
-        );
-}
-
-#[macro_export]
-macro_rules! println {
-        ($fmt:expr) => (print!(concat!($fmt, "\n")));
-            ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }
