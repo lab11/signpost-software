@@ -17,5 +17,4 @@ program: $(BUILDDIR)/$(PACKAGE_NAME).tab
 # Upload programs over JTAG
 .PHONY: flash
 flash: $(BUILDDIR)/$(PACKAGE_NAME).tab
-	$(APP_TOCKLOADER) $(TOCKLOADER_GENERAL_FLAGS) install --jtag $<
-
+	$(APP_TOCKLOADER) $(TOCKLOADER_GENERAL_FLAGS) install --jtag -a 0x40000 $<
