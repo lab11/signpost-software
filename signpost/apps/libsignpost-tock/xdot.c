@@ -13,7 +13,7 @@
 #include "multi_console.h"
 #include "at_command.h"
 
-#define LORA_CONSOLE 109
+#define LORA_CONSOLE 0x10080007
 
 #define LORA_WAKE_PIN 10
 
