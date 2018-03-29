@@ -6,7 +6,7 @@ APP_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Which files to compile.
 C_SRCS := $(wildcard *.c)
 
-STACK_SIZE=8182
+STACK_SIZE=8192
 APP_HEAP_SIZE=4096
 
 # Set a default address for CI builds
@@ -58,8 +58,6 @@ endif
 
 override CFLAGS += -DAPP_KEY="$(KEY)"
 override CFLAGS += -DCOMPILE_TIME_ADDRESS="$(C_ADDRESS)"
-
-LIBRARY_PATHS += .
 
 TOCK_USERLAND_BASE_DIR := ../../../kernel/tock/userland
 
