@@ -556,8 +556,6 @@ mqtt_client.on('connect', function () {
         try {
             if(json.data && json.receiver && json.geohash) {
                 buf = Buffer.from(json.data);
-                console.log("Got " + topic + " packet from " + json.device_id);
-                //console.log(buf.toString('hex'));
                 var pkt = parse(topic,buf);
                 //console.log("packet: \n%j", pkt);
                 if(Array.isArray(pkt)) {
