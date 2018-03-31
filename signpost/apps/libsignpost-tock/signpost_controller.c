@@ -506,7 +506,7 @@ static void update_energy_policy_cb( __attribute__ ((unused)) int now,
 
 static void signpost_controller_initialize_energy (void) {
     // Read FRAM to see if anything is stored there
-    const unsigned FRAM_MAGIC_VALUE = 0x49C8000A;
+    const unsigned FRAM_MAGIC_VALUE = 0x49C8000B;
     fm25cl_read_sync(0, sizeof(controller_fram_t));
 
     printf("Initializing energy\n");
@@ -516,6 +516,9 @@ static void signpost_controller_initialize_energy (void) {
       printf("Found saved energy data\n");
       signpost_energy_policy_init(&fram.remaining, &fram.used, &fram.time);
 
+      signpost_energy_policy_copy_internal_state(&fram.remaining, &fram.used, &fram.time);
+
+      fm25cl_write_sync(0, sizeof(controller_fram_t));
     } else {
       // Initialize this
       printf("No saved energy data. Equally distributing\n");

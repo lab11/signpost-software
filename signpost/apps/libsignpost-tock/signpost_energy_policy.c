@@ -21,29 +21,43 @@ signpost_energy_reset_start_time_t energy_reset_start_time;
 
 static int battery_last_energy_remaining = 0;
 static int battery_energy_remaining;
-
 static uint32_t last_energy_update_time = 0;
+
+static bool debug_backplane = false;
 
 //new capacity with lower max charge voltage
 #define BATTERY_CAPACITY 8690000*11.1
 #define MAX_CONTROLLER_ENERGY_REMAINING BATTERY_CAPACITY*0.4
 #define MAX_MODULE_ENERGY_REMAINING BATTERY_CAPACITY*0.1
+#define DEBUG_BACKPLANE_BATTERY_START 4000000*11.1
 
 void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
                                     signpost_energy_used_t* used,
                                     signpost_energy_time_since_reset_t* time) {
 
+    //check to see if we are on a debug backplane
+    battery_energy_remaining = signpost_energy_get_battery_energy_uwh();
+    if(battery_energy_remaining < 0) {
+        //since we are on a debug backplane just assume some starting
+        //energy that is reasonable and move from there
+        debug_backplane = true;
+        remaining = NULL;
+        used = NULL;
+        time = NULL;
+        battery_energy_remaining = DEBUG_BACKPLANE_BATTERY_START;
+    } else {
+        debug_backplane = false;
+    }
 
     if(remaining == NULL) {
         //initialize all of the energy remainings
         //...We really should do this in a nonvolatile way
-        int battery_remaining = signpost_energy_get_battery_energy_uwh();
-        energy_remaining.controller_energy_remaining = battery_remaining*0.4;
+        energy_remaining.controller_energy_remaining = battery_energy_remaining*0.4;
         for(uint8_t i = 0; i < 8; i++) {
             if(i == 4 || i == 3) {
 
             } else {
-                energy_remaining.module_energy_remaining[i] = battery_remaining*0.1;
+                energy_remaining.module_energy_remaining[i] = battery_energy_remaining*0.1;
             }
         }
     } else {
@@ -86,8 +100,7 @@ void signpost_energy_policy_init (signpost_energy_remaining_t* remaining,
     signpost_energy_reset_all_energy();
 
     //read the battery now so that the first interation works
-    int bat = signpost_energy_get_battery_energy_uwh();
-    battery_last_energy_remaining = bat;
+    battery_last_energy_remaining = battery_energy_remaining;
 
     //start the timer
     last_energy_update_time = alarm_read();
@@ -319,6 +332,11 @@ void signpost_energy_policy_update_energy (void) {
         }
     }
     battery_energy_remaining = signpost_energy_get_battery_energy_uwh();
+    if(battery_energy_remaining < 0) {
+        //if this failed just subtract the amount used;
+        battery_energy_remaining = battery_last_energy_remaining - total_energy;
+    }
+
     printf("Battery has %d uWh energy\n",battery_energy_remaining);
     //reset all of the coulomb counters so we can use them next time
     signpost_energy_reset_all_energy();

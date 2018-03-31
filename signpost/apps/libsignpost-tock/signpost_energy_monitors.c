@@ -142,28 +142,40 @@ int32_t signpost_energy_get_battery_current_ua (void) {
 ///////////////////////////////////////////////
 // More information about the battery
 ///////////////////////////////////////////////
-uint32_t signpost_energy_get_battery_capacity_uwh (void) {
+int32_t signpost_energy_get_battery_capacity_uwh (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
-    max17205_read_soc_sync(&percent, &charge, &full);
-    return max17205_get_capacity_uAh(full)*BATTERY_VOLTAGE_NOM;
+    int rc = max17205_read_soc_sync(&percent, &charge, &full);
+    if(rc < 0) {
+        return rc;
+    } else {
+        return max17205_get_capacity_uAh(full)*BATTERY_VOLTAGE_NOM;
+    }
 }
 
-uint32_t signpost_energy_get_battery_percent_mp (void) {
+int32_t signpost_energy_get_battery_percent_mp (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
-    max17205_read_soc_sync(&percent, &charge, &full);
-    return max17205_get_percentage_mP(percent);
+    int rc = max17205_read_soc_sync(&percent, &charge, &full);
+    if(rc < 0) {
+        return rc;
+    } else {
+        return max17205_get_percentage_mP(percent);
+    }
 }
 
-uint32_t signpost_energy_get_battery_energy_uwh (void) {
+int32_t signpost_energy_get_battery_energy_uwh (void) {
     uint16_t percent;
     uint16_t charge;
     uint16_t full;
-    max17205_read_soc_sync(&percent, &charge, &full);
-    return max17205_get_capacity_uAh(charge)*BATTERY_VOLTAGE_NOM;
+    int rc = max17205_read_soc_sync(&percent, &charge, &full);
+    if(rc < 0) {
+        return rc;
+    } else {
+        return max17205_get_capacity_uAh(charge)*BATTERY_VOLTAGE_NOM;
+    }
 }
 
 

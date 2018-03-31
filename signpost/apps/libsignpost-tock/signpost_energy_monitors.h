@@ -46,9 +46,9 @@ uint32_t signpost_energy_get_controller_current_ua (void);
 uint32_t signpost_energy_get_linux_current_ua (void);
 uint32_t signpost_energy_get_module_current_ua (int module_num);
 
-uint32_t signpost_energy_get_battery_capacity_uwh (void);
-uint32_t signpost_energy_get_battery_percent_mp (void);
-uint32_t signpost_energy_get_battery_energy_uwh (void);
+int32_t signpost_energy_get_battery_capacity_uwh (void);
+int32_t signpost_energy_get_battery_percent_mp (void);
+int32_t signpost_energy_get_battery_energy_uwh (void);
 
 // These functions return instantaneous current for Voltage
 uint16_t signpost_energy_get_battery_voltage_mv (void);
