@@ -384,6 +384,9 @@ int signpost_initialization_controller_module_init(api_handler_t** api_handlers)
     module_info.i2c_address = ModuleAddressController;
     module_api.api_handlers = api_handlers;
 
+    //add the controller name
+    strncpy(module_info.self_name,"lab11/control",NAME_LEN);
+
     // Begin listening for replies
     signpost_api_start_new_async_recv();
 
