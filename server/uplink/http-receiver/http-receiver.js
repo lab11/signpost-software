@@ -126,7 +126,7 @@ _app.post('/signpost', function(req, res) {
 
     //pkt returns an array of things to publish
     for(var key in pkt) {
-        //console.log("Publishing to topic " + "signpost/" + pkt[key].topic);
+        console.log("Publishing to " + "signpost-preproc/" + pkt[key].topic);
         mqtt_client_outgoing.publish('signpost-preproc/' + pkt[key].topic, JSON.stringify(pkt[key].topublish));
     }
 

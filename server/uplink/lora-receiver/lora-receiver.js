@@ -118,6 +118,7 @@ mqtt_client_lora.on('connect', function () {
 
                 //pkt returns an array of things to publish
                 for(var key in pkt) {
+                    console.log("Publishing to " + 'signpost-preproc/' + pkt[key].topic);
                     mqtt_client_outgoing.publish('signpost-preproc/' + pkt[key].topic, JSON.stringify(pkt[key].topublish));
                 }
             }

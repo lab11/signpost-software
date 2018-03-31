@@ -153,9 +153,11 @@ mqtt_client.on('connect', function () {
 
     // Callback for each packet
     mqtt_client.on('message', function (topic, message) {
+        console.log("Received from " + topic);
         var json = JSON.parse(message.toString());
         try {
             var pkt = add_geohash(topic,json);
+            console.log("Publishing to " + 'signpost/' + pkt.device_id + '/' + topic.slice(17));
             mqtt_external.publish('signpost/' + pkt.device_id + '/' + topic.slice(17), JSON.stringify(pkt));
         } catch (e) {
             console.log(e)

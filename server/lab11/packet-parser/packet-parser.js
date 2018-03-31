@@ -552,6 +552,7 @@ mqtt_client.on('connect', function () {
     // Callback for each packet
     mqtt_external.on('message', function (topic, message) {
         var json = JSON.parse(message.toString());
+        console.log("Received from " + topic);
         try {
             if(json.data && json.receiver && json.geohash) {
                 buf = Buffer.from(json.data);
@@ -576,6 +577,8 @@ mqtt_client.on('connect', function () {
                         pkt[i].geohash = json.geohash;
                         pkt[i].sequence_number = json.sequence_number;
 
+                        console.log("Publishing to " + 'gateway-data');
+                        console.log("Publishing to " + 'signpost/processed/'+topic);
                         mqtt_client.publish('gateway-data', JSON.stringify(pkt[i]));
                         mqtt_client.publish('signpost/processed/'+topic, JSON.stringify(pkt[i]));
                     }
@@ -594,6 +597,8 @@ mqtt_client.on('connect', function () {
                     pkt['_meta'].geohash = json.geohash;
                     pkt['_meta'].sequence_number = json.sequence_number;
 
+                    console.log("Publishing to " + 'gateway-data');
+                    console.log("Publishing to " + 'signpost/processed/'+topic);
                     mqtt_client.publish('gateway-data', JSON.stringify(pkt));
                     mqtt_client.publish('signpost/processed/'+topic, JSON.stringify(pkt));
                 }
