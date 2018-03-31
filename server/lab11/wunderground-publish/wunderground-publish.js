@@ -11,6 +11,7 @@ Currently requires that a signpost is already registered as a weather station.
 var fs   = require('fs');
 var mqtt = require('mqtt');
 var PWS  = require('wunderground-pws');
+var dewpoint = require('dewpoint');
 
 /* File with JSON of the form:
  *
@@ -57,6 +58,9 @@ for (var mac in stations) {
 }
 
 
+//The pressure argument only impacts absolute humidity, which we aren't using
+var xdp = new dewpoint(0);
+
 var mqtt_client = mqtt.connect('mqtt://localhost');
 mqtt_client.on('connect', function () {
     console.log('Connected to MQTT');
@@ -74,10 +78,14 @@ mqtt_client.on('connect', function () {
             // https://github.com/fauria/wunderground-pws/blob/master/lib/wunderground-pws.js#L14
             var tempf = (packet.temperature_c * 1.8) + 32;
             var barin = (packet.pressure_pascals * 0.00029530);
+            var dewptobj = xdp.Calc(packet.temperature_c, packet.humidity);
+            var dewptc = dewptobj.dp;
+            var dewptf = (dewptc * 1.8) + 32;
             pws.setObservations({
                 tempf: tempf,
                 humidity: packet.humidity,
-                baromin: barin
+                baromin: barin,
+                dewptf: dewptf
             });
 
             console.log('Posting ' + tempf + ' ' + packet.humidity + ' for ' + mac);
