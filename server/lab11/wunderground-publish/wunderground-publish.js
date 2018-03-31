@@ -21,7 +21,7 @@ var PWS  = require('wunderground-pws');
  *     }
  * }
  */
-var stations = require('/etc/swarm-gateway/wunderground-stations.json');
+var stations = require('/etc/signpost/lab11/wunderground-stations.json');
 
 /*  Ambient Packet:
 {
@@ -39,7 +39,7 @@ var stations = require('/etc/swarm-gateway/wunderground-stations.json');
     "sequence_number":26
 }}
 */
-var TOPIC_SIGNPOST_AMBIENT = 'signpost/processed/signpost/lab11/ambient';
+var TOPIC_SIGNPOST_AMBIENT = 'signpost/processed/signpost/+/lab11/ambient';
 
 
 /* Create PWS objects for each signpost we know about */
@@ -73,9 +73,11 @@ mqtt_client.on('connect', function () {
             // Valid observations:
             // https://github.com/fauria/wunderground-pws/blob/master/lib/wunderground-pws.js#L14
             var tempf = (packet.temperature_c * 1.8) + 32;
+            var barin = (packet.pressure_pascals * 0.00029530);
             pws.setObservations({
                 tempf: tempf,
-                humidity: packet.humidity
+                humidity: packet.humidity,
+                baromin: barin
             });
 
             console.log('Posting ' + tempf + ' ' + packet.humidity + ' for ' + mac);
