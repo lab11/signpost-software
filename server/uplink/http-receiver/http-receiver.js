@@ -14,13 +14,14 @@ var express       = require('express');
 var expressBodyParser       = require('body-parser');
 
 //check to see if there was a conf file passed in
-var conf_file_location = '';
+var http_conf_file_location = '';
 if(process.argv.length < 4) {
     http_conf_file_location = '/etc/signpost/http.conf';
 } else {
     http_conf_file_location = process.argv[2];
 }
 
+var mqtt_conf_file_location = '';
 if(process.argv.length < 4) {
     mqtt_conf_file_location = '/etc/signpost/mqtt.conf';
 } else {
