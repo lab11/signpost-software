@@ -114,7 +114,9 @@ function build_test_queue() {
     energy.writeUInt16BE(140, 46);
 
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/energy', energy));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'signpost/control/energy', energy));
     httpList.push({'topic': 'lab11/energy', 'data': energy});
+    httpList.push({'topic': 'signpost/control/energy', 'data': energy});
 
     energy_answer =  {
                     device: "signpost_energy",
@@ -154,7 +156,9 @@ function build_test_queue() {
     gps.writeUInt8(3, 15);
     gps.writeUInt8(10, 16);
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/gps', gps));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'signpost/control/gps', gps));
     httpList.push({'topic': 'lab11/gps', 'data': gps});
+    httpList.push({'topic': 'signpost/control/gps', 'data': gps});
 
     gps_answer =  {
             device: 'signpost_gps',
@@ -177,7 +181,9 @@ function build_test_queue() {
     ambient.writeUInt8(0x02, 9);
 
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/ambient', ambient));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/ambient/tphl', ambient));
     httpList.push({'topic': 'lab11/ambient', 'data': ambient});
+    httpList.push({'topic': 'lab11/ambient/tphl', 'data': ambient});
 
     ambient_answer =  {
                 device: 'signpost_ambient',
@@ -195,7 +201,9 @@ function build_test_queue() {
         audio.writeUInt8(125, i+5);
     }
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/audio', audio));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/audio/spectrum', audio));
     httpList.push({'topic': 'lab11/audio', 'data': audio});
+    httpList.push({'topic': 'lab11/audio/spectrum', 'data': audio});
 
     audio_answer = {
             device: 'signpost_audio_frequency',
@@ -217,7 +225,9 @@ function build_test_queue() {
         radar.writeUInt8(125, i+5);
     }
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/radar', radar));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/radar/motion', radar));
     httpList.push({'topic': 'lab11/radar', 'data': radar});
+    httpList.push({'topic': 'lab11/radar/motion', 'data': radar});
 
     radar_answer = {
                     device: 'signpost_microwave_radar',
@@ -231,8 +241,16 @@ function build_test_queue() {
     for (var i = 0; i < 80; i++) {
         spectrum.writeInt8(-50, 1+i);
     }
+ 
+    spectrum2 = Buffer.alloc(80);
+    for (var i = 0; i < 80; i++) {
+        spectrum.writeInt8(-50, i);
+    }
+
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/spectrum', spectrum));
+    testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/spectrum/ws_max', spectrum2));
     httpList.push({'topic': 'lab11/spectrum', 'data': spectrum});
+    httpList.push({'topic': 'lab11/spectrum/ws_max', 'data': spectrum2});
 
     spectrum_answer = {};
     spectrum_answer['device'] = 'signpost_rf_spectrum_max';
@@ -245,28 +263,47 @@ function build_test_queue() {
 
 
     answerQueue.push(energy_answer);
+    answerQueue.push(energy_answer);
+    answerQueue.push(gps_answer);
     answerQueue.push(gps_answer);
     answerQueue.push(ambient_answer);
+    answerQueue.push(ambient_answer);
+    for(var i = 0; i < 10; i++) {
+        answerQueue.push(audio_answer);
+    }
     for(var i = 0; i < 10; i++) {
         answerQueue.push(audio_answer);
     }
     for(var i = 0; i < 20; i++) {
         answerQueue.push(radar_answer);
     }
+    for(var i = 0; i < 20; i++) {
+        answerQueue.push(radar_answer);
+    }
+    answerQueue.push(spectrum_answer);
     answerQueue.push(spectrum_answer);
 
     //now add the http part of the answer queue
     answerQueue.push(energy_answer);
+    answerQueue.push(energy_answer);
+    answerQueue.push(gps_answer);
     answerQueue.push(gps_answer);
     answerQueue.push(ambient_answer);
+    answerQueue.push(ambient_answer);
+    for(var i = 0; i < 10; i++) {
+        answerQueue.push(audio_answer);
+    }
     for(var i = 0; i < 10; i++) {
         answerQueue.push(audio_answer);
     }
     for(var i = 0; i < 20; i++) {
         answerQueue.push(radar_answer);
     }
+    for(var i = 0; i < 20; i++) {
+        answerQueue.push(radar_answer);
+    }
     answerQueue.push(spectrum_answer);
-
+    answerQueue.push(spectrum_answer);
 }
 
 
