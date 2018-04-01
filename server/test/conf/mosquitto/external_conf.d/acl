@@ -2,23 +2,5 @@ user signpost_username
 topic #
 
 user lab11_username
-topic signpost/+/lab11/controller
-topic signpost/+/controller
-topic signpost/+/lab11/energy
-topic signpost/+/energy
-topic signpost/+/lab11/audio
-topic signpost/+/audio
-topic signpost/+/lab11/ambient
-topic signpost/+/ambient
-topic signpost/+/lab11/gps
-topic signpost/+/gps
-topic signpost/+/lab11/2.4ghz_spectrum
-topic signpost/+/2.4ghz_spectrum
-topic signpost/+/lab11/spectrum
-topic signpost/+/spectrum
-topic signpost/+/lab11/aqm
-topic signpost/+/aqm
-topic signpost/+/lab11/radio-status
-topic signpost/+/radio-status
-topic signpost/+/lab11/radar
-topic signpost/+/radar
+topic signpost/+/lab11/#
+topic signpost/+/signpost/#
