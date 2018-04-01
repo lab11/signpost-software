@@ -1057,11 +1057,11 @@ int signpost_networking_publish(const char* topic, uint8_t* data, uint8_t data_l
     }
 
     buf[0] = slen + nlen + slash;
-    memcpy(buf+1, topic, slen);
+    memcpy(buf+1, module_info.self_name, nlen);
     if(slash) {
-        buf[slen+1] = '/';
+        buf[nlen+1] = '/';
     }
-    memcpy(buf+1+slen+slash, module_info.self_name, nlen);
+    memcpy(buf+1+nlen+1, topic, slen);
     buf[slen+nlen+slash+1] = data_len;
     memcpy(buf+1+slen+1+nlen+slash, data, data_len);
 
