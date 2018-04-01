@@ -1,0 +1,13 @@
+[Unit]
+Description=Dispatch signpost downlink packets to radios from the mqtt stream
+After=mosquitto.service
+
+[Service]
+ExecStart=/home/ubuntu/signpost-software/server/downlink/downlink-dispatch/downlink-dispatch.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=downlink-dispatch
+
+[Install]
+WantedBy=multi-user.target
