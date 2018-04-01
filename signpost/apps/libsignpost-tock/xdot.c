@@ -282,23 +282,30 @@ int xdot_receive(uint8_t* buf, uint8_t len) {
         return XDOT_ERROR;
     }
 
-    if(ret < 9) {
+    uint8_t start = 0;
+    if(ret < 7) {
         //something went wrong - we should get at least 9 characters
         free(buf_str);
         return XDOT_ERROR;
-    } else if (ret == 9) {
+    } else if (ret >= 7 && ret <= 9) {
         //we just got not data return 0
+        free(buf_str);
         return 0;
     } else {
-        //when we get data it throws two more chars in for some reason??
-        ret -= 11;
+        //find the start of the message (the first character != /r || /n)
+        for(; buf_str[start] < 0x30 || buf_str[start] > 0x39; start++);
+        //header
+        ret -= start;
+        //end is always 8
+        ret -= 8;
     }
 
     for(uint16_t i = 0; i < ret/2 && i < len; i++) {
-        char tbuf[5] = {'0','x',buf_str[3+i*2],buf_str[4+i*2], 0};
+        char tbuf[5] = {'0','x',buf_str[start+i*2],buf_str[4+i*2], 0};
         buf[i] = strtol(tbuf, NULL, 0);
     }
 
+    free(buf_str);
     return ret/2;
 }
 
