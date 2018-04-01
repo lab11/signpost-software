@@ -41,7 +41,7 @@ function parse (topic, buf) {
 
     message_type = buf.readUInt8(0);
 
-    if (topic.endsWith('lab11/energy')) {
+    if (topic.endsWith('signpost/control/energy') || topic.endsWith('lab11/energy')) {
         // Controller
         if (message_type == 0x01) {
             // Energy
@@ -118,7 +118,7 @@ function parse (topic, buf) {
                 }
             }
         }
-    } else if (topic.endsWith('lab11/gps')) {
+    } else if (topic.endsWith('signpost/control/gps') || topic.endsWith('lab11/gps')) {
         // GPS
         var day = buf.readUInt8(1);
         var month = buf.readUInt8(2);
@@ -163,66 +163,8 @@ function parse (topic, buf) {
             timestamp: utcDate.toISOString(),
             satellite_count: satellite_count,
         }
-    } else if (topic.endsWith('lab11/2.4ghz_spectrum')) {
-        if (message_type == 0x01) {
-            var chan11 = buf.readInt8(1);
-            var chan12 = buf.readInt8(2);
-            var chan13 = buf.readInt8(3);
-            var chan14 = buf.readInt8(4);
-            var chan15 = buf.readInt8(5);
-            var chan16 = buf.readInt8(6);
-            var chan17 = buf.readInt8(7);
-            var chan18 = buf.readInt8(8);
-            var chan19 = buf.readInt8(9);
-            var chan20 = buf.readInt8(10);
-            var chan21 = buf.readInt8(11);
-            var chan22 = buf.readInt8(12);
-            var chan23 = buf.readInt8(13);
-            var chan24 = buf.readInt8(14);
-            var chan25 = buf.readInt8(15);
-            var chan26 = buf.readInt8(16);
-
-            if (chan11 >= 0 ||
-                chan12 >= 0 ||
-                chan13 >= 0 ||
-                chan14 >= 0 ||
-                chan15 >= 0 ||
-                chan16 >= 0 ||
-                chan17 >= 0 ||
-                chan18 >= 0 ||
-                chan19 >= 0 ||
-                chan20 >= 0 ||
-                chan21 >= 0 ||
-                chan22 >= 0 ||
-                chan22 >= 0 ||
-                chan23 >= 0 ||
-                chan24 >= 0 ||
-                chan25 >= 0 ||
-                chan26 >= 0) {
-                return undefined;
-            }
-
-            return {
-                device: 'signpost_2.4ghz_spectrum',
-                channel_11: chan11,
-                channel_12: chan12,
-                channel_13: chan13,
-                channel_14: chan14,
-                channel_15: chan15,
-                channel_16: chan16,
-                channel_17: chan17,
-                channel_18: chan18,
-                channel_19: chan19,
-                channel_20: chan20,
-                channel_21: chan21,
-                channel_22: chan22,
-                channel_23: chan23,
-                channel_24: chan24,
-                channel_25: chan25,
-                channel_26: chan26,
-            }
-        }
-    } else if (topic.endsWith('lab11/ambient') || topic.endsWith('ambient')) {
+    } else if (topic.endsWith('lab11/ambient/tphl') || topic.endsWith('tphl') || 
+                topic.endsWith('lab11/ambient') || topic.endsWith('ambient') {
         if (message_type == 0x01) {
                         var temp = buf.readInt16BE(1) / 100.0;
             var humi = buf.readInt16BE(3) / 100.0;
@@ -243,7 +185,7 @@ function parse (topic, buf) {
                 pressure_pascals: pres,
             }
         }
-    } else if (topic.endsWith('lab11/audio')) {
+    } else if (topic.endsWith('lab11/audio/spectrum') || topic.endsWith('lab11/audio')) {
         if (message_type == 0x01) {
             //these are in dB SPL! I simplified the math to some magic numbers
             //here's the rundown
@@ -340,7 +282,7 @@ function parse (topic, buf) {
             return values;
         }
 
-    } else if (topic.endsWith('lab11/radar')) {
+    } else if (topic.endsWith('lab11/radar/motion') || topic.endsWith('lab11/radar')) {
         if (message_type == 0x01) {
             var motion = buf.readInt8(1) > 0;
             var speed = buf.readUInt32BE(2) / 1000.0;
@@ -388,7 +330,7 @@ function parse (topic, buf) {
                 humidity_percent: humidity_percent,
             }
         }
-    } else if (topic.endsWith('lab11/radio-status')) {
+    } else if (topic.endsWith('signpost/radio/status') || topic.endsWith('lab11/radio-status') {
         if (message_type == 0x01) {
             var controller = 0;
             var audio = 0;
@@ -518,16 +460,16 @@ function parse (topic, buf) {
             }
             return json;
         }
-    } else if (topic.endsWith('lab11/spectrum')) {
+    } else if (topic.endsWith('lab11/spectrum') {
         var datastr = "";
         var retobj = {};
         if(message_type == 0x01) {
             datastr = "max";
             retobj['device'] = 'signpost_rf_spectrum_max';
-        } else if(message_type == 0x02) {
+        } else if (message_type == 0x02) {
             datastr = "mean";
             retobj['device'] = 'signpost_rf_spectrum_mean';
-        } else if(message_type == 0x03) {
+        } else if (message_type == 0x03) {
             datastr = "stddev";
             retobj['device'] = 'signpost_rf_spectrum_stddev';
         }
@@ -535,7 +477,43 @@ function parse (topic, buf) {
             var lowend = 470+i*6;
             var highend = 470+6+i*6;
             var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
+            retobj[fullstr] = buf.readInt8(i);
+        }
+        return retobj;
+    } else if (topic.endsWith('lab11/spectrum/ws_max')) {
+        var datastr = "";
+        var retobj = {};
+        datastr = "max";
+        retobj['device'] = 'signpost_rf_spectrum_max';
+        for (var i = 0; i < 80; i++) {
+            var lowend = 470+i*6;
+            var highend = 470+6+i*6;
+            var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
             retobj[fullstr] = buf.readInt8(1+i);
+        }
+        return retobj;
+    } else if (topic.endsWith('lab11/spectrum/ws_mean')) {
+        var datastr = "";
+        var retobj = {};
+        datastr = "mean";
+        retobj['device'] = 'signpost_rf_spectrum_mean';
+        for (var i = 0; i < 80; i++) {
+            var lowend = 470+i*6;
+            var highend = 470+6+i*6;
+            var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
+            retobj[fullstr] = buf.readInt8(i);
+        }
+        return retobj;
+    } else if (topic.endsWith('lab11/spectrum/ws_std')) {
+        var datastr = "";
+        var retobj = {};
+        datastr = "stddev";
+        retobj['device'] = 'signpost_rf_spectrum_stddev';
+        for (var i = 0; i < 80; i++) {
+            var lowend = 470+i*6;
+            var highend = 470+6+i*6;
+            var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
+            retobj[fullstr] = buf.readInt8(i);
         }
         return retobj;
     }

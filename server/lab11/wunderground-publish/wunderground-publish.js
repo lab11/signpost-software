@@ -40,7 +40,8 @@ var stations = require('/etc/signpost/lab11/wunderground-stations.json');
     "sequence_number":26
 }}
 */
-var TOPIC_SIGNPOST_AMBIENT = 'signpost/processed/signpost/+/lab11/ambient';
+var TOPIC_SIGNPOST_AMBIENT1 = 'signpost/processed/signpost/+/lab11/ambient/tphl';
+var TOPIC_SIGNPOST_AMBIENT2 = 'signpost/processed/signpost/+/lab11/ambient';
 
 
 /* Create PWS objects for each signpost we know about */
@@ -65,7 +66,8 @@ var mqtt_client = mqtt.connect('mqtt://localhost');
 mqtt_client.on('connect', function () {
     console.log('Connected to MQTT');
 
-    mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT);
+    mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT1);
+    mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT2);
 
     // Called when we get a packet from MQTT
     mqtt_client.on('message', function (topic, message) {
