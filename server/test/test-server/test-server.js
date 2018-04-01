@@ -244,7 +244,7 @@ function build_test_queue() {
  
     spectrum2 = Buffer.alloc(80);
     for (var i = 0; i < 80; i++) {
-        spectrum.writeInt8(-50, i);
+        spectrum2.writeInt8(-50, i);
     }
 
     testQueue.push(build_lora_packet_buffer('c098e5120000', 'lab11/spectrum', spectrum));
