@@ -522,10 +522,11 @@ function parse (topic, buf) {
 var mqtt_client = mqtt.connect('mqtt://localhost:' + config.outgoing_port);
 var mqtt_external = mqtt.connect('mqtt://localhost:' + config.incoming_port, {username: config.incoming_username, password: config.incoming_password});
 
+// Subscribe to all packets
+mqtt_external.subscribe('signpost/+/lab11/#');
+mqtt_external.subscribe('signpost/+/signpost/#');
+
 mqtt_client.on('connect', function () {
-    // Subscribe to all packets
-    mqtt_external.subscribe('signpost/+/lab11/#');
-    mqtt_external.subscribe('signpost/#');
 
     // Callback for each packet
     mqtt_external.on('message', function (topic, message) {

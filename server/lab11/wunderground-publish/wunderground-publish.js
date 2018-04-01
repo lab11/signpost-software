@@ -63,11 +63,12 @@ for (var mac in stations) {
 var xdp = new dewpoint(0);
 
 var mqtt_client = mqtt.connect('mqtt://localhost');
+mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT1);
+mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT2);
+
 mqtt_client.on('connect', function () {
     console.log('Connected to MQTT');
 
-    mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT1);
-    mqtt_client.subscribe(TOPIC_SIGNPOST_AMBIENT2);
 
     // Called when we get a packet from MQTT
     mqtt_client.on('message', function (topic, message) {

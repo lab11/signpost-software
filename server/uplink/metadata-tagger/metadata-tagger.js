@@ -147,9 +147,10 @@ function add_geohash (topic, buf) {
 var mqtt_client = mqtt.connect('mqtt://localhost:' + config.incoming_port);
 var mqtt_external = mqtt.connect('mqtt://localhost:' + config.outgoing_port ,{username: config.outgoing_username, password: config.outgoing_password});
 
+// Subscribe to all packets
+mqtt_client.subscribe('signpost-preproc/#');
+
 mqtt_client.on('connect', function () {
-    // Subscribe to all packets
-    mqtt_client.subscribe('signpost-preproc/#');
 
     // Callback for each packet
     mqtt_client.on('message', function (topic, message) {
