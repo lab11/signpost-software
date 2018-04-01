@@ -15,7 +15,7 @@ var Geohash       = require('latlon-geohash');
 //check to see if there was a conf file passed in
 var conf_file_location = '';
 if(process.argv.length < 3) {
-    conf_file_location = '/etc/signpost/uplink/metadata-tagger.conf';
+    conf_file_location = '/etc/signpost/mqtt.conf';
 } else {
     conf_file_location = process.argv[2];
 }
@@ -26,10 +26,10 @@ if(process.argv.length < 3) {
 try {
     var config_file = fs.readFileSync(conf_file_location, 'utf-8');
     var config = ini.parse(config_file);
-    if(config.incoming_port == undefined ||
-        config.outgoing_port == undefined ||
-        config.outgoing_username == undefined ||
-        config.outgoing_password == undefined) {
+    if(config.internal_port == undefined ||
+        config.external_port == undefined ||
+        config.external_username == undefined ||
+        config.external_password == undefined) {
         console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
         process.exit(1);
     }
@@ -144,8 +144,8 @@ function add_geohash (topic, buf) {
     return buf;
 }    
 
-var mqtt_client = mqtt.connect('mqtt://localhost:' + config.incoming_port);
-var mqtt_external = mqtt.connect('mqtt://localhost:' + config.outgoing_port ,{username: config.outgoing_username, password: config.outgoing_password});
+var mqtt_client = mqtt.connect('mqtt://localhost:' + config.internal_port);
+var mqtt_external = mqtt.connect('mqtt://localhost:' + config.external_port ,{username: config.external_username, password: config.external_password});
 
 // Subscribe to all packets
 mqtt_client.subscribe('signpost-preproc/#');

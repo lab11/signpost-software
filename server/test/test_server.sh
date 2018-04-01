@@ -19,11 +19,11 @@ mosquitto -c ./conf/mosquitto/external_conf.d/external.conf &
 M3_PID=$!
 
 #start all of the node services
-node ../uplink/http-receiver/http-receiver.js ./conf/signpost/uplink/http-receiver.conf &
+node ../uplink/http-receiver/http-receiver.js ./conf/signpost/http.conf ./conf/signpost/mqtt.conf &
 N1_PID=$!
-node ../uplink/lora-receiver/lora-receiver.js ./conf/signpost/uplink/lora-receiver.conf &
+node ../uplink/lora-receiver/lora-receiver.js ./conf/signpost/lora.conf ./conf/signpost/mqtt.conf &
 N2_PID=$!
-node ../uplink/metadata-tagger/metadata-tagger.js ./conf/signpost/uplink/metadata-tagger.conf &
+node ../uplink/metadata-tagger/metadata-tagger.js ./conf/signpost/mqtt.conf &
 N3_PID=$!
 node ../lab11/packet-parser/packet-parser.js ./conf/signpost/lab11/packet-parser.conf &
 N4_PID=$!

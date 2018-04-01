@@ -15,17 +15,22 @@ var expressBodyParser       = require('body-parser');
 
 //check to see if there was a conf file passed in
 var conf_file_location = '';
-if(process.argv.length < 3) {
-    conf_file_location = '/etc/signpost/uplink/http-receiver.conf';
+if(process.argv.length < 4) {
+    http_conf_file_location = '/etc/signpost/http.conf';
 } else {
-    conf_file_location = process.argv[2];
+    http_conf_file_location = process.argv[2];
+}
+
+if(process.argv.length < 4) {
+    mqtt_conf_file_location = '/etc/signpost/mqtt.conf';
+} else {
+    mqtt_conf_file_location = process.argv[3];
 }
 
 try {
-    var config_file = fs.readFileSync(conf_file_location, 'utf-8');
-    var config = ini.parse(config_file);
-    if(config.incoming_port == undefined ||
-        config.outgoing_port == undefined) {
+    var http_config_file = fs.readFileSync(hptt_conf_file_location, 'utf-8');
+    var http_config = ini.parse(config_file);
+    if(http_config.port == undefined) {
         console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
         process.exit(1);
     }
@@ -34,6 +39,17 @@ try {
     process.exit(1);
 }
 
+try {
+    var mqtt_config_file = fs.readFileSync(mqtt_conf_file_location, 'utf-8');
+    var mqtt_config = ini.parse(config_file);
+    if(mqtt_config.internal_port == undefined) {
+        console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
+        process.exit(1);
+    }
+} catch (e) {console.log(e)
+    console.log('No configuration file found. Either pass a configuration path or place a file at /etc/signpost/uplink/http-receiver.conf.');
+    process.exit(1);
+}
 
 function pad (s, len) {
     for (var i=s.length; i<len; i++) {
@@ -110,11 +126,11 @@ function parse (buf) {
 var _app = express();
 _app.use(expressBodyParser.raw({limit: '1000kb'}));
 
-_app.listen(config.incoming_port, function() {
-    console.log('Listening for HTTP Requests on port ' + config.incoming_port);
+_app.listen(http_config.port, function() {
+    console.log('Listening for HTTP Requests on port ' + http_config.incoming_port);
 });
 
-var mqtt_client_outgoing = mqtt.connect('mqtt://localhost:' + config.outgoing_port);
+var mqtt_client_outgoing = mqtt.connect('mqtt://localhost:' + mqtt_config.internal_port);
 _app.post('/signpost', function(req, res) {
     // Callback for each packet
     buf = req.body;

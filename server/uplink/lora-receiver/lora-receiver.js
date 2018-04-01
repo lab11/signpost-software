@@ -12,22 +12,40 @@ var mqtt          = require('mqtt');
 var addr          = require('os').networkInterfaces();
 
 //check to see if there was a conf file passed in
-var conf_file_location = '';
-if(process.argv.length < 3) {
-    conf_file_location = '/etc/signpost/uplink/lora-receiver.conf';
+var lora_conf_file_location = '';
+if(process.argv.length < 4) {
+    lora_conf_file_location = '/etc/signpost/lora.conf';
 } else {
-    conf_file_location = process.argv[2];
+    lora_conf_file_location = process.argv[2];
+}
+
+var mqtt_conf_file_location = '';
+if(process.argv.length < 4) {
+    mqtt_conf_file_location = '/etc/signpost/mqtt.conf';
+} else {
+    mqtt_conf_file_location = process.argv[3];
 }
 
 try {
-    var config_file = fs.readFileSync(conf_file_location, 'utf-8');
-    var config = ini.parse(config_file);
-    if(config.incoming_port == undefined ||
-        config.incoming_protocol == undefined ||
-        config.incoming_host == undefined ||
-        config.incoming_username == undefined ||
-        config.incoming_password == undefined) {
-        config.outgoing_port == undefined ||
+    var lora_config_file = fs.readFileSync(lora_conf_file_location, 'utf-8');
+    var lora_config = ini.parse(lora_config_file);
+    if(lora_config.port == undefined ||
+        lora_config.protocol == undefined ||
+        lora_config.host == undefined ||
+        lora_config.username == undefined ||
+        lora_config.password == undefined) {
+        console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
+        process.exit(1);
+    }
+} catch (e) {console.log(e)
+    console.log('No configuration file found. Either pass a configuration path or place a file at /etc/signpost/uplink/lora-receiver.conf.');
+    process.exit(1);
+}
+
+try {
+    var mqtt_config_file = fs.readFileSync(mqtt_conf_file_location, 'utf-8');
+    var mqtt_config = ini.parse(mqtt_config_file);
+    if(mqtt_config.internal_port == undefined) {
         console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
         process.exit(1);
     }
@@ -99,8 +117,8 @@ function parse (buf) {
     return ret;
 }    
 
-var mqtt_client_lora = mqtt.connect(config.incoming_protocol + '://' + config.incoming_host + ':' + config.incoming_port, {username: config.incoming_username, password: config.incoming_password});
-var mqtt_client_outgoing = mqtt.connect('mqtt://localhost:' + config.outgoing_port);
+var mqtt_client_lora = mqtt.connect(lora_config.protocol + '://' + lora_config.host + ':' + lora_config.port, {username: lora_config.username, password: lora_config.password});
+var mqtt_client_outgoing = mqtt.connect('mqtt://localhost:' + mqtt_config.internal_port);
 mqtt_client_lora.on('connect', function () {
     // Subscribe to all packets
     mqtt_client_lora.subscribe('application/5/node/+/rx');
