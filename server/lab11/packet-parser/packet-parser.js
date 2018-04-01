@@ -164,7 +164,7 @@ function parse (topic, buf) {
             satellite_count: satellite_count,
         }
     } else if (topic.endsWith('lab11/ambient/tphl') || topic.endsWith('tphl') || 
-                topic.endsWith('lab11/ambient') || topic.endsWith('ambient') {
+                topic.endsWith('lab11/ambient') || topic.endsWith('ambient')) {
         if (message_type == 0x01) {
                         var temp = buf.readInt16BE(1) / 100.0;
             var humi = buf.readInt16BE(3) / 100.0;
@@ -330,7 +330,7 @@ function parse (topic, buf) {
                 humidity_percent: humidity_percent,
             }
         }
-    } else if (topic.endsWith('signpost/radio/status') || topic.endsWith('lab11/radio-status') {
+    } else if (topic.endsWith('signpost/radio/status') || topic.endsWith('lab11/radio-status')) {
         if (message_type == 0x01) {
             var controller = 0;
             var audio = 0;
@@ -460,7 +460,7 @@ function parse (topic, buf) {
             }
             return json;
         }
-    } else if (topic.endsWith('lab11/spectrum') {
+    } else if (topic.endsWith('lab11/spectrum')) {
         var datastr = "";
         var retobj = {};
         if(message_type == 0x01) {
