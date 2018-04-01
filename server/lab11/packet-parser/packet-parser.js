@@ -477,7 +477,7 @@ function parse (topic, buf) {
             var lowend = 470+i*6;
             var highend = 470+6+i*6;
             var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
-            retobj[fullstr] = buf.readInt8(i);
+            retobj[fullstr] = buf.readInt8(1 + i);
         }
         return retobj;
     } else if (topic.endsWith('lab11/spectrum/ws_max')) {
@@ -489,7 +489,7 @@ function parse (topic, buf) {
             var lowend = 470+i*6;
             var highend = 470+6+i*6;
             var fullstr = lowend.toString()+"MHz"+"-"+highend.toString()+"MHz"+"_"+datastr;
-            retobj[fullstr] = buf.readInt8(1+i);
+            retobj[fullstr] = buf.readInt8(i);
         }
         return retobj;
     } else if (topic.endsWith('lab11/spectrum/ws_mean')) {
