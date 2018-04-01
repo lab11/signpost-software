@@ -301,7 +301,7 @@ int xdot_receive(uint8_t* buf, uint8_t len) {
     }
 
     for(uint16_t i = 0; i < ret/2 && i < len; i++) {
-        char tbuf[5] = {'0','x',buf_str[start+i*2],buf_str[4+i*2], 0};
+        char tbuf[5] = {'0','x',buf_str[start+i*2],buf_str[start+1+i*2], 0};
         buf[i] = strtol(tbuf, NULL, 0);
     }
 
