@@ -95,48 +95,45 @@ static void count_module_packet(uint8_t module_address) {
 }
 
 static int lookup_module_num(char* mod_name) {
-    for(uint8_t i = 0; i < NUM_MODULES; i++) {
-        if(!strncmp(module_info.names[i],mod_name,NAME_LEN)) {
-            return i;
+    //short circuit the controller
+    //everything else needs to send a packet first
+    if(!strncmp(mod_name,"signpost/control", NAME_LEN)) {
+        return ModuleAddressController;
+    } else {
+        for(uint8_t i = 0; i < NUM_MODULES; i++) {
+            if(!strncmp(module_info.names[i],mod_name,NAME_LEN)) {
+                return module_info.i2c_address_mods[i];
+            }
         }
+        return TOCK_FAIL;
     }
-    return TOCK_FAIL;
 }
 
 static int8_t send_downlink_message(uint8_t* buffer, uint8_t len) {
     //extract the module name
     uint8_t slen = buffer[0];
     uint8_t dlen = buffer[slen+1];
+
     if(slen+ dlen + 2 > len) {
         return TOCK_FAIL;
     }
 
-    char mod_name[NAME_LEN] = {0};
-    char topic[NAME_LEN] = {0};
+    char mod_name[NAME_LEN+1] = {0};
+    char topic[NAME_LEN+1] = {0};
     uint8_t* find1 = memchr(buffer+1,'/',slen);
-    uint8_t* find2 = memchr(find1,'/',slen-(find1-(buffer+1)));
+    uint8_t* find2 = memchr(find1+1,'/',slen-(find1+1-(buffer+1)));
     memcpy(mod_name,buffer+1,find2-(buffer+1));
-    memcpy(topic,find2,slen-(find2-(buffer+1)));
-    printf("Parsed downlink mod name to be: %s\n", mod_name);
-    printf("Parsed downlink topic to be: %s\n", topic);
+    memcpy(topic,find2+1,slen-(find2-(buffer+1))-1);
+    printf("Downlink for %s at topic %s\n",mod_name,topic);
 
     //Do we know the module name?
     int ret = lookup_module_num(mod_name);
     if(ret == TOCK_FAIL) {
-        //ask the controller for the info
-        ret = signpost_initialization_get_module_state();
-        if(ret == TOCK_FAIL) {
-            return TOCK_FAIL;
-        }
-
-        ret = lookup_module_num(mod_name);
-        if(ret == TOCK_FAIL) {
-            return TOCK_FAIL;
-        }
+        return TOCK_FAIL;
+    } else {
+        //okay we have the destination - dispatch the message
+        return signpost_networking_subscribe_send(ret, topic, &buffer[slen+2], dlen);
     }
-
-    //okay we have the destination - dispatch the message
-    return signpost_networking_subscribe_send(ret, topic, &buffer[slen+2], dlen);
 }
 
 static int8_t add_buffer_to_queue(uint8_t addr, uint8_t* buffer, uint8_t len) {
@@ -337,7 +334,12 @@ static void timer_callback (
                 status = xdot_receive(rbuf, 128);
                 if(status > 0) {
                     printf("Xdot received %d bytes of data\n",status);
-                    send_downlink_message(rbuf, status);
+                    int rc = send_downlink_message(rbuf, status);
+                    if(rc < 0) {
+                        printf("Downlink failed!\n");
+                    } else {
+                        printf("Downlink success!\n");
+                    }
                 } else if(status == 0) {
                     printf("Xdot received no data!\n");
                 } else {
