@@ -211,7 +211,7 @@ mqtt_external.on('message', function (topic, message) {
 
         } else {
             if(json.data) {
-                console.log('Got uplink message on topic ' + topic);
+                //console.log('Got uplink message on topic ' + topic);
             } else {
                 console.log('Invalid Message!');
             }
