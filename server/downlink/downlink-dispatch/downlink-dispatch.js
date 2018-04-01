@@ -155,39 +155,83 @@ mqtt_external.on('message', function (topic, message) {
     } else  {
         downtopic = topic.slice(22);
     }
-
+    
     try {
         var json = JSON.parse(message.toString());
     } catch(e) {
-        console.log('Invalid Message!');
-        return;
+
     }
 
-    if(json.data && !(json.receiver)) {
+    if(json) {
+        if(json.data && !(json.receiver)) {
+            console.log('Got downlink message on topic ' + topic);
+            
+            //this was published for downlink (i.e. not by our scripts)
+            datstring = '';
+            if(json.data.type) {
+                if(json.data.type == "Buffer" && json.data.data) {
+                    //this is a buffer object that we should parse
+                    if(json.data.data.length < 96) {
+                        datstring = json.data.data.toString('base64');
+                    }
+                } else {
+                    //We don't know what to do with this
+                    console.log('Invalid downlink type! Dropping.');
+                    return;
+                }
+            } else {
+                //try to interpret the data as base64
+                try {
+                    testString = Buffer.from(json.data, 'base64').toString();
+                } catch(e) {
+                    console.log('Not properly formatted base64! Dropping.');
+                    return;
+                }
+                datstring = json.data
+            }
+
+            //this is a valid sized array
+            //form and publish the lora request
+            if(!(node in messageQueue)) {
+                messageQueue[node] = [];
+            }
+
+            downobj = {
+                deviceID: node,
+                topic: downtopic,
+                data: datstring,
+            }
+
+            messageQueue[node].push(downobj);
+
+            //is this the only message in the queue? If so - send it
+            if(messageQueue[node].length == 1) {
+                sendMessage(node);
+            }
+
+        } else {
+            if(json.data) {
+                console.log('Got uplink message on topic ' + topic);
+            } else {
+                console.log('Invalid Message!');
+            }
+        }
+    } else {
         console.log('Got downlink message on topic ' + topic);
         
         //this was published for downlink (i.e. not by our scripts)
-        datstring = '';
-        if(json.data.type) {
-            if(json.data.type == "Buffer" && json.data.data) {
-                //this is a buffer object that we should parse
-                if(json.data.data.length < 96) {
-                    datstring = json.data.data.toString('base64');
-                }
-            } else {
-                //We don't know what to do with this
-                console.log('Invalid downlink type! Dropping.');
-                return;
-            }
-        } else {
-            //try to interpret the data as base64
+        try {
+            var datstring = message.toString('base64');
+        } catch(e) {
+            console.log('Downlink message not base64 formatted')
+            console.log('Interpretting as ascii')
+            var datastring = message.toString();
             try {
-                testString = Buffer.from(json.data, 'base64').toString();
-            } catch(e) {
-                console.log('Not properly formatted base64! Dropping.');
+                datastring = btoa(datastring);
+            } else {
+                console.log('Cant convert string to base64 - dropping');
                 return;
             }
-            datstring = json.data
         }
 
         //this is a valid sized array
@@ -207,13 +251,6 @@ mqtt_external.on('message', function (topic, message) {
         //is this the only message in the queue? If so - send it
         if(messageQueue[node].length == 1) {
             sendMessage(node);
-        }
-
-    } else {
-        if(json.data) {
-            console.log('Got uplink message on topic ' + topic);
-        } else {
-            console.log('Invalid Message!');
         }
     }
 });
