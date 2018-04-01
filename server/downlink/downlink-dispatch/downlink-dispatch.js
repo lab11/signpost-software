@@ -228,7 +228,7 @@ mqtt_external.on('message', function (topic, message) {
             var datastring = message.toString();
             try {
                 datastring = btoa(datastring);
-            } else {
+            } catch(e) {
                 console.log('Cant convert string to base64 - dropping');
                 return;
             }
