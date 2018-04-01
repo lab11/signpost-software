@@ -29,7 +29,7 @@ if(process.argv.length < 4) {
 }
 
 try {
-    var http_config_file = fs.readFileSync(hptt_conf_file_location, 'utf-8');
+    var http_config_file = fs.readFileSync(http_conf_file_location, 'utf-8');
     var http_config = ini.parse(config_file);
     if(http_config.port == undefined) {
         console.log('Invalid configuration file. See signpost-software/server/test/conf/signpost for valid configuration files');
