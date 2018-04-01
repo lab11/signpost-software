@@ -164,7 +164,7 @@ mqtt_external.on('message', function (topic, message) {
 
     if(json) {
         if(json.data && !(json.receiver)) {
-            console.log('Got downlink message on topic ' + topic);
+            console.log('Got downlink message for node ' + node + ' on topic ' + downtopic);
             
             //this was published for downlink (i.e. not by our scripts)
             datstring = '';
