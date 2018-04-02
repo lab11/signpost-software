@@ -99,14 +99,18 @@ static int lookup_module_num(char* mod_name) {
     //everything else needs to send a packet first
     if(!strncmp(mod_name,"signpost/control", NAME_LEN)) {
         return ModuleAddressController;
-    } else {
+    }
+
+    //currently only downlinking to the controller
+    //downlink to all modules coming soon
+    /*else {
         for(uint8_t i = 0; i < NUM_MODULES; i++) {
             if(!strncmp(module_info.names[i],mod_name,NAME_LEN)) {
                 return module_info.i2c_address_mods[i];
             }
         }
         return TOCK_FAIL;
-    }
+    }*/
 }
 
 static int8_t send_downlink_message(uint8_t* buffer, uint8_t len) {
