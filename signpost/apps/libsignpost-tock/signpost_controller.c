@@ -26,6 +26,7 @@ typedef enum {
     ModuleDisabledIsolation = 1,
     ModuleDisabledEnergy = 2,
     ModuleDisabledDutyCycle = 3,
+    ModuleDisabledOff = 4,
 } signpost_controller_module_isolation_e;
 
 typedef struct module_state {
@@ -61,6 +62,10 @@ typedef struct {
 uint8_t fm25cl_read_buf[256];
 uint8_t fm25cl_write_buf[256];
 controller_fram_t fram;
+
+static bool hard_reset = false;
+
+extern module_state_t module_info;
 
 static void app_watchdog_combine (watchdog_tickler_t which) {
   watchdog_states[(size_t)which] = true;
@@ -119,8 +124,8 @@ static void initialization_api_callback(uint8_t source_address,
                     rc = signpost_initialization_declare_respond(source_address, new_address, req_mod_num, name);
 
                     if (rc < 0) {
-                      printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
-                          __LINE__, req_mod_num, source_address);
+                      //printf(" - %d: Error responding to initialization declare request for module %d at address 0x%02x. Dropping.\n",
+                       //   __LINE__, req_mod_num, source_address);
                     }
                     break;
                 }
@@ -237,13 +242,16 @@ static void duty_cycle_timer_cb( __attribute__ ((unused)) int now,
     duty_cycle_struct_t* dc = ud;
     printf("Got duty cycle timer callback\n");
 
-    if(signpost_energy_policy_get_module_energy_remaining_uwh(dc->mod_num) > 0) {
-        printf("Turning module %d back on\n",dc->mod_num);
+    if(signpost_energy_policy_get_module_energy_remaining_uwh(dc->mod_num) > 0 &&
+            module_state[dc->mod_num].isolation_state == ModuleDisabledDutyCycle) {
+        //printf("Turning module %d back on\n",dc->mod_num);
         module_state[dc->mod_num].isolation_state = ModuleEnabled;
         controller_module_enable_power(dc->mod_num);
         controller_module_enable_i2c(dc->mod_num);
-    } else {
-        printf("Module %d has used too much energy - leaving off\n",dc->mod_num);
+    } else if (module_state[dc->mod_num].isolation_state == ModuleDisabledOff) {
+        //printf("Module %d is manually off - leaving off\n",dc->mod_num);
+    } else{
+        //printf("Module %d has used too much energy - leaving off\n",dc->mod_num);
         module_state[dc->mod_num].isolation_state = ModuleDisabledEnergy;
     }
 
@@ -254,7 +262,7 @@ static void energy_api_callback(uint8_t source_address,
     signbus_frame_type_t frame_type, signbus_api_type_t api_type,
     uint8_t message_type, __attribute__((unused)) size_t message_length, uint8_t* message) {
 
-  printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
+  //printf("CALLBACK_ENERGY: received energy api callback of type %d\n",message_type);
 
   if (api_type != EnergyApiType) {
     signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EINVAL, true, true, 1);
@@ -265,7 +273,7 @@ static void energy_api_callback(uint8_t source_address,
 
   if (frame_type == NotificationFrame) {
       if(message_type == EnergyDutyCycleMessage) {
-        printf("CALLBACK_ENERGY: received duty cycle request\n");
+        //printf("CALLBACK_ENERGY: received duty cycle request\n");
         //this is a duty cycle message
         //
         //how long does the module want to be duty cycled?
@@ -300,14 +308,14 @@ static void energy_api_callback(uint8_t source_address,
       info.time_since_reset_s = (int)(signpost_energy_policy_get_time_since_module_reset_ms(mod_num)/1000.0);
       info.energy_limit_warning_threshold = (info.energy_limit_uWh < 1000000);
       info.energy_limit_critical_threshold = (info.energy_limit_uWh < 200000);
-      printf("Got energy query:\n");
+      //printf("Got energy query:\n");
       printf("\tLimit: %lu uWh\n",info.energy_limit_uWh);
       printf("\tUsed: %lu uWh\n",info.energy_used_since_reset_uWh);
       printf("\tTime: %lu s\n",info.time_since_reset_s);
 
       rc = signpost_energy_query_reply(source_address, &info);
       if (rc < 0) {
-        printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
+        //printf(" - %d: Error sending energy query reply (code: %d). Replying with fail.\n", __LINE__, rc);
         signpost_api_error_reply_repeating(source_address, api_type, message_type, PORT_EI2C_WRITE, true, true, 1);
       }
 
@@ -542,9 +550,84 @@ void signpost_controller_app_watchdog_tickle (void) {
 }
 
 void signpost_controller_hardware_watchdog_tickle (void) {
-    gpio_clear(PIN_WATCHDOG);
-    delay_ms(50);
-    gpio_set(PIN_WATCHDOG);
+    if(!hard_reset) {
+        gpio_clear(PIN_WATCHDOG);
+        delay_ms(50);
+        gpio_set(PIN_WATCHDOG);
+    }
+}
+
+enum DownlinkCommand {
+    ON = 1,
+    OFF,
+    RESET
+};
+
+static void downlink_cb(char* topic, uint8_t* data, uint8_t data_len) {
+    //what commands do we know how to handler
+    //topic = [module_name] on/off/reset
+    //topic = signpost reset
+    uint8_t command;
+    if(!strncmp("on",(char*)data,data_len)) {
+        command = ON;
+    } else if(!strncmp("off",(char*)data,data_len)) {
+        command = OFF;
+    } else if(!strncmp("reset",(char*)data,data_len)) {
+        command = RESET;
+    } else {
+        //we don't know this command
+        return;
+    }
+
+
+    if(!strncmp("signpost",topic,NAME_LEN)) {
+        if(command == RESET) {
+            //go into failure mode and stop tickling the watchdog
+            hard_reset = true;
+        } else {
+            //can't do anything else for the whole signpost
+            return;
+        }
+    } else {
+        //search for a module info that we can do something about
+        int mod_num = signpost_api_module_name_to_mod_num(topic);
+        if(mod_num >= 0) {
+            switch(command) {
+            case ON:
+                if(signpost_energy_policy_get_module_energy_remaining_uwh(mod_num) > 0) {
+                    //printf("Turning on %d\n",mod_num);
+                    module_state[mod_num].isolation_state = ModuleEnabled;
+                    controller_module_enable_power(mod_num);
+                    controller_module_enable_i2c(mod_num);
+                } else {
+                    module_state[mod_num].isolation_state = ModuleDisabledEnergy;
+                }
+            break;
+            case OFF:
+                module_state[mod_num].isolation_state = ModuleDisabledOff;
+
+                //turn it off
+                controller_module_disable_power(mod_num);
+                controller_module_disable_i2c(mod_num);
+            break;
+            case RESET:
+                //printf("Resetting %d\n",mod_num);
+                if(signpost_energy_policy_get_module_energy_remaining_uwh(mod_num) > 0 &&
+                        module_state[mod_num].isolation_state == ModuleEnabled) {
+                    controller_module_disable_power(mod_num);
+                    delay_ms(300);
+                    controller_module_enable_power(mod_num);
+                }
+            break;
+            default:
+                return;
+            break;
+            }
+
+        } else {
+            return;
+        }
+    }
 }
 
 int signpost_controller_init (void) {
@@ -589,8 +672,8 @@ int signpost_controller_init (void) {
     do {
       rc = signpost_initialization_controller_module_init(handlers);
       if (rc < 0) {
-        printf(" - Error initializing as controller module with signpost library (code: %d)\n", rc);
-        printf("   Sleeping 5s\n");
+        //printf(" - Error initializing as controller module with signpost library (code: %d)\n", rc);
+        //printf("   Sleeping 5s\n");
         delay_ms(5000);
       }
     } while (rc < 0);
@@ -618,6 +701,12 @@ int signpost_controller_init (void) {
 
     static tock_timer_t check_watchdogs_timer;
     timer_every(60000, check_watchdogs_cb, NULL, &check_watchdogs_timer);
+
+    //setup the networking callback for radio downlink
+    rc = signpost_networking_subscribe(downlink_cb);
+    if(rc < TOCK_SUCCESS) {
+        //printf("Downlink callback registration failed\n");
+    }
 
     return 0;
 }
