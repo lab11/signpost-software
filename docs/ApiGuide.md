@@ -46,7 +46,51 @@ Currently being updated.
 
 ## Networking
 
-Currently being updated
+Currently the signpost API provides a pub/sub abstraction.
+
+### Pub/Sub
+
+We recommend the pub/sub abstraction because 
+it supports both cellular and lora networks (and is therefore both
+more reliable and can be lower power). 
+
+```c
+//int signpost_networking_publish(char* topic, uint8_t* data, uint8_t data_len);
+
+uint8_t* data = {0x01, 0x02, 0x03};
+
+//will appear at signpost/mac_address/module_name/my_topic
+int result = signpost_networking_publish("my_topic", data, 3);
+```
+
+where topic is a string less than 12 characters, and data is a buffer less
+than 90 bytes. You can retrieve published data by subscribing to
+the signpost MQTT stream at signpost/mac\_address/org\_name/module\_name/topic. Please
+see the additional [Signpost Networking Architecture](https://github.com/lab11/signpost-software/blob/master/docs/NetworkArch.md) 
+for more information about integrating with the Signpost backend. 
+
+Just as you can receive data from Signpost MQTT stream, it can
+also be used send data to modules by publishing to signpost/mac\_address/org\_name/module\_name/topic.
+Modules can receive this data by subscribing to these messages with
+a callback:
+
+```c
+//int signpost_networking_subscribe(subscribe_callback_type* cb);
+
+void subscribe_callback(char* topic, uint8_t* data, uint8_t data_len) {
+    //process the topic and data here
+}
+
+//subscribe to incoming data
+signpost_networking_subscribe(subscribe_callback);
+```
+
+You can also push data to the controller to turn on and off and reset the modules
+in your organization by publishing to signpost/mac\_address/signpost/control/org\_name/module\_name/
+with the strings "on", "off", or "reset". The Signpost MQTT broker manages
+access control so that you can only access the data from and publish to
+modules within your organization.
+
 
 ## Time
 

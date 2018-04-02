@@ -1,6 +1,9 @@
 Message Format
 ==============
 
+This describes the message format for the on-signpost I2C Bus. Hopefully
+if your goal is just to develop sensor modules it's not necessary to 
+dig into this layer, but it can be useful for debugging.
 
 Link
 ----

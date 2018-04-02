@@ -2,21 +2,20 @@ Current Signpost Data Schemas
 =====================
 
 These are the data and associated data formats that are currently being
-collected by deployed Signposts. This data is being sent to the internal
-Lab11 Influx database, the [Global Data Plane (GDP)](https://swarmlab.eecs.berkeley.edu/projects/4814/global-data-plane),
-and can be subscribed to using MQTT. Please contact us to set up an
+collected by deployed Signposts and the modules that we have deployed with them. 
+This data is being sent to the internal
+Lab11 Influx database, the Lab11 TimescaleDB.
+and can be subscribed to using MQTT with the appropriate credentials. 
+Please contact us to set up an
 MQTT username and password.
 
-### Stream/Log Naming
+### Stream Naming
 
-MQTT: signpost/lab11/<device_short_name> 
+Module streams are formated as: signpost/mac\_address/org\_name/module\_name/topic\_name
+(i.e. signpost/c098e5120000/lab11/audio/spectrum)
 
-(i.e. signpost/lab11/gps)
-
-
-GDP: edu.berkeley.eecs.<signpost_mac_lower>.<signpost_device_long>.<version> 
-
-(i.e. edu.berkeley.eecs.c098e5120003.signpost_energy.v0-0-1)
+Generic streams useful to all modules belong to the "signpost" organization.
+(i.e. signpost/c098e5120000/signpost/control/gps)
 
 ### Deployed Signposts
 
@@ -27,14 +26,6 @@ Installed and working modules are listed below next to the signpost mac address.
 Currently the following signposts are deployed:
   - c098e5120001 (audio, rf spectrum, ambient) - North Campus
   - c098e5120003 (audio, rf spectrum, ambient) - North Campus
-  - c098e512000a (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
-  - c098e512000d (audio, rf spectrum, ambient) - Clark Kerr 
-  - c098e512000e (audio, rf spectrum, ambient) - Clark Kerr
-  - c098e512000f (audio, rf spectrum, ambient) - Clark Kerr
-  - c098e5120010 (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
-  - c098e5120011 (audio, rf spectrum, ambient) - Clark Kerr (drone demo)
-  - c098e5120012 (audio, rf spectrum, ambient) - Clark Kerr
-  - c098e5120013 (audio, rf spectrum, ambient) - Clark Kerr
   - c098e5120015 (audio, rf spectrum, ambient) - North Campus
   - c098e5120016 (audio, rf spectrum, ambient) - North Campus
   - c098e5120017 (audio, rf spectrum, ambient) - North Campus
@@ -68,9 +59,7 @@ All data packets include a `_meta` section like the following:
 ```
 
 ### Audio Frequency Module
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_audio_frequency.v0-0-1
-
-MQTT Topic: signpost/lab11/audio
+MQTT Topic: (i.e. signpost/mac\_address/lab11/audio/spectrum)
 
 Fields represent the average amplitude of the corresponding frequency band in db
 over the second following the reported timestamp.
@@ -92,9 +81,7 @@ over the second following the reported timestamp.
 
 
 ### GPS Data
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_gps.v0-0-1
-
-MQTT Topic: signpost/lab11/gps
+MQTT Topic: signpost/mac\_address/signpost/control/gps
 
 ```
 {
@@ -109,9 +96,7 @@ MQTT Topic: signpost/lab11/gps
 
 
 ### Signpost Energy
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_energy.v0-0-1
-
-MQTT Topic: signpost/lab11/energy
+MQTT Topic: signpost/mac\_address/signpost/control/energy
 
 ```
 {
@@ -141,9 +126,7 @@ MQTT Topic: signpost/lab11/energy
 ```
 
 ### Radio Status
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_radio.v0-0-1
-
-MQTT Topic: signpost/lab11/radio-status
+MQTT Topic: signpost/mac\_address/signpost/radio/status
 
 ```
 {
@@ -168,10 +151,7 @@ MQTT Topic: signpost/lab11/radio-status
 
 
 ### Microwave Radar Module
-
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_microwave_radar.v0-0-1
-
-MQTT Topic: signpost/lab11/radar
+MQTT Topic: signpost/mac\_address/lab11/radar/motion
 
 ```
 {
@@ -184,9 +164,7 @@ MQTT Topic: signpost/lab11/radar
 
 
 ### Ambient Sensing Module
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_ambient.v0-0-1
-
-MQTT Topic: signpost/lab11/ambient
+MQTT Topic: signpost/mac\_address/lab11/ambient/tphl
 
 ```
 {
@@ -199,9 +177,7 @@ MQTT Topic: signpost/lab11/ambient
 ```
 
 ### RF Spectrum Sensing Module (currently TV whitespace channels)
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_max.v0-0-1
-
-MQTT Topic: signpost/lab11/spectrum
+MQTT Topic: signpost/mac\_address/lab11/spectrum/ws_max
 
 ```
 {
@@ -215,9 +191,8 @@ MQTT Topic: signpost/lab11/spectrum
 }
 ```
 
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_stddev.v0-0-1
+MQTT Topic: signpost/mac\_address/lab11/spectrum/ws_stddev
 
-MQTT Topic: signpost/lab11/spectrum
 ```
 {
     "device": "signpost_rf_spectrum",
@@ -230,9 +205,7 @@ MQTT Topic: signpost/lab11/spectrum
 }
 ```
 
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_rf_spectrum_mean.v0-0-1
-
-MQTT Topic: signpost/lab11/spectrum
+MQTT Topic: signpost/mac\_address/lab11/spectrum/ws_mean
 
 ```
 {
@@ -243,21 +216,5 @@ MQTT Topic: signpost/lab11/spectrum
     .
     .
     "944MHz-950MHz_mean":    <int8_t>,
-}
-```
-
-### UCSD Air Quality
-GDP Log Name: edu.berkeley.eecs.<signpost_mac_lower>.signpost_ucsd_air_quality.v0-0-1
-
-MQTT Topic: signpost/lab11/aqm
-
-```
-{
-    "device"              'signpost_ucsd_air_quality',
-    "co2_ppm"             <uint16_t>,
-    "VOC_PID_ppb"         <uint32_t>,
-    "VOC_IAQ_ppb"         <uint32_t>,
-    "barometric_millibar" <uint16_t>,
-    "humidity_percent"    <uint16_t>,
 }
 ```
