@@ -530,8 +530,12 @@ mqtt_client.on('connect', function () {
 
     // Callback for each packet
     mqtt_external.on('message', function (topic, message) {
-        var json = JSON.parse(message.toString());
-        console.log("Received from " + topic);
+        try {
+            var json = JSON.parse(message.toString());
+            console.log("Received from " + topic);
+        } catch(e) {
+            //this must have been a downlink message not in json format
+        }
         try {
             if(json.data && json.receiver && json.geohash) {
                 buf = Buffer.from(json.data);
