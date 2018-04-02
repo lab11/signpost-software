@@ -99,6 +99,8 @@ static int lookup_module_num(char* mod_name) {
     //everything else needs to send a packet first
     if(!strncmp(mod_name,"signpost/control", NAME_LEN)) {
         return ModuleAddressController;
+    } else {
+        return TOCK_FAIL;
     }
 
     //currently only downlinking to the controller
