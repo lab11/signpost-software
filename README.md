@@ -31,10 +31,8 @@ Arduino port working and nearly ready to merge.
 
 ## Current Status
 
-We are currently working to reorganize this repo,
-and get much needed API updates merged into master for a 'Signpost 1.0'
-release. These changes should include cleaner networking API, a standardized
-method for over the air updates, and stable core signpost code. Please 
+The API is still in slight flux, but is starting to stabilize for a 'Signpost 1.0'
+release. We are primarily still working on over the air updates. Please 
 feel free to contact us at <signpost-admin@eecs.berkeley.edu> if you have
 any questions!
 
