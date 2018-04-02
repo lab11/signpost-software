@@ -48,7 +48,8 @@ int signpost_api_send(uint8_t destination_address,
 
 uint8_t* signpost_api_addr_to_key(uint8_t addr);
 int signpost_api_addr_to_mod_num(uint8_t addr);
-uint8_t signpost_api_appid_to_mod_num(uint16_t appid);
+int signpost_api_appid_to_mod_num(uint16_t appid);
+int signpost_api_module_name_to_mod_num(char* name);
 
 // Revoke the key of a module
 //

@@ -55,8 +55,18 @@ int signpost_api_addr_to_mod_num(uint8_t addr){
     return PORT_FAIL;
 }
 
-uint8_t signpost_api_appid_to_mod_num(uint16_t appid) {
+int signpost_api_appid_to_mod_num(uint16_t appid) {
     return signpost_api_addr_to_mod_num(appid);
+}
+
+int signpost_api_module_name_to_mod_num(char* name) {
+    for (size_t i = 0; i < NUM_MODULES; i++) {
+        if (!strncmp(name, module_info.names[i], NAME_LEN)) {
+            return i;
+        }
+    }
+    port_printf("WARN: Do not have module registered to %s\n", name);
+    return PORT_FAIL;
 }
 
 int signpost_api_revoke_key(uint8_t module_number) {
@@ -289,12 +299,10 @@ static int signpost_initialization_declare_controller(void) {
 }
 
 int signpost_initialization_declare_respond(uint8_t source_address, uint8_t new_address, uint8_t module_number, char* name) {
-
-    if (module_info.i2c_address_mods[module_number] != new_address) {
-      module_info.i2c_address_mods[module_number] = new_address;
-      strncpy(module_info.names[module_number],name,strnlen(name,NAME_LEN));
-      module_info.haskey[module_number] = false;
-    }
+    module_info.i2c_address_mods[module_number] = new_address;
+    memset(module_info.names[module_number],0,NAME_LEN);
+    strncpy(module_info.names[module_number],name,strnlen(name,NAME_LEN));
+    module_info.haskey[module_number] = false;
 
     port_printf("INIT: Registered address 0x%x at slot %d with name %s\n", new_address, module_number, name);
 
@@ -1009,7 +1017,7 @@ static void internal_subscribe_callback(__attribute__ ((unused)) uint8_t source_
                 message_type == NetworkingSubscribeMessage) {
             //extract the topic and the data
             //make the topic string static for easier processing
-            static char topic[29];
+            char topic[NAME_LEN*2+1] = {0};
             uint8_t tlen = message[0];
             if(tlen > 28 || message_length < tlen + (unsigned)2) {
                 //invalid topic
@@ -1097,12 +1105,19 @@ int signpost_networking_subscribe(signpost_networking_subscribe_cb_t cb) {
     //register our internal callback with the app recv handler
     // get number of api_handlers and insert initialization handler
     uint8_t i = 0;
-    while(module_api.api_handlers + (i++) != NULL) {
+    while((module_api.api_handlers)[i] != NULL) {
         //You can't do this if a networking handler is already registered
-        if(module_api.api_handlers[i]->api_type == NetworkingApiType){
+        if((module_api.api_handlers)[i]->api_type == NetworkingApiType){
             return PORT_EINVAL;
         }
+        i++;
     }
+
+    //note the size of the original handler array
+    uint8_t original_handler_num = i;
+
+    //we need two more handlers, one for the array and one to terminate it
+    i += 2;
 
     //Initialize a new handlers array
     api_handler_t** updated_api_handlers = (api_handler_t**) malloc(i*sizeof(api_handler_t*));
@@ -1111,8 +1126,14 @@ int signpost_networking_subscribe(signpost_networking_subscribe_cb_t cb) {
     }
 
     static api_handler_t subscribe_handler  = {NetworkingApiType, internal_subscribe_callback};
+    //first handler is out new networking handler
     updated_api_handlers[0] = &subscribe_handler;
-    memcpy(updated_api_handlers+1, module_api.api_handlers, i-1);
+    //last handler is always NULL
+    updated_api_handlers[i-1] = NULL;
+    //copy the origin handlers into
+    memcpy(updated_api_handlers+1, module_api.api_handlers, original_handler_num * sizeof(api_handler_t*));
+    //update the api handlers with our new memory
+    module_api.api_handlers = updated_api_handlers;
     return PORT_SUCCESS;
 }
 
