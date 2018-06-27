@@ -1,10 +1,10 @@
 #![crate_name = "controller"]
 #![no_std]
 #![no_main]
-#![feature(asm,compiler_builtins_lib,const_fn,lang_items)]
+#![feature(panic_implementation)]
+#![feature(asm,const_fn,lang_items)]
 
 extern crate capsules;
-extern crate compiler_builtins;
 extern crate cortexm4;
 #[macro_use(debug,static_init)]
 extern crate kernel;
@@ -30,13 +30,13 @@ pub mod version;
 const NUM_PROCS: usize = 2;
 
 // How should the kernel respond when a process faults.
-const FAULT_RESPONSE: kernel::process::FaultResponse = kernel::process::FaultResponse::Panic;
+const FAULT_RESPONSE: kernel::procs::FaultResponse = kernel::procs::FaultResponse::Panic;
 
 #[link_section = ".app_memory"]
 static mut APP_MEMORY: [u8; 16384*2] = [0; 16384*2];
 
 // Actual memory for holding the active process structures.
-static mut PROCESSES: [Option<kernel::Process<'static>>; NUM_PROCS] = [None, None];
+static mut PROCESSES: [Option<&'static mut kernel::procs::Process<'static>>; NUM_PROCS] = [None, None];
 
 /*******************************************************************************
  * Setup this platform
@@ -194,6 +194,7 @@ pub unsafe fn reset_handler() {
         capsules::console::Console::new(&usart::USART1,
                      115200,
                      &mut capsules::console::WRITE_BUF,
+                     &mut capsules::console::READ_BUF,
                      kernel::Grant::create()));
     hil::uart::UART::set_client(&usart::USART1, console);
 
@@ -221,8 +222,8 @@ pub unsafe fn reset_handler() {
 
     let virtual_alarm1 = static_init!(
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
-        VirtualMuxAlarm::new(mux_alarm),
-        24);
+        VirtualMuxAlarm::new(mux_alarm)
+        );
     let timer = static_init!(
         capsules::alarm::AlarmDriver<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
         capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create()));
@@ -492,8 +493,8 @@ pub unsafe fn reset_handler() {
     //
     let watchdog_alarm = static_init!(
         VirtualMuxAlarm<'static, sam4l::ast::Ast>,
-        VirtualMuxAlarm::new(mux_alarm),
-        24);
+        VirtualMuxAlarm::new(mux_alarm)
+        );
     let watchdog = static_init!(
         signpost_drivers::watchdog_kernel::WatchdogKernel<'static, VirtualMuxAlarm<'static, sam4l::ast::Ast>>,
         signpost_drivers::watchdog_kernel::WatchdogKernel::new(watchdog_alarm, &sam4l::wdt::WDT, 1200));
@@ -670,10 +671,10 @@ pub unsafe fn reset_handler() {
         /// Beginning of the ROM region containing app images.
         static _sapps: u8;
     }
-    kernel::process::load_processes(&_sapps as *const u8,
+    kernel::procs::load_processes(&_sapps as *const u8,
                                     &mut APP_MEMORY,
                                     &mut PROCESSES,
                                     FAULT_RESPONSE);
 
-    kernel::main(&signpost_controller, &mut chip, &mut PROCESSES, &signpost_controller.ipc);
+    kernel::kernel_loop(&signpost_controller, &mut chip, &mut PROCESSES, Some(&signpost_controller.ipc));
 }

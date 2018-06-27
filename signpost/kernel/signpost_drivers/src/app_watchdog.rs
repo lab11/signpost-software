@@ -3,7 +3,7 @@
 use core::cell::Cell;
 
 use kernel::{AppId, Driver};
-use kernel::returncode::ReturnCode;
+use kernel::ReturnCode;
 use kernel::hil::time;
 use kernel::hil::time::Frequency;
 
