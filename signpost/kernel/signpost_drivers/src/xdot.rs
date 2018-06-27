@@ -1,8 +1,7 @@
 use core::cell::Cell;
 use kernel::{AppId, AppSlice, Callback, Grant, Shared, Driver, ReturnCode};
-use kernel::common::take_cell::TakeCell;
-use kernel::hil::uart::{self, UARTAdvanced, Client};
-use kernel::process::Error;
+use kernel::common::cells::TakeCell;
+use kernel::hil::uart::{self, UARTReceiveAdvanced, Client};
 
 //Syscall Driver Number
 pub const DRIVER_NUM: usize = 0x10080007;
@@ -36,7 +35,7 @@ impl Default for App {
 pub static mut WRITE_BUF: [u8; 512] = [0; 512];
 pub static mut READ_BUF: [u8; 1024] = [0; 1024];
 
-pub struct Console<'a, U: UARTAdvanced + 'a> {
+pub struct Console<'a, U: UARTReceiveAdvanced + 'a> {
     uart: &'a U,
     apps: Grant<App>,
     in_progress: Cell<Option<AppId>>,
@@ -45,7 +44,7 @@ pub struct Console<'a, U: UARTAdvanced + 'a> {
     baud_rate: Cell<u32>,
 }
 
-impl<'a, U: UARTAdvanced> Console<'a, U> {
+impl<'a, U: UARTReceiveAdvanced> Console<'a, U> {
     pub fn new(uart: &'a U,
                baud_rate: u32,
                tx_buffer: &'static mut [u8],
@@ -136,7 +135,7 @@ impl<'a, U: UARTAdvanced> Console<'a, U> {
     }
 }
 
-impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
+impl<'a, U: UARTReceiveAdvanced> Driver for Console<'a, U> {
     fn allow(&self, appid: AppId, allow_num: usize, slice: Option<AppSlice<Shared, u8>>) -> ReturnCode {
         match allow_num {
             // Allow a read buffer
@@ -147,11 +146,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
                         app.read_idx = 0;
                         ReturnCode::SUCCESS
                     })
-                    .unwrap_or_else(|err| match err {
-                        Error::OutOfMemory => ReturnCode::ENOMEM,
-                        Error::AddressOutOfBounds => ReturnCode::EINVAL,
-                        Error::NoSuchApp => ReturnCode::EINVAL,
-                    })
+                    .unwrap_or_else(|err| err.into())
             }
             // Allow a write buffer
             1 => {
@@ -160,11 +155,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
                         app.write_buffer = slice;
                         ReturnCode::SUCCESS
                     })
-                    .unwrap_or_else(|err| match err {
-                        Error::OutOfMemory => ReturnCode::ENOMEM,
-                        Error::AddressOutOfBounds => ReturnCode::EINVAL,
-                        Error::NoSuchApp => ReturnCode::EINVAL,
-                    })
+                    .unwrap_or_else(|err| err.into())
             }
             _ => ReturnCode::ENOSUPPORT,
         }
@@ -179,13 +170,8 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
             1 /* putstr/write_done */ => {
                 self.apps.enter(app_id, |app, _| {
                     self.send_new(app_id, app, callback)
-                }).unwrap_or_else(|err| {
-                    match err {
-                        Error::OutOfMemory => ReturnCode::ENOMEM,
-                        Error::AddressOutOfBounds => ReturnCode::EINVAL,
-                        Error::NoSuchApp => ReturnCode::EINVAL,
-                    }
                 })
+                .unwrap_or_else(|err| err.into())
             },
             2 /* read automatic */ => {
                 self.apps.enter(app_id, |app, _| {
@@ -207,13 +193,8 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
                     });
 
                     ReturnCode::SUCCESS
-                }).unwrap_or_else(|err| {
-                    match err {
-                        Error::OutOfMemory => ReturnCode::ENOMEM,
-                        Error::AddressOutOfBounds => ReturnCode::EINVAL,
-                        Error::NoSuchApp => ReturnCode::EINVAL,
-                    }
                 })
+                .unwrap_or_else(|err| err.into())
             },
             _ => ReturnCode::ENOSUPPORT
         }
@@ -234,7 +215,7 @@ impl<'a, U: UARTAdvanced> Driver for Console<'a, U> {
     }
 }
 
-impl<'a, U: UARTAdvanced> Client for Console<'a, U> {
+impl<'a, U: UARTReceiveAdvanced> Client for Console<'a, U> {
     fn transmit_complete(&self, buffer: &'static mut [u8], _error: uart::Error) {
         // Either print more from the AppSlice or send a callback to the
         // application.
@@ -320,7 +301,7 @@ impl<'a, U: UARTAdvanced> Client for Console<'a, U> {
                 // call application handler
                 app.read_callback.as_mut().map(|cb| {
                     let buf = rb.as_mut();
-                    cb.schedule(max_idx, (buf.as_ptr() as usize), 0);
+                    cb.schedule(max_idx, buf.as_ptr() as usize, 0);
                 });
 
                 rb

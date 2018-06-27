@@ -1,7 +1,7 @@
 # Base folder definitions
 CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 SIGNPOST_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)../../)
-TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)../../../kernel/tock/userland/)
+TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)../../libtock-c/)
 
 
 LIBNAME := fatfs

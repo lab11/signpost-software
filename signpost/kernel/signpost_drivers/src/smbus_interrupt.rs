@@ -1,10 +1,10 @@
 
-use kernel::common::take_cell::TakeCell;
 use core::cell::Cell;
+use kernel::common::cells::TakeCell;
 use kernel::hil::gpio;
 use kernel::hil::i2c;
 use kernel::{AppId, Callback, Driver};
-use kernel::returncode::ReturnCode;
+use kernel::ReturnCode;
 
 pub static mut BUFFER: [u8; 8] = [0; 8];
 

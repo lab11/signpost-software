@@ -13,7 +13,7 @@ TOCK_ARCH := cortex-m4
 
 CURRENT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 SIGNPOST_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR))
-TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)/../kernel/tock/userland/)
+TOCK_USERLAND_BASE_DIR := $(abspath $(CURRENT_DIR)/libtock-c/)
 
 # Include the libsignpost makefile. Adds rules that will rebuild library when needed
 include $(SIGNPOST_USERLAND_BASE_DIR)/libsignpost-tock/Makefile

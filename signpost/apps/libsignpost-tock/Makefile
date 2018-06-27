@@ -2,7 +2,7 @@
 # application makefiles to ensure their libsignpost dependency is built
 
 # Base folder definitions
-TOCK_USERLAND_BASE_DIR ?= ../../kernel/tock/userland
+TOCK_USERLAND_BASE_DIR ?= ../libtock-c
 SIGNPOST_USERLAND_BASE_DIR ?= ..
 LIBNAME := libsignpost-tock
 LIBNAMETOCK := libsignpost

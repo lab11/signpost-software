@@ -1,8 +1,8 @@
 //! Tell the bootloader to load new code.
 
 use core::cell::Cell;
-use kernel::common::take_cell::TakeCell;
-use kernel::common::take_cell::MapCell;
+use kernel::common::cells::MapCell;
+use kernel::common::cells::TakeCell;
 use kernel::hil;
 use kernel::{AppId, AppSlice, Driver, ReturnCode, Shared};
 
