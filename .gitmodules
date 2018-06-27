@@ -16,3 +16,6 @@
 [submodule "apps/support/RFExplorer_3GP_IoT_Arduino"]
 	path = signpost/apps/support/RFExplorer_3GP_IoT_Arduino
 	url = https://github.com/lab11/RFExplorer_3GP_IoT_Arduino.git
+[submodule "signpost/apps/libtock-c"]
+	path = signpost/apps/libtock-c
+	url = https://github.com/tock/libtock-c
