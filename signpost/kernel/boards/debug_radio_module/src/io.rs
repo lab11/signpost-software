@@ -53,6 +53,6 @@ pub unsafe extern "C" fn panic_fmt(pi: &PanicInfo) -> ! {
     */
 
     let writer = &mut WRITER;
-    debug::panic(led, writer, pi, &cortexm4::support::nop)
+    debug::panic(&mut [led], writer, pi, &cortexm4::support::nop)
 }
 

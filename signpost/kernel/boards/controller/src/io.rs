@@ -43,11 +43,7 @@ impl Write for Writer {
 #[panic_implementation]
 pub unsafe extern "C" fn panic_fmt(pi: &PanicInfo) -> ! {
     let led = &mut led::LedLow::new(&mut sam4l::gpio::PB[11]);
-
-    /* TODO: Used to also blink backplane led
-     *
-    let backplane_led = &sam4l::gpio::PB[14];
-    */
+    let backplane_led = &mut led::LedLow::new(&mut sam4l::gpio::PB[14]);
 
     /* TODO: This was removed
      *
@@ -59,6 +55,6 @@ pub unsafe extern "C" fn panic_fmt(pi: &PanicInfo) -> ! {
     */
 
     let writer = &mut WRITER;
-    debug::panic(led, writer, pi, &cortexm4::support::nop)
+    debug::panic(&mut [led, backplane_led], writer, pi, &cortexm4::support::nop)
 }
 
